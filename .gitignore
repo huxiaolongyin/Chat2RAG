@@ -1,0 +1,35 @@
+# Virtual Environment
+.venv
+
+# Python Compile File
+**_pycache__
+
+# VScode Settings
+.vscode
+
+# Pytest Temporary File
+.pytest_cache
+
+# Package File
+build
+**egg-info
+
+# Temporary File
+temp
+
+# Data File
+data/
+BigModels
+
+# Log File
+logs
+
+# Interface Document
+**API接口**.docx
+
+# Docker File
+**.tar
+**.zip
+
+# ENV File
+.env

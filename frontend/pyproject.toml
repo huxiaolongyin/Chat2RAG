@@ -1,0 +1,15 @@
+[project]
+name = "chat2rag-frontend"
+version = "0.1.0"
+description = "Frontend for Chat2RAG using Streamlit"
+maintainers = [{ name = "Jacob Zheng", email = "1453366421@qq.com" }]
+requires-python = ">=3.9"
+dependencies = [
+    "streamlit>=1.24.0",
+    "requests>=2.31.0",
+    "python-dotenv>=1.0.0"
+]
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"

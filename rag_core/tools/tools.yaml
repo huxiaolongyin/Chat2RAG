@@ -1,0 +1,23 @@
+tools:
+- function:
+    description: 计算BMI和健康建议
+    method: GET
+    name: health_tool
+    parameters:
+      properties:
+        gender:
+          description: 性别(男性/女性)
+          type: string
+        height:
+          description: 身高(m)
+          type: number
+        weight:
+          description: 体重(kg)
+          type: number
+      required:
+      - weight
+      - height
+      - gender
+      type: object
+    url: http://127.0.0.1:8000/api/v1/chat/test
+  type: function
