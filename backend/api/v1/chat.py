@@ -56,13 +56,27 @@ async def _(
         description="聊天轮数",
         alias="chatRounds",
     ),
+    intention_model: str = Query(
+        default="Qwen/Qwen2.5-32B-Instruct",
+        description="意图模型",
+        alias="intentionModel",
+    ),
+    generator_model: str = Query(
+        default="Qwen/Qwen2.5-32B-Instruct",
+        description="生成模型",
+        alias="generatorModel",
+    ),
 ):
     # 获取历史消息
     history_messages = []
     if chat_id:
         history_messages = chat_cache.get_messages(chat_id, chat_rounds)
 
-    pipeline = RAGPipeline(qdrant_index=collection_name)
+    pipeline = RAGPipeline(
+        qdrant_index=collection_name,
+        intention_model=intention_model,
+        generator_model=generator_model,
+    )
     response = await pipeline.arun(
         query=query,
         top_k=top_k,
@@ -116,6 +130,16 @@ async def _(
         description="聊天轮数",
         alias="chatRounds",
     ),
+    intention_model: str = Query(
+        default="Qwen/Qwen2.5-32B-Instruct",
+        description="意图模型",
+        alias="intentionModel",
+    ),
+    generator_model: str = Query(
+        default="Qwen/Qwen2.5-32B-Instruct",
+        description="生成模型",
+        alias="generatorModel",
+    ),
 ):
     handler = StreamHandler()
 
@@ -125,7 +149,10 @@ async def _(
         history_messages = chat_cache.get_messages(chat_id, chat_rounds)
 
     pipeline = RAGPipeline(
-        qdrant_index=collection_name, stream_callback=handler.callback
+        qdrant_index=collection_name,
+        stream_callback=handler.callback,
+        intention_model=intention_model,
+        generator_model=generator_model,
     )
 
     # 创建全局executor避免提前关闭
