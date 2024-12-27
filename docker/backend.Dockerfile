@@ -3,7 +3,8 @@ FROM bitnami/pytorch:2.1.2
 WORKDIR /code
 
 # 只复制依赖相关文件,利用缓存
-COPY ./pyproject.toml ./README.md ./
+COPY ./pyproject.toml  .
+COPY ./README.md .
 
 # 复制源代码
 COPY ./backend ./backend

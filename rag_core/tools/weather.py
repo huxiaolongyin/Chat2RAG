@@ -2,6 +2,7 @@ import json
 import requests
 from fuzzywuzzy import process
 from rag_core.config import CONFIG
+from pathlib import Path
 
 
 def get_weather_info(city_name: str = None) -> str:
@@ -30,7 +31,9 @@ def get_weather_info(city_name: str = None) -> str:
 
 def find_city_code(city_name):
     """根据城市名称找到城市代码"""
-    with open(str(CONFIG.DATA_DIR) + "/city_code.json", "r", encoding="utf-8") as f:
+    with open(
+        str(Path(__file__).parent) + "/data/city_code.json", "r", encoding="utf-8"
+    ) as f:
         # 直接加载JSON数组
         city_list = json.load(f)
 

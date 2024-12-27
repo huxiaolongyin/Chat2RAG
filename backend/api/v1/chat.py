@@ -6,7 +6,7 @@ from fastapi.responses import StreamingResponse
 from enum import Enum
 from concurrent.futures import ThreadPoolExecutor
 from rag_core.utils.chat_cache import ChatCache
-
+from rag_core.utils.logger import logger
 from rag_core.tools import tools, functions
 
 router = APIRouter()
@@ -168,6 +168,8 @@ async def _(
             messages=history_messages,
         )
         handler.finish()
+        answer = str(result["generator"]["replies"][0].content).replace("\n", "")
+        logger.info(f"问题：{query}；回答结果: {answer}；")
         if chat_id:
             chat_cache.add_message(chat_id, query, "user")
             chat_cache.add_message(

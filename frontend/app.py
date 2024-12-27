@@ -6,6 +6,7 @@ st.set_page_config(
     page_icon="🤖",
 )
 
+
 pages = [st.Page("views/chat.py", title="ChatBot", icon=":material/forum:")]
 pg = st.navigation(pages)
 pg.run()

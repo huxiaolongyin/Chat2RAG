@@ -53,6 +53,18 @@ pip install .
 
 ### Method 2: Install using docker
 
+- Build backend docker images
+
+```shell
+docker build -t chat2rag-backend:latest . -f docker/backend.Dockerfile
+```
+
+- Build frontend docker images
+
+```shell
+docker build -t chat2rag-frontend:latest . -f docker/frontend.Dockerfile
+```
+
 - Install through docker compose
 
 ```shell

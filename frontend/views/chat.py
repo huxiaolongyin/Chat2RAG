@@ -2,12 +2,16 @@ import json
 import random
 import streamlit as st
 import requests
+import os
 
 # from pyinstrument import Profiler
 # profiler = Profiler()
 # profiler.start()
 
 chat_container = st.container()
+
+BACKEND_HOST = os.environ.get("BACKEND_HOST", "host.docker.internal")
+BACKEND_PORT = os.environ.get("BACKEND_PORT", "8000")
 
 # 如果 "messages" 不存在于会话状态中，则初始化它，用于加载历史消息
 if "messages" not in st.session_state:
@@ -36,7 +40,7 @@ if query:
             full_response = ""
 
             response = requests.get(
-                "http://localhost:8000/api/v1/chat/query-stream",
+                f"http://{BACKEND_HOST}:{BACKEND_PORT}/api/v1/chat/query-stream",
                 params={
                     "query": query,
                     "batchOrStream": "stream",

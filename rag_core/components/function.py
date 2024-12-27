@@ -67,10 +67,12 @@ class FunctionExecutor:
                 except TimeoutError:
                     logger.error(f"函数{function_name}执行超时")
                     function_responses.append(
-                        f"查询{function_name}内容, 执行超时, 请稍后重试"
+                        f"调用{function_name}内容, 执行超时, 请稍后重试"
                     )
                 except Exception as e:
                     logger.error(f"函数 {function_name} 执行出错: {str(e)}")
-                    function_responses.append(f"查询{function_name}失败, 请稍后重试")
+                    function_responses.append(
+                        f"调用{function_name}失败, 参数为{function_args}， 请稍后重试"
+                    )
 
         return {"response": function_responses}

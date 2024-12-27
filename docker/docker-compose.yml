@@ -6,7 +6,6 @@ services:
     ports:
       - "8000:8000"
       - "6006:6006"
-      - "8501:8501"
     volumes:
       - ${DATA_PATH}/phoenix:/.phoenix
       - ${EMBEDDING_MODEL_PATH}:/BigModels/360Zhinao-search
@@ -17,6 +16,20 @@ services:
       - QRANT_HOST=qdrant
     env_file:
       - ../.env
+    networks:
+      - my-network
+    restart: always
+
+  frontend:
+    image: chat2rag-frontend:latest
+    container_name: frontend
+    ports:
+      - "8501:8501"
+    depends_on:
+      - backend
+    environment:
+      - BACKEND_HOST=backend
+      - BACKEND_PORT=8000
     networks:
       - my-network
     restart: always

@@ -51,7 +51,19 @@ docker run -d --name qdrant -p 6333:6333 -p 6334:6334 qdrant/qdrant:latest
 pip install .
 ```
 
-### 方法二：通过 docker 进行安装·
+### 方法二：通过 docker 进行安装
+
+- 构建后端 docker 镜像
+
+```shell
+docker build -t chat2rag-backend:latest . -f docker/backend.Dockerfile
+```
+
+- 构建前端 docker 镜像
+
+```shell
+docker build -t chat2rag-frontend:latest . -f docker/frontend.Dockerfile
+```
 
 - 通过 docker-compose 进行安装
 

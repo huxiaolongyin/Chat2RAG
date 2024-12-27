@@ -22,9 +22,6 @@ dependencies = [
     "fastapi==0.115.6",
     "uvicorn[standard]==0.34.0",
 
-    # 界面
-    "streamlit==1.41.1",
-
     # 工具库
     "pyhumps==3.8.0",
     "python-dotenv>=1.0.0",
