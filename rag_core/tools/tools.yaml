@@ -21,3 +21,19 @@ tools:
       type: object
     url: http://127.0.0.1:8000/api/v1/chat/test
   type: function
+- function:
+    description: 查询指定城市的天气信息
+    method: GET
+    name: weather_query
+    parameters:
+      properties:
+        city:
+          description: 城市名称
+          type: string
+        format:
+          description: 返回格式
+          type: string
+      required:
+      - city
+      type: object
+    url: http://api.weather.com/v1/current

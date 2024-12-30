@@ -33,7 +33,7 @@ async def _(
     top_k: int = Query(
         default=5,
         ge=0,
-        le=100,
+        le=30,
         description="返回数量",
         alias="topK",
     ),
@@ -102,7 +102,7 @@ async def _(
     top_k: int = Query(
         default=5,
         ge=0,
-        le=100,
+        le=30,
         description="返回数量",
         alias="topK",
     ),

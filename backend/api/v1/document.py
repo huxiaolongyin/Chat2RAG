@@ -36,17 +36,25 @@ def collection_exists(collection_name: str):
     return True
 
 
-@router.get("/collection", summary="知识库目录")
+@router.get("/collection", summary="获取知识库列表")
 async def _(
-    current: int = Query(1, ge=1, description="页码"),
-    size: int = Query(10, ge=1, le=100, description="每页数量"),
+    current: int = Query(1, ge=1, description="当前页码，默认1"),
+    size: int = Query(10, ge=1, le=100, description="每页数量(1-100)，默认10"),
     collection_name: Optional[str] = Query(
-        None, description="知识库名称", alias="collectionName"
+        None,
+        description="知识库名称",
+        alias="collectionName",
     ),
     sort_by: Optional[CollectionSortField] = Query(
-        CollectionSortField.COLLECTION_NAME, description="排序字段"
+        CollectionSortField.COLLECTION_NAME,
+        description="排序字段",
+        alias="sortBy",
     ),
-    sort_order: Optional[SortOrder] = Query(SortOrder.DESC, description="排序方向"),
+    sort_order: Optional[SortOrder] = Query(
+        SortOrder.DESC,
+        description="排序方向",
+        alias="sortOrder",
+    ),
 ):
     # 打印日志
     logger.info(
@@ -88,15 +96,18 @@ async def _(
     )
 
 
-@router.post("/collection", summary="创建知识库")
+@router.post("/collection", summary="创建新的知识库")
 async def _(
-    collection_name: str = Query(description="知识库名称", alias="collectionName"),
+    collection_name: str = Query(
+        description="知识库名称",
+        alias="collectionName",
+    ),
 ):
     logger.info(f"创建知识库中，知识库索引：{collection_name}；")
 
     if collection_exists(collection_name):
         logger.error(f"知识库已存在，知识库索引：{collection_name}；")
-        return Error(msg="知识库已存在")
+        return Error(msg="知识库已存在", data={"collection_name": collection_name})
     if QdrantDocumentManage(collection_name).create:
         logger.info(f"知识库创建成功，知识库索引：{collection_name}；")
         return Success(msg="知识库创建成功", data={"collection_name": collection_name})
@@ -126,15 +137,23 @@ async def _(
 @router.get("/collection/document", summary="获取知识库所有文档")
 async def _(
     collection_name: str = Query(description="知识库名称", alias="collectionName"),
-    current: int = Query(1, ge=1, description="页码"),
-    size: int = Query(10, ge=1, le=100, description="每页数量"),
+    current: int = Query(1, ge=1, description="当前页码，默认1"),
+    size: int = Query(10, ge=1, le=100, description="每页数量(1-100)，默认10"),
     document_content: Optional[str] = Query(
-        None, description="文档内容", alias="documentContent"
+        None,
+        description="文档内容",
+        alias="documentContent",
     ),
     sort_by: Optional[DocumentSortField] = Query(
-        DocumentSortField.DOCUMENT_CONTENT, description="排序字段"
+        DocumentSortField.DOCUMENT_CONTENT,
+        description="排序字段",
+        alias="sortBy",
     ),
-    sort_order: Optional[SortOrder] = Query(SortOrder.DESC, description="排序方向"),
+    sort_order: Optional[SortOrder] = Query(
+        SortOrder.DESC,
+        description="排序方向(asc, desc)，默认 desc",
+        alias="sortOrder",
+    ),
 ):
     logger.info(
         f"获取知识库文档，知识库索引：{collection_name}； 页码：{current}；每页数量：{size}；"
@@ -142,7 +161,7 @@ async def _(
     if not collection_exists(collection_name):
         logger.error(f"知识库不存在，知识库索引：{collection_name}；")
         return Error(msg="知识库不存在")
-    document_list = QdrantDocumentManage(collection_name).get_document_list()
+    document_list = QdrantDocumentManage(collection_name).get_document_list
     # 如果有搜索条件则过滤
     if document_content:
         document_list = [
@@ -212,7 +231,7 @@ async def _(
 @router.delete("/collection/document", summary="删除知识")
 async def _(
     collection_name: str = Query(description="知识库名称", alias="collectionName"),
-    doc_id_list: Union[list, str] = Query(description="知识的id", alias="docIdList"),
+    doc_id_list: Union[list, str] = Body(description="知识的id", alias="docIdList"),
 ):
     logger.info(f"删除知识中: 知识库索引：{collection_name}；文档ID：{doc_id_list}；")
 
@@ -232,13 +251,21 @@ async def _(
         return Error(msg="删除知识失败", data=str(e))
 
 
-@router.get("/query", summary="知识库查询")
+@router.get("/query", summary="知识内容查询")
 async def _(
     collection_name: str = Query(description="知识库名称", alias="collectionName"),
     query: str = Query(description="查询内容", alias="query"),
-    top_k: int = Query(description="返回数量", alias="topK", default=5),
+    top_k: int = Query(
+        default=5,
+        ge=1,
+        le=30,
+        description="返回数量(1-30), 默认5",
+        alias="topK",
+    ),
     score_threshold: float = Query(
-        description="分数阈值", alias="scoreThreshold", default=0.5
+        default=0.6,
+        description="分数阈值(0-1.00)，默认0.6",
+        alias="scoreThreshold",
     ),
 ):
 
@@ -259,7 +286,10 @@ async def _(
 
         doc_list = response.get("retriever").get("documents")
 
-        processed_docs = [doc.to_dict() for doc in doc_list]
+        processed_docs = [
+            {"id": doc.id, "content": doc.content, "score": doc.score}
+            for doc in doc_list
+        ]
 
         data = {
             "collection_name": collection_name,

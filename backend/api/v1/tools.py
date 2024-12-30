@@ -25,11 +25,21 @@ class ToolSortField(str, Enum):
 async def _(
     current: int = Query(1, ge=1, description="页码"),
     size: int = Query(10, ge=1, le=100, description="每页数量"),
-    tool_desc: Optional[str] = Query(None, description="工具描述", alias="toolDesc"),
-    sort_by: Optional[ToolSortField] = Query(
-        ToolSortField.TOOL_NAME, description="排序字段"
+    tool_desc: Optional[str] = Query(
+        None,
+        description="工具描述",
+        alias="toolDesc",
     ),
-    sort_order: Optional[SortOrder] = Query(SortOrder.DESC, description="排序方向"),
+    sort_by: Optional[ToolSortField] = Query(
+        ToolSortField.TOOL_NAME,
+        description="排序字段",
+        alias="sortBy",
+    ),
+    sort_order: Optional[SortOrder] = Query(
+        SortOrder.DESC,
+        description="排序方向(asc, desc)，默认 desc",
+        alias="sortOrder",
+    ),
 ):
     """获取所有工具列表"""
     logger.info(
@@ -76,21 +86,21 @@ async def _(tool_config: ToolConfig = Body(..., description="工具配置")):
     success = tool_manager.add_tool(tool_config.model_dump())
     if success:
         logger.info(f"添加工具成功，工具名称：{tool_config.function.name}；")
-        return Success(message="添加成功")
+        return Success(msg="    ")
     logger.error(f"添加工具失败，工具名称：{tool_config.function.name}；")
-    return Error(message="添加失败")
+    return Error(msg="添加失败")
 
 
 @router.delete("/remove")
-async def _(tool_name: str = Query(..., description="工具名称", alias="toolName")):
+async def _(tool_name: str = Query(..., description="q ", alias="toolName")):
     """删除工具"""
     logger.info(f"删除工具，工具名称：{tool_name}；")
     success = tool_manager.remove_tool(tool_name)
     if success:
         logger.info(f"删除工具成功，工具名称：{tool_name}；")
-        return Success(message="删除成功")
+        return Success(msg="删除成功")
     logger.error(f"删除工具失败，工具名称：{tool_name}；")
-    return Error(message="找不到工具")
+    return Error(msg="找不到工具")
 
 
 # @router.post("/execute")
