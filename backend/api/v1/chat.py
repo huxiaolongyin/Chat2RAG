@@ -7,10 +7,11 @@ from enum import Enum
 from concurrent.futures import ThreadPoolExecutor
 from rag_core.utils.chat_cache import ChatCache
 from rag_core.utils.logger import logger
-from rag_core.tools import tools, functions
+from rag_core.tools import ToolManager
 
 router = APIRouter()
 chat_cache = ChatCache()
+tool_manager = ToolManager()
 
 
 # 使用枚举
@@ -66,7 +67,15 @@ async def _(
         description="生成模型",
         alias="generatorModel",
     ),
+    tool_list: list = Query(
+        default=[],
+        description="工具列表",
+        alias="toolList",
+    ),
 ):
+    # 获取使用的工具信息
+    tools = tool_manager.get_tool_info(tool_list)
+
     # 获取历史消息
     history_messages = []
     if chat_id:
@@ -79,6 +88,7 @@ async def _(
     )
     response = await pipeline.arun(
         query=query,
+        tools=tools,
         top_k=top_k,
         score_threshold=score_threshold,
         messages=history_messages,
@@ -140,8 +150,15 @@ async def _(
         description="生成模型",
         alias="generatorModel",
     ),
+    tool_list: list = Query(
+        default=[],
+        description="工具列表",
+        alias="toolList",
+    ),
 ):
     handler = StreamHandler()
+
+    tools = tool_manager.get_tool_info(tool_list)
 
     # 获取历史消息
     history_messages = []
@@ -162,7 +179,6 @@ async def _(
         result = pipeline.run(
             query=query,
             tools=tools,
-            functions=functions,
             top_k=top_k,
             score_threshold=score_threshold,
             messages=history_messages,

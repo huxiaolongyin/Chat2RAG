@@ -62,7 +62,6 @@ class FunctionPipeline:
         self,
         query: str,
         tools: list,
-        functions: dict,
         messages: List[ChatMessage] = None,
     ):
         """运行函数调用管道"""
@@ -79,7 +78,6 @@ class FunctionPipeline:
                     "messages": messages,
                     "generation_kwargs": {"tools": tools},
                 },
-                "function_executor": {"functions": functions},
             }
         )
 

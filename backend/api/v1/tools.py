@@ -1,5 +1,5 @@
+import json
 from fastapi import APIRouter, Query, Body
-from typing import Dict
 from backend.schema import Success, Error, ToolConfig
 from rag_core.tools.tool_manage import ToolManager
 from rag_core.utils.logger import logger
@@ -45,7 +45,7 @@ async def _(
     logger.info(
         f"获取工具列表中, 工具描述：{tool_desc}；页码：{current}；每页数量：{size}；"
     )
-    tool_list = tool_manager.get_model_functions()
+    tool_list = tool_manager.get_all_tools()
 
     # 如果有搜索条件则过滤
     if tool_desc:
@@ -83,10 +83,10 @@ async def _(
 async def _(tool_config: ToolConfig = Body(..., description="工具配置")):
     """添加新工具"""
     logger.info(f"添加新工具，工具名称：{tool_config.function.name}；")
-    success = tool_manager.add_tool(tool_config.model_dump())
+    success = tool_manager.add_api_tool(tool_config.model_dump())
     if success:
         logger.info(f"添加工具成功，工具名称：{tool_config.function.name}；")
-        return Success(msg="    ")
+        return Success(msg="添加工具成功")
     logger.error(f"添加工具失败，工具名称：{tool_config.function.name}；")
     return Error(msg="添加失败")
 
@@ -95,12 +95,27 @@ async def _(tool_config: ToolConfig = Body(..., description="工具配置")):
 async def _(tool_name: str = Query(..., description="q ", alias="toolName")):
     """删除工具"""
     logger.info(f"删除工具，工具名称：{tool_name}；")
-    success = tool_manager.remove_tool(tool_name)
+    success = tool_manager.remove_api_tool(tool_name)
     if success:
         logger.info(f"删除工具成功，工具名称：{tool_name}；")
         return Success(msg="删除成功")
     logger.error(f"删除工具失败，工具名称：{tool_name}；")
     return Error(msg="找不到工具")
+
+
+@router.get("/test")
+async def _(
+    tool_name: str = Query(..., description="工具名称", alias="toolName"),
+    kwargs: str = Query(..., description="执行参数"),
+):
+    """测试工具能够正常执行"""
+    logger.info(f"测试工具，工具名称：{tool_name}；执行参数：{kwargs}；")
+    kwargs = eval(kwargs)
+    try:
+        result = tool_manager.execute_function(tool_name, **kwargs)
+        return Success(data=result)
+    except Exception as e:
+        return Error(msg=str(e))
 
 
 # @router.post("/execute")

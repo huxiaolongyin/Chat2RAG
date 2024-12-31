@@ -87,7 +87,6 @@ class RAGPipeline:
         self,
         query: str,
         tools: list,
-        functions: dict,
         template: str,
         top_k: int,
         score_threshold: float,
@@ -99,7 +98,7 @@ class RAGPipeline:
             for pipeline in self.doc_pipeline
         ]
         func_result, *doc_result = await asyncio.gather(
-            self.func_pipeline.run(query, tools, functions, messages), *doc_tasks
+            self.func_pipeline.run(query, tools, messages), *doc_tasks
         )
 
         # 处理文档结果
@@ -151,7 +150,6 @@ class RAGPipeline:
         self,
         query: str,
         tools: list = None,
-        functions: dict = None,
         template: str = CONFIG.DEFAULT_TEMPLATE,
         top_k: int = CONFIG.TOP_K,
         score_threshold: float = CONFIG.SCORE_THRESHOLD,
@@ -163,7 +161,6 @@ class RAGPipeline:
         Args:
             query: 用户查询文本
             tools: 可用工具列表
-            functions: 函数映射字典
             template: 自定义提示模板
             top_k: 返回的最大文档数
             score_threshold: 相似度阈值
@@ -177,7 +174,6 @@ class RAGPipeline:
             self._run(
                 query=query,
                 tools=tools,
-                functions=functions,
                 template=template,
                 top_k=top_k,
                 score_threshold=score_threshold,
@@ -191,7 +187,6 @@ class RAGPipeline:
         self,
         query: str,
         tools: list = None,
-        functions: dict = None,
         template: str = CONFIG.DEFAULT_TEMPLATE,
         top_k: int = CONFIG.TOP_K,
         score_threshold: float = CONFIG.SCORE_THRESHOLD,
@@ -203,7 +198,6 @@ class RAGPipeline:
         Args:
             query: 用户查询文本
             tools: 可用工具列表
-            functions: 函数映射字典
             template: 自定义提示模板
             top_k: 返回的最大文档数
             score_threshold: 相似度阈值
@@ -216,7 +210,6 @@ class RAGPipeline:
         result = await self._run(
             query=query,
             tools=tools,
-            functions=functions,
             template=template,
             top_k=top_k,
             score_threshold=score_threshold,

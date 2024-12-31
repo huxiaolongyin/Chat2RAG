@@ -20,15 +20,11 @@ class FunctionExecutor:
         self.timeout = timeout
         self.executor = ThreadPoolExecutor()
 
-    def _execute_function(self, functions: list, function_name: str, **kwargs) -> Any:
+    def _execute_function(self, function_name: str, **kwargs) -> Any:
         """执行单个函数调用"""
-        logger.info(f"执行函数调用: {function_name}")
-        if function_name in tool_manager.get_tools_name():
-            future = self.executor.submit(
-                tool_manager.execute_function, function_name, **kwargs
-            )
-        else:
-            future = self.executor.submit(functions[function_name], **kwargs)
+        future = self.executor.submit(
+            tool_manager.execute_function, function_name, **kwargs
+        )
         try:
             return future.result(timeout=self.timeout)
         except TimeoutError:
@@ -38,14 +34,12 @@ class FunctionExecutor:
     def run(
         self,
         function_info: List[ChatMessage],
-        functions: dict,
     ) -> list:
         """
         传入函数信息和函数映射字典，返回函数调用结果
 
         Args:
             function_info: 函数信息
-            functions: 函数映射字典
         Returns:
             dict: 包含函数调用结果的字典
         """
@@ -56,13 +50,12 @@ class FunctionExecutor:
                 function_name = call["function"]["name"]
                 function_args = json.loads(call["function"]["arguments"])
 
-                if function_name not in [*functions, *tool_manager.get_tools_name()]:
-                    logger.error(f"未找到函数: {function_name}")
-                    continue
+                # if function_name not in [*functions, *tool_manager.built_in_tools.keys]:
+                #     logger.error(f"未找到函数: {function_name}")
+                #     continue
+                logger.info(f"执行函数调用: {function_name}，参数为{function_args}")
                 try:
-                    result = self._execute_function(
-                        functions, function_name, **function_args
-                    )
+                    result = self._execute_function(function_name, **function_args)
                     function_responses.append(f"执行{function_name}得到结果{result}")
                 except TimeoutError:
                     logger.error(f"函数{function_name}执行超时")
