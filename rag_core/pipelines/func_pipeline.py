@@ -1,3 +1,4 @@
+import asyncio
 from haystack import Pipeline
 from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.components.routers import ConditionalRouter
@@ -72,13 +73,14 @@ class FunctionPipeline:
             *messages,
             ChatMessage.from_user(query),
         ]
-        return self.pipeline.run(
+        return await asyncio.to_thread(
+            self.pipeline.run,
             data={
                 "intention": {
                     "messages": messages,
                     "generation_kwargs": {"tools": tools},
-                },
-            }
+                }
+            },
         )
 
 

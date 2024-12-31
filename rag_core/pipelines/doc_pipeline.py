@@ -1,3 +1,4 @@
+import asyncio
 from typing import List, Union
 from haystack import Pipeline
 from haystack.components.embedders import (
@@ -61,11 +62,13 @@ class DocumentSearchPipeline:
         score_threshold: float = 0.7,
     ):
         """运行文档检索"""
-        return self.pipeline.run(
-            data={
+
+        return await asyncio.to_thread(
+            self.pipeline.run,
+            {
                 "embedder": {"text": query},
                 "retriever": {"top_k": top_k, "score_threshold": score_threshold},
-            }
+            },
         )
 
 
@@ -111,7 +114,7 @@ class DocumentWriterPipeline:
         self.pipeline.warm_up()
 
     async def run(self, documents: Union[str, List[str]]):
-        """运行文档检索"""
+        """运行文档写入"""
         if isinstance(documents, str):
             documents = [documents]
         documents = [Document(content=document) for document in documents]
