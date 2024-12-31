@@ -18,12 +18,14 @@ class Base(JSONResponse):
 
     def __init__(
         self,
+        code: str = "0000",
         status_code: int = 200,
         msg: str = "OK",
         data: Any = None,
         **kwargs: Any,
     ):
         content = {
+            "code": code,
             "version": CONFIG.VERSION,
             "msg": msg,
             "response_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
@@ -40,4 +42,4 @@ class Error(Base):
     """基础错误响应模型"""
 
     def __init__(self, msg: str = "服务器内部错误", data: Any = None, **kwargs: Any):
-        super().__init__(status_code=400, msg=msg, data=data, **kwargs)
+        super().__init__(code="4000", status_code=400, msg=msg, data=data, **kwargs)
