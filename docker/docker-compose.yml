@@ -38,7 +38,7 @@ services:
     image: qdrant/qdrant
     container_name: qdrant
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:6333/healthz" ]
+      test: [ "CMD", "/bin/bash", "-c", '</dev/tcp/localhost/6333' ]
       interval: 30s
       timeout: 10s
       retries: 3
