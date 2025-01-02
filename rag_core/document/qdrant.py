@@ -1,13 +1,16 @@
+import asyncio
 from typing import List, Union
-from rag_core.config import CONFIG
+
+from haystack_integrations.document_stores.qdrant import QdrantDocumentStore
 from qdrant_client.models import Distance, VectorParams
 from transformers import BertConfig
+
+from rag_core.config import CONFIG
 from rag_core.pipelines.doc_pipeline import (
-    DocumentWriterPipeline,
     DocumentSearchPipeline,
+    DocumentWriterPipeline,
 )
-import asyncio
-from haystack_integrations.document_stores.qdrant import QdrantDocumentStore
+from rag_core.utils.logger import logger
 
 
 class QdrantDocumentManage(QdrantDocumentStore):
@@ -16,9 +19,9 @@ class QdrantDocumentManage(QdrantDocumentStore):
     def __init__(
         self,
         index: str = "Document",
-        host: str = CONFIG.QRANT_HOST,
-        port: int = CONFIG.QRANT_PORT,
-        grpc_port: int = CONFIG.QRANT_GRPC_PORT,
+        host: str = CONFIG.QDRANT_HOST,
+        port: int = CONFIG.QDRANT_PORT,
+        grpc_port: int = CONFIG.QDRANT_GRPC_PORT,
     ):
         super().__init__(
             host=host,
@@ -32,7 +35,9 @@ class QdrantDocumentManage(QdrantDocumentStore):
 
     @property
     def create(self):
-        """创建一个集合"""
+        """
+        创建一个集合
+        """
         return self.client
 
     # self.client.create_collection(
@@ -45,11 +50,16 @@ class QdrantDocumentManage(QdrantDocumentStore):
 
     @property
     def delete_collection(self):
-        """删除一个集合"""
+        """
+        删除一个集合
+        """
         return self.client.delete_collection(collection_name=self.index)
 
     def get_collections(self):
-        """获取所有集合"""
+        """
+        Get all collections
+        """
+        logger.info("Get all collections...")
         collections = self.client.get_collections().model_dump()["collections"]
         result = []
         for collection in collections:
@@ -63,18 +73,28 @@ class QdrantDocumentManage(QdrantDocumentStore):
                     "distance": collection_info.config.params.vectors.distance.value,
                 }
             )
+        logger.info(f"Get all collections success")
 
         return result
 
     def get_collection_names(self):
-        """获取所有集合名称"""
+        """
+        获取所有集合名称
+        """
         collections = self.client.get_collections().model_dump()["collections"]
         return [collection["name"] for collection in collections]
 
     async def write_documents(self, collection: str, documents: Union[str, List[str]]):
-        """写入文档"""
-        doc_write_pipeline = DocumentWriterPipeline(qdrant_index=collection)
-        return await doc_write_pipeline.run(documents=documents)
+        """
+        写入文档
+        """
+        try:
+            doc_write_pipeline = DocumentWriterPipeline(qdrant_index=collection)
+            result = await doc_write_pipeline.run(documents=documents)
+        except Exception as e:
+            raise RuntimeError(f"<def write_documents> failed: {str(e)}")
+
+        return result
 
     @property
     def get_document_list(self, filter: dict = None) -> List[dict]:

@@ -1,10 +1,11 @@
 import logging
 import sys
 from logging.handlers import TimedRotatingFileHandler
+
 from rag_core.config import CONFIG
 
 
-def setup_logger(name: str = "chat2rag"):
+def setup_logger(name: str = "Chat2RAG"):
     """
     设置日志记录器
     """

@@ -1,17 +1,19 @@
 import asyncio
-from typing import Callable, Dict, Any, List, Union
 from functools import lru_cache
+from time import perf_counter
+from typing import Any, Callable, Dict, List, Union
+
 from haystack import Pipeline
 from haystack.components.builders import ChatPromptBuilder
-from haystack.dataclasses import ChatMessage
 from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.components.generators.utils import print_streaming_chunk
 from haystack.components.joiners.document_joiner import DocumentJoiner
+from haystack.dataclasses import ChatMessage
+
 from rag_core.config import CONFIG
-from rag_core.utils.logger import logger
 from rag_core.pipelines.doc_pipeline import DocumentSearchPipeline
 from rag_core.pipelines.func_pipeline import FunctionPipeline
-from time import perf_counter
+from rag_core.utils.logger import logger
 
 
 class RAGPipeline:
@@ -31,9 +33,6 @@ class RAGPipeline:
         qdrant_index = (
             [qdrant_index] if isinstance(qdrant_index, str) else (qdrant_index or [])
         )
-        logger.info(
-            f"初始化RAG管道，qdrant 索引为: {','.join(qdrant_index)}; 函数调用的模型为：{intention_model}; 生成大模型为：{generator_model}"
-        )
         # 直接使用列表推导式创建 pipeline
         self.doc_pipeline = (
             [self._create_doc_pipeline(index) for index in qdrant_index]
@@ -44,7 +43,8 @@ class RAGPipeline:
         self.qdrant_index = qdrant_index
         self.intention_model = intention_model
         self.generator_model = generator_model
-        self._initialize_pipeline(stream_callback)
+        self._stream_callback = stream_callback
+        self._initialize_pipeline()
         self.warm_up()
 
     def __str__(self):
@@ -53,35 +53,60 @@ class RAGPipeline:
     def __repr__(self):
         return str(self.pipeline)
 
-    def _initialize_pipeline(self, stream_callback):
-        """初始化检索管道"""
-        self.pipeline = Pipeline()
-
-        prompt_builder = ChatPromptBuilder(
-            variables=[
-                "query",
-                "qdrant_index",
-                "documents",
-                "func_response",
-            ]
+    def _create_generator(self) -> Any:
+        """
+        Creater generator component.
+        """
+        logger.info(
+            f"Initialize generator component with model: {self.generator_model}"
         )
+
         generator = OpenAIChatGenerator(
             model=self.generator_model,
             api_key=CONFIG.OPENAI_API_KEY,
             api_base_url=CONFIG.OPENAI_BASE_URL,
-            streaming_callback=stream_callback,
+            streaming_callback=self._stream_callback,
         )
-        self.pipeline.add_component("doc_joiner", DocumentJoiner())
-        self.pipeline.add_component("prompt_builder", prompt_builder)
-        self.pipeline.add_component("generator", generator)
-        self.pipeline.connect("doc_joiner.documents", "prompt_builder.documents")
-        self.pipeline.connect("prompt_builder.prompt", "generator")
+
+        logger.info("OpenAI Generator initialized sucessfully")
+
+        return generator
+
+    def _initialize_pipeline(self):
+        """
+        Initialize RAG pipeline
+        """
+        logger.info("Initialize RAG pipeline...")
+
+        try:
+            self.pipeline = Pipeline()
+            prompt_builder = ChatPromptBuilder(
+                variables=[
+                    "query",
+                    "qdrant_index",
+                    "documents",
+                    "func_response",
+                ]
+            )
+            generator = self._create_generator()
+            self.pipeline.add_component("doc_joiner", DocumentJoiner())
+            self.pipeline.add_component("prompt_builder", prompt_builder)
+            self.pipeline.add_component("generator", generator)
+            self.pipeline.connect("doc_joiner.documents", "prompt_builder.documents")
+            self.pipeline.connect("prompt_builder.prompt", "generator")
+            logger.info("Initialize RAG pipeline successfully")
+
+        except Exception as e:
+            logger.error(f"Initialize RAG pipeline falied: {e}", exc_info=True)
+            raise
 
     def warm_up(self):
-        """预热 RAG 管道，加载必要的模型和资源。"""
-        logger.info("预热RAG管道中")
+        """
+        Warm up the RAG pipeline by loading necessary models and resources
+        """
+        logger.info("Warm up the RAG pipeline")
         self.pipeline.warm_up()
-        logger.info("RAG管道预热完成")
+        logger.info("Warm up the RAG pipeline successfully")
 
     async def _run(
         self,
@@ -92,6 +117,8 @@ class RAGPipeline:
         score_threshold: float,
         messages: List[ChatMessage],
     ) -> Dict[str, Any]:
+        logger.info(f"Running RAG pipeline with query: <{query}>...")
+
         # 并发执行文档检索和函数调用
         doc_tasks = [
             pipeline.run(query, top_k, score_threshold)
@@ -128,13 +155,8 @@ class RAGPipeline:
             ChatMessage.from_user(question_template),
         ]
 
-        logger.info(
-            f"问题：{query}；知识库索引：{self.qdrant_index}； 函数响应：{func_response}; ".replace(
-                "\n", ""
-            )
-        )
         # 构建并返回结果
-        return self.pipeline.run(
+        result = self.pipeline.run(
             data={
                 "doc_joiner": {"documents": documents_list},
                 "prompt_builder": {
@@ -146,6 +168,11 @@ class RAGPipeline:
             }
         )
 
+        answer = str(result["generator"]["replies"][0].content).replace("\n", "")
+        logger.info(f"RAG pipeline ran successfully with answer: <{answer}>")
+
+        return result
+
     def run(
         self,
         query: str,
@@ -156,7 +183,7 @@ class RAGPipeline:
         messages: List[ChatMessage] = [],
     ) -> Dict[str, Any]:
         """
-        执行RAG管道查询
+        Running RAG pipeline query
 
         Args:
             query: 用户查询文本
@@ -180,7 +207,8 @@ class RAGPipeline:
                 messages=messages,
             )
         )
-        logger.info(f"管道执行完成时间{perf_counter() - start:.2f}s")
+        logger.info(f"RAG pipeline query finished, cost {perf_counter() - start:.2f}s")
+
         return result
 
     async def arun(
@@ -215,19 +243,9 @@ class RAGPipeline:
             score_threshold=score_threshold,
             messages=messages,
         )
-        logger.info(f"管道执行完成时间{perf_counter() - start:.2f}s")
+
+        logger.info(
+            f"Async RAG pipeline query finished, cost {perf_counter() - start:.2f}s"
+        )
+
         return result
-
-
-if __name__ == "__main__":
-    import asyncio
-    from rag_core.tools import weather_info, get_current_weather
-
-    tools = [weather_info]
-    functions = {
-        "weather_tool": get_current_weather,
-    }
-    pipeline = RAGPipeline("人才集团")
-
-    response = pipeline.run("海外博士后项目支持政策有哪些", tools, functions)
-    print(response)

@@ -1,8 +1,9 @@
 import os
+from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
+
 from dotenv import load_dotenv
 from haystack.utils import Secret
-from importlib.metadata import version, PackageNotFoundError
 
 load_dotenv(override=True)
 
@@ -84,9 +85,9 @@ class Config:
 
     # EMBEDDING
     EMBEDDING_MODEL_PATH = load_str_env("EMBEDDING_MODEL_PATH", required=True)
-    QRANT_HOST = load_str_env("QRANT_HOST", required=False) or "localhost"
-    QRANT_PORT = load_int_env("QRANT_PORT", required=False) or 6333
-    QRANT_GRPC_PORT = load_int_env("QRANT_GRPC_PORT", required=False) or 6334
+    QDRANT_HOST = load_str_env("QDRANT_HOST", required=False) or "localhost"
+    QDRANT_PORT = load_int_env("QDRANT_PORT", required=False) or 6333
+    QDRANT_GRPC_PORT = load_int_env("QDRANT_GRPC_PORT", required=False) or 6334
 
     # MODEL
     TOP_K = load_int_env("TOP_K", required=False) or 5

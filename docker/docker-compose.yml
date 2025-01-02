@@ -12,8 +12,9 @@ services:
     depends_on:
       - qdrant
     environment:
+      - TZ=Asia/Shanghai
       - EMBEDDING_MODEL_PATH=/BigModels/360Zhinao-search
-      - QRANT_HOST=qdrant
+      - QDRANT_HOST=qdrant
     env_file:
       - ../.env
     networks:
@@ -28,6 +29,7 @@ services:
     depends_on:
       - backend
     environment:
+      - TZ=Asia/Shanghai
       - BACKEND_HOST=backend
       - BACKEND_PORT=8000
     networks:

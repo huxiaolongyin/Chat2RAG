@@ -1,9 +1,11 @@
-from fastapi import APIRouter, Query, Body
-from rag_core.document.qdrant import QdrantDocumentManage
-from backend.schema import Success, Error
-from typing import Union, Optional
-from math import ceil
 from enum import Enum
+from math import ceil
+from typing import Optional, Union
+
+from fastapi import APIRouter, Body, Query
+
+from backend.schema import Error, Success
+from rag_core.document.qdrant import QdrantDocumentManage
 from rag_core.utils.logger import logger
 
 # from pyinstrument import Profiler
@@ -30,10 +32,12 @@ class DocumentSortField(str, Enum):
 
 
 def collection_exists(collection_name: str):
-    """获取知识库列表，并判断知识库是否存在"""
-    if collection_name not in QdrantDocumentManage().get_collection_names():
-        return False
-    return True
+    """
+    Judge the collection is already exists
+    """
+    if collection_name in QdrantDocumentManage().get_collection_names():
+        return True
+    return False
 
 
 @router.get("/collection", summary="获取知识库列表")
@@ -58,7 +62,7 @@ async def _(
 ):
     # 打印日志
     logger.info(
-        f"获取知识库列表中，知识库索引：{collection_name}；页码：{current}；每页数量：{size}；"
+        f"Getting the list of collections. Collection name: <{collection_name}>; Current: <{current}>; Page size: <{size}>"
     )
 
     # 获取所有数据
@@ -82,7 +86,9 @@ async def _(
     start_index = (current - 1) * size
     end_index = start_index + size
 
-    logger.info(f"获取知识库列表成功，知识库索引：{collection_name}；总数={total}；")
+    logger.info(
+        f"The list of knowledge collections is successfully obtained. Collection name: <{collection_name}>; Total: <{total}>;"
+    )
 
     # 返回分页数据
     return Success(
@@ -103,16 +109,24 @@ async def _(
         alias="collectionName",
     ),
 ):
-    logger.info(f"创建知识库中，知识库索引：{collection_name}；")
+    logger.info(
+        f"Creating a knowledge collection. Collection name: <{collection_name}>"
+    )
 
     if collection_exists(collection_name):
-        logger.error(f"知识库已存在，知识库索引：{collection_name}；")
+        logger.error(f"The knowledge collection <{collection_name}> already exists.")
+
         return Error(msg="知识库已存在", data={"collection_name": collection_name})
+
     if QdrantDocumentManage(collection_name).create:
-        logger.info(f"知识库创建成功，知识库索引：{collection_name}；")
+        logger.info(
+            f"The knowledge collection <{collection_name}> is created successfully."
+        )
+
         return Success(msg="知识库创建成功", data={"collection_name": collection_name})
     else:
-        logger.error(f"知识库创建失败，知识库索引：{collection_name}；")
+        logger.error(f"Failed to create the knowledge collection <{collection_name}>.")
+
         return Error(msg="知识库创建失败", data={"collection_name": collection_name})
 
 
@@ -121,15 +135,19 @@ async def _(
     collection_name: str = Query(description="知识库名称", alias="collectionName")
 ):
     if not collection_exists(collection_name):
-        logger.error(f"知识库不存在，知识库索引：{collection_name}；")
+        logger.error(f"Knowledge collection <{collection_name}> does not exist.")
+
         return Error(msg="知识库不存在")
     try:
         QdrantDocumentManage(collection_name).delete_collection
-        logger.info(f"知识库删除成功，知识库索引：{collection_name}；")
+        logger.info(
+            f"The knowledge collection <{collection_name}> is deleted successfully."
+        )
+
         return Success(msg="删除知识库成功", data={"collection_name": collection_name})
     except Exception as e:
         logger.error(
-            f"知识库删除失败，知识库索引：{collection_name}； 错误: {str(e)}；"
+            f"Failed to delete the knowledge collection <{collection_name}>. Error: {str(e)};"
         )
         return Error(msg="删除知识库失败", data=str(e))
 
@@ -156,10 +174,10 @@ async def _(
     ),
 ):
     logger.info(
-        f"获取知识库文档，知识库索引：{collection_name}； 页码：{current}；每页数量：{size}；"
+        f"Get documents of collection. Collection name: <{collection_name}>; Current: <{current}>; Page size: <{size}>"
     )
     if not collection_exists(collection_name):
-        logger.error(f"知识库不存在，知识库索引：{collection_name}；")
+        logger.error(f"Knowledge collection <{collection_name}> does not exist.")
         return Error(msg="知识库不存在")
     document_list = QdrantDocumentManage(collection_name).get_document_list
     # 如果有搜索条件则过滤
@@ -178,7 +196,9 @@ async def _(
     start_index = (current - 1) * size
     end_index = start_index + size
 
-    logger.info(f"获取文档成功，知识库索引：{collection_name}； 总数：{total}；")
+    logger.info(
+        f"The documents of collection is successfully obtained. Collection name: <{collection_name}>; Total: <{total}>;"
+    )
 
     # 返回分页数据
     return Success(
@@ -192,19 +212,23 @@ async def _(
     )
 
 
-@router.post(
-    "/collection/document",
-    summary="创建知识，写入时会占满CPU，建议一次50条以内；",
-)
+@router.post("/collection/document", summary="创建知识")
 async def _(
     collection_name: str = Query(description="知识库名称", alias="collectionName"),
     doc_list: Union[list, str] = Body(description="知识内容", alias="docList"),
 ):
     doc_len = len(doc_list if isinstance(doc_list, list) else [doc_list])
-    logger.info(f"创建知识中，知识库索引：{collection_name}；文档数量：{doc_len}；")
+    logger.info(
+        f"Create document of collection. Collection name: <{collection_name}>; Number of documents: <{doc_len}>"
+    )
+
     if not collection_exists(collection_name):
-        logger.error(f"知识创建失败，知识库不存在，知识库索引：{collection_name}；")
+        logger.error(
+            f"Document creation failure, Knowledge collection <{collection_name}> does not exist."
+        )
+
         return Error(msg="知识库不存在")
+
     if isinstance(doc_list, str):
         doc_list = [doc_list]
     try:
@@ -214,8 +238,9 @@ async def _(
 
         write_docs_count = response.get("writer").get("documents_written")
         logger.info(
-            f"知识创建成功，知识库索引：{collection_name}；写入数量：{write_docs_count}；"
+            f"Document is created successfully. Collection name: <{collection_name}>; Number of writes: <{write_docs_count}>"
         )
+
         return Success(
             msg="知识创建成功",
             data={
@@ -224,7 +249,9 @@ async def _(
             },
         )
     except Exception as e:
-        logger.error(f"知识创建失败，知识库索引：{collection_name}； 错误: {str(e)}；")
+        logger.error(
+            f"Document creation failed. Collection name: <{collection_name}>; Error: {str(e)}"
+        )
         return Error(msg="知识创建失败", data=str(e))
 
 
@@ -233,21 +260,27 @@ async def _(
     collection_name: str = Query(description="知识库名称", alias="collectionName"),
     doc_id_list: Union[list, str] = Body(description="知识的id", alias="docIdList"),
 ):
-    logger.info(f"删除知识中: 知识库索引：{collection_name}；文档ID：{doc_id_list}；")
+    logger.info(
+        f"Delete from documents. Collection name: <{collection_name}>; Document IDs: <{doc_id_list}>"
+    )
 
     if not collection_exists(collection_name):
-        logger.error(f"知识库不存在，知识库索引：{collection_name}；")
+        logger.error(f"Knowledge collection <{collection_name}> does not exist.")
+
         return Error(msg="知识库不存在")
+
     if isinstance(doc_id_list, str):
         doc_id_list = [doc_id_list]
     try:
         data = QdrantDocumentManage(collection_name).delete_documents(doc_id_list)
         logger.info(
-            f"知识删除成功，知识库索引：{collection_name}；文档ID：{doc_id_list}；"
+            f"Documents is deleted successfully. Collection name: <{collection_name}>; Document IDs: <{doc_id_list}>"
         )
         return Success(msg="删除知识成功", data=data)
     except Exception as e:
-        logger.error(f"知识删除失败，知识库索引：{collection_name}；错误: {str(e)}；")
+        logger.error(
+            f"Documents deletion failed. Collection name: <{collection_name}>; Error: {str(e)}"
+        )
         return Error(msg="删除知识失败", data=str(e))
 
 
@@ -272,12 +305,14 @@ async def _(
     # profiler = Profiler()
     # profiler.start()
     logger.info(
-        f"知识库查询中，知识库索引：{collection_name}；查询内容：{query}；返回数量：{top_k}；分数阈值：{score_threshold}；"
+        f"Query the documents of collection. Collection name: <{collection_name}>; Query: <{query}>; Top K: <{top_k}>; Score threshold: <{score_threshold}>"
     )
 
     if not collection_exists(collection_name):
-        logger.error(f"知识库不存在，知识库索引：{collection_name}；")
+        logger.error(f"Knowledge collection <{collection_name}> does not exist.")
+
         return Error(msg="知识库不存在")
+
     doc = QdrantDocumentManage(collection_name)
     try:
         response = await doc.query(
@@ -298,7 +333,7 @@ async def _(
             "score_threshold": score_threshold,
         }
         logger.info(
-            f"查询成功: 知识库索引：{collection_name}；结果数量：{len(processed_docs)}；"
+            f"Knowledge query success. Collection name: <{collection_name}>; Number of results: <{len(processed_docs)}>"
         )
 
         # profiler.stop()
@@ -307,6 +342,6 @@ async def _(
         return Success(data=data)
     except Exception as e:
         logger.error(
-            f"知识查询失败，知识库索引：{collection_name}；查询内容：{query}；错误: {str(e)}；"
+            f"Knowledge query failure. Collection name: <{collection_name}>; Query: <{query}>; Error: {str(e)}"
         )
         return Error(msg="查询失败", data=str(e))

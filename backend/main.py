@@ -1,8 +1,9 @@
 from fastapi import FastAPI
+
 from backend.api.routes import router
-from rag_core.utils.logger import logger
-from rag_core.pipelines.doc_pipeline import DocumentSearchPipeline
 from rag_core.config import CONFIG
+from rag_core.pipelines.doc_pipeline import DocumentSearchPipeline
+from rag_core.utils.logger import logger
 
 
 # @asynccontextmanager
@@ -14,16 +15,18 @@ async def lifespan(app: FastAPI):
     if CONFIG.TELEMETRY_ENABLED:
         from rag_core.telemetry import setup_telemetry
 
+        logger.info("Setting up telemetry...")
         # 需要先启动 server 服务： python -m phoenix.server.main serve
         setup_telemetry()
+        logger.info("Telemetry setup successfully")
 
-    logger.info("启动 Chat2RAG 应用")
+    logger.info("Starting Chat2RAG application")
     # 文档检索管道预热，加载向量化嵌入模型
     DocumentSearchPipeline()
     yield
     # 关闭时执行
     # await FastAPICache.clear()
-    logger.info("关闭 Chat2RAG 应用")
+    logger.info("Stopping Chat2RAG application")
 
 
 def create_app():

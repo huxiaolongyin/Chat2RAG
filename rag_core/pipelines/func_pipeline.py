@@ -1,11 +1,14 @@
 import asyncio
+from typing import List
+
 from haystack import Pipeline
 from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.components.routers import ConditionalRouter
 from haystack.dataclasses import ChatMessage
-from typing import List
-from rag_core.config import CONFIG
+
 from rag_core.components import FunctionExecutor
+from rag_core.config import CONFIG
+from rag_core.utils.logger import logger
 
 
 class FunctionPipeline:
@@ -26,7 +29,11 @@ class FunctionPipeline:
         return str(self.pipeline)
 
     def _initialize_pipeline(self):
-        """初始化函数调用管道"""
+        """
+        Initialize Function pipeline
+        """
+        logger.info("Initialize function pipeline...")
+
         intention = OpenAIChatGenerator(
             model=self.intention_model,
             api_key=CONFIG.OPENAI_API_KEY,
@@ -55,9 +62,15 @@ class FunctionPipeline:
         self.pipeline.connect("intention.replies", "router")
         self.pipeline.connect("router.function_calls", "function_executor")
 
+        logger.info("Function pipeline initialize successfully")
+
     def warm_up(self):
-        """预热"""
+        """
+        Warm up the function pipeline
+        """
+        logger.info("Warm up the function pipeline")
         self.pipeline.warm_up()
+        logger.info("Function pipeline warm up successfully")
 
     async def run(
         self,
@@ -65,7 +78,11 @@ class FunctionPipeline:
         tools: list,
         messages: List[ChatMessage] = None,
     ):
-        """运行函数调用管道"""
+        """
+        Running the function pipeline.
+        """
+        logger.info(f"Running function pipeline with query: <{query}>...")
+
         messages = [
             ChatMessage.from_system(
                 "你是专门来意图识别的助手，你的任务是识别用户意图，并根据意图返回相应的工具。如果没有获取到函数或工具，请返回None。"
@@ -73,7 +90,7 @@ class FunctionPipeline:
             *messages,
             ChatMessage.from_user(query),
         ]
-        return await asyncio.to_thread(
+        result = await asyncio.to_thread(
             self.pipeline.run,
             data={
                 "intention": {
@@ -82,23 +99,6 @@ class FunctionPipeline:
                 }
             },
         )
+        logger.info(f"Function pipeline ran successfully with result: {result}")
 
-
-async def main():
-    from rag_core.tools import weather_info, get_current_weather
-
-    pipeline = FunctionPipeline()
-    tools = [weather_info]
-    functions = {
-        "weather_tool": get_current_weather,
-    }
-    response = await pipeline.run(
-        query="北京天气怎么样", tools=tools, functions=functions
-    )
-    print(response)
-
-
-if __name__ == "__main__":
-    import asyncio
-
-    asyncio.run(main())
+        return result

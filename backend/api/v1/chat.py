@@ -1,13 +1,15 @@
-from fastapi import APIRouter, Query
-from backend.schema import Success, Error
-from rag_core.pipelines.rag_pipeline import RAGPipeline
-from rag_core.utils.stream import StreamHandler
-from fastapi.responses import StreamingResponse
-from enum import Enum
 from concurrent.futures import ThreadPoolExecutor
+from enum import Enum
+
+from fastapi import APIRouter, Query
+from fastapi.responses import StreamingResponse
+
+from backend.schema import Error, Success
+from rag_core.pipelines.rag_pipeline import RAGPipeline
+from rag_core.tools import ToolManager
 from rag_core.utils.chat_cache import ChatCache
 from rag_core.utils.logger import logger
-from rag_core.tools import ToolManager
+from rag_core.utils.stream import StreamHandler
 
 router = APIRouter()
 chat_cache = ChatCache()
@@ -175,7 +177,7 @@ async def _(
     # 创建全局executor避免提前关闭
     executor = ThreadPoolExecutor(max_workers=1)
 
-    def run_pipeline():
+    def run_rag_pipeline():
         result = pipeline.run(
             query=query,
             tools=tools,
@@ -184,8 +186,6 @@ async def _(
             messages=history_messages,
         )
         handler.finish()
-        answer = str(result["generator"]["replies"][0].content).replace("\n", "")
-        logger.info(f"问题：{query}；回答结果: {answer}；")
         if chat_id:
             chat_cache.add_message(chat_id, query, "user")
             chat_cache.add_message(
@@ -193,7 +193,7 @@ async def _(
             )
 
     # 启动后台任务
-    executor.submit(run_pipeline)
+    executor.submit(run_rag_pipeline)
     is_batch = batch_or_stream == ProcessType.BATCH
 
     return StreamingResponse(
