@@ -145,7 +145,7 @@ Key steps in the flow chart:
 * Collect the user's voice signal and perform noise reduction preprocessing
 * ASRThe model converts speech to text
 
-2. **Retrieval Stage: **
+2. **Retrieval Stage**
 
 * The text is converted to a vector representation by an embedding model
 * Convert knowledge base documents to vector storage
