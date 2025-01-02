@@ -1,8 +1,9 @@
 import json
-import random
-import streamlit as st
-import requests
 import os
+import random
+
+import requests
+import streamlit as st
 
 # from pyinstrument import Profiler
 # profiler = Profiler()
@@ -18,7 +19,7 @@ if "messages" not in st.session_state:
     st.session_state.messages = [
         {"role": "assistant", "content": "你好，有什么可以帮你的吗？"}
     ]
-    st.session_state.message_id = random.randint(1, 1000000)
+    st.session_state.message_id = random.randint(100000, 9000000)
 
 with chat_container:
     for message in st.session_state.messages:
@@ -46,6 +47,7 @@ if query:
                     "batchOrStream": "stream",
                     "chatId": st.session_state.message_id,
                     "chatRounds": 5,
+                    "toolList": ["all"],
                 },
                 stream=True,
             )

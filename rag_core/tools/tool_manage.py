@@ -142,11 +142,16 @@ class ToolManager:
             for tool in all_tools
         ]
 
-    def get_tool_info(self, tool_names: Union[list, str] = None) -> list:
+    def get_tool_info(self, tool_names: Union[List[str], str] = None) -> list:
         """获取工具信息, openai的格式"""
         all_tools = self.get_all_tools_open_ai()
         if not tool_names:
             return []
+        if "all" in [
+            name.lower()
+            for name in (tool_names if isinstance(tool_names, list) else [])
+        ]:
+            return all_tools
         if isinstance(tool_names, str) and tool_names.lower() == "all":
             return all_tools
         return [tool for tool in all_tools if tool["function"]["name"] in tool_names]

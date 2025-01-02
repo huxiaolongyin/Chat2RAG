@@ -8,7 +8,6 @@ from backend.schema import Error, Success
 from rag_core.pipelines.rag_pipeline import RAGPipeline
 from rag_core.tools import ToolManager
 from rag_core.utils.chat_cache import ChatCache
-from rag_core.utils.logger import logger
 from rag_core.utils.stream import StreamHandler
 
 router = APIRouter()
