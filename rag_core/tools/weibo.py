@@ -1,5 +1,6 @@
-import requests
 import json
+
+import requests
 
 
 def get_weibo_info() -> str:
@@ -18,6 +19,10 @@ weibo_info = {
     "function": {
         "name": "weibo_tool",
         "description": "当询问最新热度新闻时使用，用于获取最新的微博热搜新闻信息",
-        "parameters": {},
+        "parameters": {
+            "type": "object",
+            "properties": {},
+            "required": [],
+        },
     },
 }

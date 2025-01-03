@@ -1,8 +1,10 @@
 import json
+from pathlib import Path
+
 import requests
 from fuzzywuzzy import process
+
 from rag_core.config import CONFIG
-from pathlib import Path
 
 
 def get_weather_info(city_name: str = None) -> str:
@@ -63,6 +65,7 @@ weather_info = {
                     "description": "中国城市的名称，如果不指定则会返回空值",
                 }
             },
+            "required": [],
         },
     },
 }

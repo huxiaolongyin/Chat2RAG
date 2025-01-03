@@ -1,10 +1,23 @@
-from datetime import datetime
+from datetime import datetime, timedelta
+
 from zhdate import ZhDate
 
 
-def get_today_info():
+def get_today_info(date_type):
     # Get current date
+
     today = datetime.now()
+
+    date_mapping = {
+        "今天": today,
+        "昨天": today - timedelta(days=1),
+        "明天": today + timedelta(days=1),
+    }
+
+    # if date_type in date_mapping:
+    #     date = date_mapping[date_type]
+    # else:
+    #     date = today
 
     # Basic date info
     weekday_map = {
@@ -56,14 +69,22 @@ def get_today_info():
     return result
 
 
+# 问题含有<今天>的就使用，，例如日期、星期几、农历日期、农历星期几、节日、星座、黄历吗、历史上的今天等时使用
 today_info = {
     "type": "function",
     "function": {
         "name": "today_tool",
-        "description": "询问今天日期、星期几、农历日期、农历星期几、节日、星座、黄历等时使用",
+        "description": "询问日期、星期几、农历日期、农历星期几、节日、星座、黄历、日子等时使用",
         "parameters": {
             "type": "object",
-            "properties": {},
+            "properties": {
+                "date_type": {
+                    "type": "string",
+                    "enum": ["今天", "昨天", "明天"],
+                    "description": "不同的日期类型，今天、昨天、明天",
+                },
+            },
+            "required": ["date_type"],
         },
     },
 }
