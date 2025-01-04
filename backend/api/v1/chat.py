@@ -158,7 +158,7 @@ async def _(
     ),
 ):
     handler = StreamHandler()
-
+    handler.start()
     tools = tool_manager.get_tool_info(tool_list)
 
     # 获取历史消息
