@@ -100,7 +100,9 @@ class DocumentSearchPipeline:
         """
         Excute the document search pipeline
         """
-        logger.info(f"Running document search pipeline with query: <{query}>")
+        logger.info(
+            f"Running document search pipeline with query: <{query}>, qdrrant index: <{self._qdrant_index}>..."
+        )
 
         result = await asyncio.to_thread(
             self.pipeline.run,
@@ -109,8 +111,9 @@ class DocumentSearchPipeline:
                 "retriever": {"top_k": top_k, "score_threshold": score_threshold},
             },
         )
-
-        logger.info(f"Document search pipeline ran successfully with query: <{query}>")
+        logger.info(
+            f"Document search pipeline ran successfully with query: <{query}>; Total: <{len(result['retriever']['documents'])}>"
+        )
 
         return result
 

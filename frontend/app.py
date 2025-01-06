@@ -7,6 +7,9 @@ st.set_page_config(
 )
 
 
-pages = [st.Page("views/chat.py", title="ChatBot", icon=":material/forum:")]
+pages = [
+    st.Page("views/chat.py", title="ChatBot", icon=":material/forum:"),
+    st.Page("views/knowledge.py", title="知识库管理", icon=":material/auto_stories:"),
+]
 pg = st.navigation(pages)
 pg.run()

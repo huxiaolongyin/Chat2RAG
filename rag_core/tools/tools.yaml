@@ -21,3 +21,110 @@ tools:
       type: object
     url: http://127.0.0.1:8000/api/v1/chat/test
   type: function
+- function:
+    description: 查询指定城市的天气信息
+    method: post
+    name: test_tool
+    parameters:
+      properties:
+        city:
+          description: 城市名称
+          type: string
+        format:
+          description: 返回格式
+          type: string
+      required:
+      - city
+      - format
+      type: object
+    url: http://api.weather.com/v1/current
+- function:
+    description: ''
+    method: post
+    name: test_tool2
+    parameters:
+      properties:
+        city:
+          description: 城市名称
+          type: string
+        format:
+          description: 返回格式
+          type: string
+      required:
+      - city
+      type: object
+    url: http://api.weather.com/v1/current
+- function:
+    description: 测试
+    method: post
+    name: test_tool3
+    parameters:
+      properties:
+        city:
+          description: 城市名称
+          type: string
+      required:
+      - city
+      type: object
+    url: http://api.weather.com/v1/current
+- function:
+    description: 测
+    method: post
+    name: test_tool4
+    parameters:
+      properties:
+        city:
+          description: 城市名称
+          type: string
+      required:
+      - city
+      type: object
+    url: http://api.weather.com/v1/current
+- function:
+    description: 测试
+    method: post
+    name: test_tool5
+    parameters:
+      properties:
+        city:
+          description: 城市名称
+          type: string
+      required:
+      - city
+      type: object
+    url: http://api.weather.com/v1/current
+- function:
+    description: 测
+    method: get
+    name: aest_tool6
+    parameters:
+      properties:
+        city:
+          description: 城市名称
+          type: string
+      required:
+      - city
+      type: object
+    url: http://api.weather.com/v1/current
+- function:
+    description: 撒
+    method: post
+    name: aest_tool7
+    parameters:
+      properties:
+        city:
+          description: 城市名称
+          type: string
+      required:
+      - city
+      type: object
+    url: http://api.weather.com/v1/current
+- function:
+    description: 带娃
+    method: post
+    name: aest_tool8
+    parameters:
+      properties: {}
+      required: []
+      type: object
+    url: http://api.weather.com/v1/current

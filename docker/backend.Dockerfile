@@ -1,5 +1,16 @@
 FROM bitnami/pytorch:2.1.2
 
+# 使用清华源加速apt
+RUN echo "deb https://mirrors.tuna.tsinghua.edu.cn/debian/ bookworm main contrib non-free non-free-firmware" > /etc/apt/sources.list && \
+    echo "deb https://mirrors.tuna.tsinghua.edu.cn/debian/ bookworm-updates main contrib non-free non-free-firmware" >> /etc/apt/sources.list && \
+    echo "deb https://mirrors.tuna.tsinghua.edu.cn/debian/ bookworm-backports main contrib non-free non-free-firmware" >> /etc/apt/sources.list 
+
+# 只更新curl相关的包索引
+RUN apt-get update -o Dir::Etc::sourcelist="sources.list" \
+    -o Dir::Etc::sourceparts="-" -o APT::Get::List-Cleanup="0" && \
+    apt-get install -y --no-install-recommends curl && \
+    rm -rf /var/lib/apt/lists/*
+
 WORKDIR /code
 
 # 只复制依赖相关文件,利用缓存
@@ -18,9 +29,6 @@ RUN pip3 config set global.index-url https://mirrors.aliyun.com/pypi/simple/ && 
     pip3 install --no-cache-dir .
 
 EXPOSE 8000
-
-# 安装健康检查的依赖
-RUN apt update && apt install -y curl
 
 # 添加健康检查
 HEALTHCHECK --interval=30s --timeout=3s --start-period=30s --retries=3 \
