@@ -11,10 +11,13 @@ def get_weather_info(city_name: str = None) -> str:
     """获取城市当前的天气信息"""
     key = CONFIG.GAODE_API_KEY
     if not city_name:
+
         ip_get_url = f"https://restapi.amap.com/v3/ip?key={key}"
         response = requests.get(ip_get_url)
         if response.status_code == 200:
-            city_code = response.json()["adcode"]
+            # city_code = response.json()["adcode"]
+            # temporarily
+            city_code = "350100"
         else:
             return "获取位置信息失败"
     else:
