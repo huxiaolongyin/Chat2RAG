@@ -1,5 +1,7 @@
 FROM bitnami/pytorch:2.1.2
 
+USER root
+
 # 使用清华源加速apt
 RUN echo "deb https://mirrors.tuna.tsinghua.edu.cn/debian/ bookworm main contrib non-free non-free-firmware" > /etc/apt/sources.list && \
     echo "deb https://mirrors.tuna.tsinghua.edu.cn/debian/ bookworm-updates main contrib non-free non-free-firmware" >> /etc/apt/sources.list && \
@@ -20,8 +22,6 @@ COPY ./README.md .
 # 复制源代码
 COPY ./backend ./backend
 COPY ./rag_core ./rag_core
-
-USER root
 
 # 配置pip并安装依赖
 RUN pip3 config set global.index-url https://mirrors.aliyun.com/pypi/simple/ && \

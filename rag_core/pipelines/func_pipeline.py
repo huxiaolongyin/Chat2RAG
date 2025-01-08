@@ -1,4 +1,5 @@
 import asyncio
+from time import perf_counter
 from typing import List
 
 from haystack import Pipeline
@@ -82,7 +83,7 @@ class FunctionPipeline:
         Running the function pipeline.
         """
         logger.info(f"Running function pipeline with query: <{query}>...")
-
+        start = perf_counter()
         messages = [
             ChatMessage.from_system(
                 "你是专门来意图识别的助手，你的任务是识别用户意图，并根据意图返回相应的工具。如果没有获取到函数或工具，请返回None。"
@@ -99,6 +100,8 @@ class FunctionPipeline:
                 }
             },
         )
-        logger.info(f"Function pipeline ran successfully with result: {result}")
+        logger.info(
+            f"Function pipeline ran successfully. Cost: {perf_counter() - start:.3f} s; Result: {result};"
+        )
 
         return result

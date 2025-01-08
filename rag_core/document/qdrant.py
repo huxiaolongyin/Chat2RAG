@@ -2,7 +2,6 @@ import asyncio
 from typing import List, Union
 
 from haystack_integrations.document_stores.qdrant import QdrantDocumentStore
-from qdrant_client.models import Distance, VectorParams
 from transformers import BertConfig
 
 from rag_core.config import CONFIG

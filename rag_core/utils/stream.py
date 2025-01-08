@@ -2,7 +2,10 @@ import datetime
 import json
 from dataclasses import dataclass
 from queue import Queue
+from time import perf_counter
 from typing import List, Optional
+
+from rag_core.utils.logger import logger
 
 
 @dataclass
@@ -26,6 +29,7 @@ class StreamConfig:
 
 class StreamHandler:
     def __init__(self, config: Optional[StreamConfig] = None):
+        self.stream_start = perf_counter()
         self.queue = Queue()
         self.config = config or StreamConfig()
 
@@ -62,7 +66,9 @@ class StreamHandler:
         )
 
     def get_stream(self, is_batch: bool = False):
+        first_response = True  # 添加标志位跟踪第一条响应
         if not is_batch:
+
             # 流式处理模式
             while True:
                 chunk = self.queue.get()
@@ -74,6 +80,11 @@ class StreamHandler:
 
                 if chunk == "[END]":
                     break
+
+                if first_response:
+                    elapsed = perf_counter() - self.stream_start
+                    logger.info(f"RAG pipeline query response time: {elapsed:.3f}s")
+                    first_response = False
 
                 data = self._create_message(chunk.content, chunk.meta)
                 yield f"data: {json.dumps(data, ensure_ascii=False)}\n\n"
@@ -101,6 +112,11 @@ class StreamHandler:
 
                 batch_content = "".join([c.content for c in current_batch])
                 if self._should_flush_batch(chunk, batch_content):
+                    if first_response:
+                        elapsed = perf_counter() - self.stream_start
+                        logger.info(f"RAG pipeline query response time: {elapsed:.3f}s")
+                        first_response = False
+
                     data = self._create_message(batch_content, chunk.meta)
                     yield f"data: {json.dumps(data, ensure_ascii=False)}\n\n"
                     current_batch = []

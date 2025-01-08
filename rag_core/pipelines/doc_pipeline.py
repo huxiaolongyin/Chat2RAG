@@ -1,4 +1,5 @@
 import asyncio
+from time import perf_counter
 from typing import List, Union
 
 from haystack import Pipeline
@@ -10,6 +11,8 @@ from haystack.components.writers import DocumentWriter
 from haystack.dataclasses import Document
 from haystack_integrations.components.retrievers.qdrant import QdrantEmbeddingRetriever
 from haystack_integrations.document_stores.qdrant import QdrantDocumentStore
+
+# from pyinstrument import Profiler
 from transformers import BertConfig
 
 from rag_core.config import CONFIG
@@ -68,7 +71,12 @@ class DocumentSearchPipeline:
             f"Initializing document search pipeline with qdrant index <{self._qdrant_index}>..."
         )
 
-        embedder = SentenceTransformersTextEmbedder(model=CONFIG.EMBEDDING_MODEL_PATH)
+        embedder = SentenceTransformersTextEmbedder(
+            model=CONFIG.EMBEDDING_MODEL_PATH,
+            progress_bar=False,
+            batch_size=32,
+            trust_remote_code=False,
+        )
         retriever = self._create_retriever()
         self.pipeline = Pipeline()
         self.pipeline.add_component("embedder", embedder)
@@ -100,9 +108,13 @@ class DocumentSearchPipeline:
         """
         Excute the document search pipeline
         """
+        # profiler = Profiler()
+        # profiler.start()
+
         logger.info(
-            f"Running document search pipeline with query: <{query}>, qdrrant index: <{self._qdrant_index}>..."
+            f"Running document search pipeline with query: <{query}>, qdrant index: <{self._qdrant_index}>..."
         )
+        start = perf_counter()
 
         result = await asyncio.to_thread(
             self.pipeline.run,
@@ -112,9 +124,10 @@ class DocumentSearchPipeline:
             },
         )
         logger.info(
-            f"Document search pipeline ran successfully with query: <{query}>; Total: <{len(result['retriever']['documents'])}>"
+            f"Document search pipeline ran successfully with query: <{query}>; Total: <{len(result['retriever']['documents'])}>; Cost: {perf_counter() - start:.3f} s"
         )
-
+        # profiler.stop()
+        # print(profiler.output_text(unicode=True, color=True))
         return result
 
 

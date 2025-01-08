@@ -169,7 +169,9 @@ class RAGPipeline:
         )
 
         answer = str(result["generator"]["replies"][0].content).replace("\n", "")
-        logger.info(f"RAG pipeline ran successfully with answer: <{answer}>")
+        logger.info(
+            f"RAG pipeline ran successfully. Query: <{query}>; Answer: <{answer}>"
+        )
 
         return result
 
@@ -245,7 +247,7 @@ class RAGPipeline:
         )
 
         logger.info(
-            f"Async RAG pipeline query finished, cost {perf_counter() - start:.2f}s"
+            f"Async RAG pipeline query finished, cost {perf_counter() - start:.3f}s"
         )
 
         return result
