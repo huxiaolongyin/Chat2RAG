@@ -86,11 +86,26 @@ class FunctionPipeline:
         start = perf_counter()
         messages = [
             ChatMessage.from_system(
-                "你是专门来意图识别的助手，你的任务是识别用户意图，并根据意图返回相应的工具。如果没有获取到函数或工具，请返回None。"
+                """
+你是工具意图识别助手。请分析用户输入并执行以下操作:
+
+1. 如果识别到明确的工具/函数需求:
+- 返回对应的工具及参数
+
+2. 如果未识别到工具需求:
+- 立即返回 None
+- 不需要解释原因
+
+注意:
+- 只关注工具识别,忽略其他内容
+- 快速决策,发现无匹配立即返回 None
+- 不需要额外对话或解释
+"""
             ),
             *messages,
             ChatMessage.from_user(query),
         ]
+        # result = ""
         result = await asyncio.to_thread(
             self.pipeline.run,
             data={

@@ -2,7 +2,6 @@ import asyncio
 from typing import List, Union
 
 from haystack_integrations.document_stores.qdrant import QdrantDocumentStore
-from transformers import BertConfig
 
 from rag_core.config import CONFIG
 from rag_core.pipelines.doc_pipeline import (
@@ -27,9 +26,7 @@ class QdrantDocumentManage(QdrantDocumentStore):
             port=port,
             grpc_port=grpc_port,
             index=index,
-            embedding_dim=BertConfig.from_pretrained(
-                CONFIG.EMBEDDING_MODEL_PATH
-            ).hidden_size,
+            embedding_dim=1024,
         )
 
     @property

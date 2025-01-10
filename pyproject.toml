@@ -9,7 +9,6 @@ dependencies = [
     # 核心RAG组件
     "haystack-ai==2.8.0",
     "qdrant-haystack==7.0.0",
-    "sentence-transformers>=2.3.0",
 
     # 监控和性能
     "openinference-instrumentation-haystack==0.1.12",

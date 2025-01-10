@@ -1,11 +1,19 @@
 import os
+
+# from functools import lru_cache
 from importlib.metadata import PackageNotFoundError, version
-from pathlib import Path
 
 from dotenv import load_dotenv
 from haystack.utils import Secret
 
+from .embedding_check import EmbeddingUrlMonitor
+
 load_dotenv(override=True)
+
+
+# @lru_cache(maxsize=1)
+# def get_embedding_monitor(local_url, remote_url):
+#     return EmbeddingUrlMonitor(local_url=local_url, remote_url=remote_url)
 
 
 def load_str_env(name: str, required: bool = False) -> str:
@@ -54,6 +62,8 @@ def load_bool_env(name: str, required: bool = False) -> bool:
     """
     if os.environ.get(name):
         return os.environ.get(name).lower() in ["true", "1", "yes"]
+    if required:
+        raise Exception(f"Env {name} is not set")
 
 
 class Config:
@@ -66,8 +76,8 @@ class Config:
         VERSION = "unknown"
 
     # 项目目录
-    ROOT_DIR = Path(__file__).parent.parent.parent
-    LOG_DIR = ROOT_DIR / "logs"
+    # ROOT_DIR = Path(__file__).parent.parent.parent
+    # LOG_DIR = ROOT_DIR / "logs"
 
     # OPENAI
     OPENAI_API_KEY = Secret.from_env_var("OPENAI_API_KEY")
@@ -86,10 +96,21 @@ class Config:
     """
 
     # EMBEDDING
-    EMBEDDING_MODEL_PATH = load_str_env("EMBEDDING_MODEL_PATH", required=True)
     QDRANT_HOST = load_str_env("QDRANT_HOST", required=False) or "localhost"
     QDRANT_PORT = load_int_env("QDRANT_PORT", required=False) or 6333
     QDRANT_GRPC_PORT = load_int_env("QDRANT_GRPC_PORT", required=False) or 6334
+    LOCAL_EMBEDDING_OPENAI_URL = load_str_env(
+        "LOCAL_EMBEDDING_OPENAI_URL", required=False
+    )
+    REMOTE_EMBEDDING_OPENAI_URL = load_str_env(
+        "REMOTE_EMBEDDING_OPENAI_URL", required=False
+    )
+    embedding_monitor = EmbeddingUrlMonitor.get_instance()
+    embedding_monitor.setup(
+        local_url=LOCAL_EMBEDDING_OPENAI_URL, remote_url=REMOTE_EMBEDDING_OPENAI_URL
+    )
+
+    EMBEDDING_OPENAI_URL = embedding_monitor.get_current_url()
 
     # MODEL
     TOP_K = load_int_env("TOP_K", required=False) or 5

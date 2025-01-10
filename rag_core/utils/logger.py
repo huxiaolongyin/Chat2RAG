@@ -1,8 +1,10 @@
 import logging
 import sys
 from logging.handlers import TimedRotatingFileHandler
+from pathlib import Path
 
-from rag_core.config import CONFIG
+ROOT_DIR = Path(__file__).parent.parent.parent
+LOG_DIR = ROOT_DIR / "logs"
 
 
 def setup_logger(name: str = "Chat2RAG"):
@@ -10,7 +12,8 @@ def setup_logger(name: str = "Chat2RAG"):
     设置日志记录器
     """
     # 创建日志目录
-    log_dir = CONFIG.LOG_DIR
+
+    log_dir = LOG_DIR
     log_dir.mkdir(exist_ok=True)
 
     # 创建logger

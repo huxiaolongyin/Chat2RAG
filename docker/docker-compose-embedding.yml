@@ -1,0 +1,14 @@
+name: temp
+services:
+  xinference:
+    image: xprobe/xinference:v1.1.1
+    container_name: embedding-service-temp
+    ports:
+      - "9898:9997"
+    volumes:
+      - /home/docker-apps/chat2rag/model:/opt/model
+      - ../scripts:/scripts
+    environment:
+      - XINFERENCE_HOME=/opt/model
+    command: xinference-local -H 0.0.0.0 --log-level debug
+    restart: always

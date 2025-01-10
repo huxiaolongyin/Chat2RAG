@@ -1,3 +1,4 @@
+import json
 from concurrent.futures import ThreadPoolExecutor
 from enum import Enum
 
@@ -151,15 +152,16 @@ async def _(
         description="生成模型",
         alias="generatorModel",
     ),
-    tool_list: list = Query(
-        default=[],
+    tool_list: str = Query(
+        default="[]",
         description="工具列表",
         alias="toolList",
     ),
 ):
+    # print(eval(tool_list))
     handler = StreamHandler()
     handler.start()
-    tools = tool_manager.get_tool_info(tool_list)
+    tools = tool_manager.get_tool_info(eval(tool_list))
 
     # 获取历史消息
     history_messages = []

@@ -5,15 +5,12 @@ services:
     container_name: backend
     ports:
       - "8000:8000"
-      - "6006:6006"
     volumes:
       - ${DATA_PATH}/phoenix:/.phoenix
-      - ${EMBEDDING_MODEL_PATH}:/BigModels/360Zhinao-search
     depends_on:
       - qdrant
     environment:
       - TZ=Asia/Shanghai
-      - EMBEDDING_MODEL_PATH=/BigModels/360Zhinao-search
       - QDRANT_HOST=qdrant
     env_file:
       - ../.env
@@ -52,6 +49,23 @@ services:
       - ${DATA_PATH}/qdrant_storage:/qdrant/storage
     env_file:
       - ../.env
+    networks:
+      - my-network
+    restart: always
+
+  xinference:
+    image: xprobe/xinference:v1.1.1-cpu
+    container_name: embedding-service
+    ports:
+      - "9998:9997"
+    volumes:
+      - ${MODEL_PATH}:/opt/model
+      - ../scripts:/scripts
+    environment:
+      - XINFERENCE_HOME=/opt/model
+    env_file:
+      - ../.env
+    command: xinference-local -H 0.0.0.0 --log-level debug
     networks:
       - my-network
     restart: always

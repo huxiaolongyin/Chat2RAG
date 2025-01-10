@@ -29,7 +29,7 @@ def get_stream_response(query: str) -> requests.Response:
             "batchOrStream": "stream",
             "chatId": st.session_state.message_id,
             "chatRounds": 5,
-            "toolList": ["all"],
+            "toolList": '["all"]',
         },
         stream=True,
     )

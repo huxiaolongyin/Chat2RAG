@@ -1,4 +1,5 @@
-FROM bitnami/pytorch:2.1.2
+# FROM bitnami/pytorch:2.1.2
+FROM python:3.9-slim
 
 USER root
 

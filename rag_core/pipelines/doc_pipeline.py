@@ -3,20 +3,16 @@ from time import perf_counter
 from typing import List, Union
 
 from haystack import Pipeline
-from haystack.components.embedders import (
-    SentenceTransformersDocumentEmbedder,
-    SentenceTransformersTextEmbedder,
-)
+from haystack.components.embedders import OpenAIDocumentEmbedder, OpenAITextEmbedder
 from haystack.components.writers import DocumentWriter
 from haystack.dataclasses import Document
 from haystack_integrations.components.retrievers.qdrant import QdrantEmbeddingRetriever
 from haystack_integrations.document_stores.qdrant import QdrantDocumentStore
 
-# from pyinstrument import Profiler
-from transformers import BertConfig
-
 from rag_core.config import CONFIG
 from rag_core.utils.logger import logger
+
+# from pyinstrument import Profiler
 
 
 class DocumentSearchPipeline:
@@ -50,9 +46,7 @@ class DocumentSearchPipeline:
             document_store=QdrantDocumentStore(
                 host=CONFIG.QDRANT_HOST,
                 port=CONFIG.QDRANT_PORT,
-                embedding_dim=BertConfig.from_pretrained(
-                    CONFIG.EMBEDDING_MODEL_PATH
-                ).hidden_size,
+                embedding_dim=1024,
                 index=self._qdrant_index,
             )
         )
@@ -71,11 +65,11 @@ class DocumentSearchPipeline:
             f"Initializing document search pipeline with qdrant index <{self._qdrant_index}>..."
         )
 
-        embedder = SentenceTransformersTextEmbedder(
-            model=CONFIG.EMBEDDING_MODEL_PATH,
-            progress_bar=False,
-            batch_size=32,
-            trust_remote_code=False,
+        embedder = OpenAITextEmbedder(
+            api_base_url=CONFIG.EMBEDDING_OPENAI_URL,
+            api_key=CONFIG.OPENAI_API_KEY,
+            model="360Zhinao-search",
+            dimensions=1024,
         )
         retriever = self._create_retriever()
         self.pipeline = Pipeline()
@@ -160,9 +154,7 @@ class DocumentWriterPipeline:
             document_store=QdrantDocumentStore(
                 host=CONFIG.QDRANT_HOST,
                 port=CONFIG.QDRANT_PORT,
-                embedding_dim=BertConfig.from_pretrained(
-                    CONFIG.EMBEDDING_MODEL_PATH
-                ).hidden_size,
+                embedding_dim=1024,
                 index=self._qdrant_index,
             )
         )
@@ -177,13 +169,15 @@ class DocumentWriterPipeline:
         Initialize the document writer pipeline
         """
         logger.info("Initializing document writer pipeline...")
-
+        embedder = OpenAIDocumentEmbedder(
+            api_base_url=CONFIG.EMBEDDING_OPENAI_URL,
+            api_key=CONFIG.OPENAI_API_KEY,
+            model="360Zhinao-search",
+            dimensions=1024,
+        )
         writer = self._create_writer()
         self.pipeline = Pipeline()
-        self.pipeline.add_component(
-            "embedder",
-            SentenceTransformersDocumentEmbedder(model=CONFIG.EMBEDDING_MODEL_PATH),
-        )
+        self.pipeline.add_component("embedder", embedder)
         self.pipeline.add_component("writer", writer)
         self.pipeline.connect("embedder", "writer")
 

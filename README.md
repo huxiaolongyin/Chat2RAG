@@ -68,8 +68,7 @@ docker build -t chat2rag-frontend:latest . -f docker/frontend.Dockerfile
 - Install through docker compose
 
 ```shell
-cd docker
-docker compose up -d
+docker compose up -f docker/docker-compose.yml -d
 ```
 
 ## Quick start

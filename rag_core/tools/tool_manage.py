@@ -143,7 +143,9 @@ class ToolManager:
         ]
 
     def get_tool_info(self, tool_names: Union[List[str], str] = None) -> list:
-        """获取工具信息, openai的格式"""
+        """
+        获取工具信息, openai的格式
+        """
         all_tools = self.get_all_tools_open_ai()
         if not tool_names:
             return []
