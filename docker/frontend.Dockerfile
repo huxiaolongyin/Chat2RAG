@@ -19,8 +19,7 @@ COPY ./frontend .
 USER root
 
 # 安装依赖
-RUN pip3 config set global.index-url https://mirrors.aliyun.com/pypi/simple/ && \
-    pip3 install --no-cache-dir -r requirements.txt 
+RUN pip3 install --no-cache-dir -r requirements.txt -i https://mirrors.aliyun.com/pypi/simple
 
 # 暴露端口
 EXPOSE 8051

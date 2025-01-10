@@ -1,9 +1,11 @@
-from haystack import component
-from typing import List, Any
-from haystack.dataclasses import ChatMessage
-from concurrent.futures import ThreadPoolExecutor, TimeoutError
 import json
-from rag_core.utils.logger import logger
+from concurrent.futures import ThreadPoolExecutor, TimeoutError
+from typing import Any, List
+
+from haystack import component
+from haystack.dataclasses import ChatMessage
+
+from rag_core.logging import logger
 from rag_core.tools.tool_manage import ToolManager
 
 # 默认函数执行超时时间(秒)

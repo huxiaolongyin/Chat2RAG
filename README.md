@@ -39,13 +39,18 @@ vi.env
 python >=3.9
 ```
 
-- Install the qdrant vector database
+- Step1: Install the qdrant vector database
 
 ```shell
 docker run -d --name qdrant -p 6333:6333 -p 6334:6334 qdrant/qdrant:latest
 ```
+- Step2: Install the web dependencies
 
-- Install via pyproject.toml
+```shell
+pip install -r frontend/requirements.txt
+```
+
+- Step3: Install backend dependencies
 
 ```shell
 pip install .
@@ -53,31 +58,11 @@ pip install .
 
 ### Method 2: Install using docker
 
-- Build backend docker images
-
-```shell
-docker build -t chat2rag-backend:latest . -f docker/backend.Dockerfile
-```
-
-- Build frontend docker images
-
-```shell
-docker build -t chat2rag-frontend:latest . -f docker/frontend.Dockerfile
-```
-
-- Install through docker compose
-
 ```shell
 docker compose up -f docker/docker-compose.yml -d
 ```
 
 ## Quick start
-
-- Start by script
-
-```shell
-streamlit run frontend/app.py
-```
 
 - Open a web page [http://127.0.0.1:8501](http://127.0.0.1:8501)
 

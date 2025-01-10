@@ -45,25 +45,26 @@ python >= 3.9
 docker run -d --name qdrant -p 6333:6333 -p 6334:6334 qdrant/qdrant:latest
 ```
 
+- 安装 web 所需依赖
+
+```shell
+pip install -r frontend/requirements.txt
+```
+
 - 通过 pyproject.toml 进行安装
 
 ```shell
 pip install .
 ```
 
+- 启动服务
+```shell
+# 后端服务
+python backend/main.py
+# 前端页面
+streamlit run frontend/app.py
+```
 ### 方法二：通过 docker 进行安装
-
-- 构建后端 docker 镜像
-
-```shell
-docker build -t chat2rag-backend:latest . -f docker/backend.Dockerfile
-```
-
-- 构建前端 docker 镜像
-
-```shell
-docker build -t chat2rag-frontend:latest . -f docker/frontend.Dockerfile
-```
 
 - 通过 docker-compose 进行安装
 
@@ -72,12 +73,6 @@ docker compose -f docker/docker-compose.yml up -d
 ```
 
 ## 快速开始
-
-- 通过脚本启动
-
-```shell
-streamlit run frontend/app.py
-```
 
 - 打开网页 [http://127.0.0.1:8501](http://127.0.0.1:8501)
 

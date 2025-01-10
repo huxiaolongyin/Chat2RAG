@@ -5,8 +5,8 @@ from typing import Optional
 from fastapi import APIRouter, Body, Query
 
 from backend.schema import Error, Success, ToolConfig
+from rag_core.logging import logger
 from rag_core.tools.tool_manage import ToolManager
-from rag_core.utils.logger import logger
 
 router = APIRouter()
 tool_manager = ToolManager()

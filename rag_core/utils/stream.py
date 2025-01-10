@@ -5,7 +5,7 @@ from queue import Queue
 from time import perf_counter
 from typing import List, Optional
 
-from rag_core.utils.logger import logger
+from rag_core.logging import logger
 
 
 @dataclass

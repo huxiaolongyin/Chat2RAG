@@ -4,7 +4,7 @@ from threading import Lock, Thread
 import requests
 from requests.exceptions import RequestException
 
-from rag_core.utils.logger import logger
+from rag_core.logging import logger
 
 
 class EmbeddingUrlMonitor:

@@ -4,11 +4,11 @@ from typing import List, Union
 from haystack_integrations.document_stores.qdrant import QdrantDocumentStore
 
 from rag_core.config import CONFIG
+from rag_core.logging import logger
 from rag_core.pipelines.doc_pipeline import (
     DocumentSearchPipeline,
     DocumentWriterPipeline,
 )
-from rag_core.utils.logger import logger
 
 
 class QdrantDocumentManage(QdrantDocumentStore):

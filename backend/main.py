@@ -2,8 +2,8 @@ from fastapi import FastAPI
 
 from backend.api.routes import router
 from rag_core.config import CONFIG
+from rag_core.logging import logger
 from rag_core.pipelines.doc_pipeline import DocumentSearchPipeline
-from rag_core.utils.logger import logger
 
 
 # @asynccontextmanager

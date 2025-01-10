@@ -6,7 +6,7 @@ from fastapi import APIRouter, Body, Query
 
 from backend.schema import Error, Success
 from rag_core.document.qdrant import QdrantDocumentManage
-from rag_core.utils.logger import logger
+from rag_core.logging import logger
 
 # from pyinstrument import Profiler
 

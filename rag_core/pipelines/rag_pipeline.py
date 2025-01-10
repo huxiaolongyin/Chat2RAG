@@ -11,9 +11,9 @@ from haystack.components.joiners.document_joiner import DocumentJoiner
 from haystack.dataclasses import ChatMessage
 
 from rag_core.config import CONFIG
+from rag_core.logging import logger
 from rag_core.pipelines.doc_pipeline import DocumentSearchPipeline
 from rag_core.pipelines.func_pipeline import FunctionPipeline
-from rag_core.utils.logger import logger
 
 
 class RAGPipeline:
@@ -144,7 +144,7 @@ class RAGPipeline:
         question_template = """
         问题：{{query}}；
         工具调用响应内容：{{func_response}}；
-        文档参考内容：
+        文档参考内容(移除所有URL和网页地址再输出)：
         {% for doc in documents %}
         content: {{ doc.content }} score: {{ doc.score }}
         {% endfor %}
@@ -179,7 +179,7 @@ class RAGPipeline:
         self,
         query: str,
         tools: list = None,
-        template: str = CONFIG.DEFAULT_TEMPLATE,
+        template: str = CONFIG.RAG_PROMPT_TEMPLATE,
         top_k: int = CONFIG.TOP_K,
         score_threshold: float = CONFIG.SCORE_THRESHOLD,
         messages: List[ChatMessage] = [],
@@ -217,7 +217,7 @@ class RAGPipeline:
         self,
         query: str,
         tools: list = None,
-        template: str = CONFIG.DEFAULT_TEMPLATE,
+        template: str = CONFIG.RAG_PROMPT_TEMPLATE,
         top_k: int = CONFIG.TOP_K,
         score_threshold: float = CONFIG.SCORE_THRESHOLD,
         messages: List[ChatMessage] = [],

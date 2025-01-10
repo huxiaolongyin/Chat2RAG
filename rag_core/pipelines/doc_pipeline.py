@@ -10,7 +10,7 @@ from haystack_integrations.components.retrievers.qdrant import QdrantEmbeddingRe
 from haystack_integrations.document_stores.qdrant import QdrantDocumentStore
 
 from rag_core.config import CONFIG
-from rag_core.utils.logger import logger
+from rag_core.logging import logger
 
 # from pyinstrument import Profiler
 

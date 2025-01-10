@@ -1,10 +1,23 @@
+[build-system]
+requires = ["hatchling>=1.8.0"]
+build-backend = "hatchling.build"
+
 [project]
 name = "chat2rag"
-version = "0.1.0"
-description = "与大模型交互的RAG问答系统"
+dynamic = ["version"]
+description = "Chat with RAG"
 readme = "README.md"
-maintainers = [{ name = "Jacob Zheng", email = "1453366421@qq.com" }]
 requires-python = ">=3.9"
+license = { text = "Apache-2.0" }
+authors = [{ name = "Jacob Zheng", email = "1453366421@qq.com" }]
+keywords = ["rag", "llm", "chatbot"]
+classifiers = [  # 添加分类信息
+    "Development Status :: 4 - Beta",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+]
 dependencies = [
     # 核心RAG组件
     "haystack-ai==2.8.0",
@@ -43,11 +56,33 @@ dev = [
     "mypy",           # 类型检查
     "pre-commit"      # git hooks
 ]
+prod = [
+    "gunicorn[standard]==23.2.0",
+    ]
 
-[build-system]
-requires = ["setuptools>=61.0.0"]
-build-backend = "setuptools.build_meta"
+[tool.hatch.version]
+path = "VERSION.txt"
+pattern = "(?P<version>.+)"
 
+[tool.hatch.build.targets.wheel]
+packages = ["rag_core", "backend"]
 
-[tool.setuptools]
-packages = ["rag_core","backend"]
+[project.urls]
+"GitHub: issues" = "https://github.com/huxiaolongyin/Chat2RAG/issues"
+"GitHub: repo" = "https://github.com/huxiaolongyin/Chat2RAG"
+
+[tool.black]
+line-length = 88  # 设置每行代码最大长度
+target-version = ["py39"]  # 指定Python版本，确保格式化符合特定版本语法
+
+[tool.isort]
+profile = "black"  # 使用black兼容的配置
+multi_line_output = 3  # 设置多行导入的格式化方式
+
+[tool.ruff]
+select = ["E", "F", "B"]  # 启用的规则集:
+# E: pycodestyle错误
+# F: pyflakes规则
+# B: flake8-bugbear规则
+ignore = ["E501"]  # 忽略行长度警告
+target-version = "py39"  # 指定Python版本

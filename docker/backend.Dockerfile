@@ -19,15 +19,14 @@ WORKDIR /code
 # 只复制依赖相关文件,利用缓存
 COPY ./pyproject.toml  .
 COPY ./README.md .
+COPY ./VERSION.txt .
 
 # 复制源代码
 COPY ./backend ./backend
 COPY ./rag_core ./rag_core
 
 # 配置pip并安装依赖
-RUN pip3 config set global.index-url https://mirrors.aliyun.com/pypi/simple/ && \
-    pip3 install --no-cache-dir --upgrade pip setuptools wheel && \
-    pip3 install --no-cache-dir .
+RUN pip3 install --no-cache-dir . -i https://mirrors.aliyun.com/pypi/simple/
 
 EXPOSE 8000
 

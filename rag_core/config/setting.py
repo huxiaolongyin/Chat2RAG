@@ -2,6 +2,7 @@ import os
 
 # from functools import lru_cache
 from importlib.metadata import PackageNotFoundError, version
+from pathlib import Path
 
 from dotenv import load_dotenv
 from haystack.utils import Secret
@@ -10,7 +11,7 @@ from .embedding_check import EmbeddingUrlMonitor
 
 load_dotenv(override=True)
 
-
+promt_path = Path(__file__).parent / "prompt"
 # @lru_cache(maxsize=1)
 # def get_embedding_monitor(local_url, remote_url):
 #     return EmbeddingUrlMonitor(local_url=local_url, remote_url=remote_url)
@@ -66,6 +67,25 @@ def load_bool_env(name: str, required: bool = False) -> bool:
         raise Exception(f"Env {name} is not set")
 
 
+def load_prompt(file_name: str, required: bool = False) -> str:
+    """
+    Load prompt from file
+    :param file_name: name of the prompt file, file type is .txt
+    :param required: whether the prompt file is required
+    """
+    file_path = promt_path / file_name
+    if file_path.exists():
+        result = file_path.read_text(encoding="utf-8")
+        if not result and required:
+            raise Exception(f"Prompt file {file_name} is empty")
+
+        return result
+    else:
+        if required:
+            raise Exception(f"Prompt file {file_name} is not found")
+        return ""
+
+
 class Config:
     """Backend configuration"""
 
@@ -82,18 +102,9 @@ class Config:
     # OPENAI
     OPENAI_API_KEY = Secret.from_env_var("OPENAI_API_KEY")
     OPENAI_BASE_URL = load_str_env("OPENAI_BASE_URL", required=True)
-    DEFAULT_TEMPLATE = """
-    你是一个先进的人工智能助手，名字叫 笨笨同学，你的目标是帮助用户并提供有用、安全和诚实的回答。请遵循以下准则：
-    1. 现在提供一些查询内容，使用中文直接回答问题。
-    2. 如果查询内容与问题不相关，请直接根据问题回答。
-    3. 提供准确和最新的信息。如果不确定，请说明你不确定。
-    4. 尽可能给出清晰、简洁的回答，但在需要时也要提供详细解释。
-    5. 请使用人性化的语言。
-    6. 不必说"根据参考内容"，也不必说"答案是"，请直接回复答案。
-    7. 请不要使用列表的形式回答。
-    8. 回复内容请尽量在200字以内。
-    你已准备好协助用户解决各种问题和任务。请以友好和乐于助人的态度开始对话。
-    """
+
+    RAG_PROMPT_TEMPLATE = load_prompt("rag_prompt.txt")
+    FUNCTION_PROMPT_TEMPLATE = load_prompt("function_prompt.txt")
 
     # EMBEDDING
     QDRANT_HOST = load_str_env("QDRANT_HOST", required=False) or "localhost"

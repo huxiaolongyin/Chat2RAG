@@ -1,12 +1,13 @@
 name: chat2rag
 services:
   backend:
-    image: chat2rag-backend:latest
+    image: jacob0827/chat2rag-backend:latest
     container_name: backend
     ports:
       - "8000:8000"
     volumes:
       - ${DATA_PATH}/phoenix:/.phoenix
+      - ${LOG_PATH}:/code/logs
     depends_on:
       - qdrant
     environment:
@@ -19,7 +20,7 @@ services:
     restart: always
 
   frontend:
-    image: chat2rag-frontend:latest
+    image: jacob0827/chat2rag-frontend:latest
     container_name: frontend
     ports:
       - "8501:8501"

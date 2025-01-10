@@ -9,7 +9,7 @@ from haystack.dataclasses import ChatMessage
 
 from rag_core.components import FunctionExecutor
 from rag_core.config import CONFIG
-from rag_core.utils.logger import logger
+from rag_core.logging import logger
 
 
 class FunctionPipeline:
@@ -78,6 +78,7 @@ class FunctionPipeline:
         query: str,
         tools: list,
         messages: List[ChatMessage] = None,
+        template: str = CONFIG.FUNCTION_PROMPT_TEMPLATE,
     ):
         """
         Running the function pipeline.
@@ -85,23 +86,7 @@ class FunctionPipeline:
         logger.info(f"Running function pipeline with query: <{query}>...")
         start = perf_counter()
         messages = [
-            ChatMessage.from_system(
-                """
-你是工具意图识别助手。请分析用户输入并执行以下操作:
-
-1. 如果识别到明确的工具/函数需求:
-- 返回对应的工具及参数
-
-2. 如果未识别到工具需求:
-- 立即返回 None
-- 不需要解释原因
-
-注意:
-- 只关注工具识别,忽略其他内容
-- 快速决策,发现无匹配立即返回 None
-- 不需要额外对话或解释
-"""
-            ),
+            ChatMessage.from_system(template),
             *messages,
             ChatMessage.from_user(query),
         ]
