@@ -116,6 +116,7 @@ class RAGPipeline:
         top_k: int,
         score_threshold: float,
         messages: List[ChatMessage],
+        generation_kwargs: Dict[str, Any],
     ) -> Dict[str, Any]:
         logger.info(f"Running RAG pipeline with query: <{query}>...")
 
@@ -132,6 +133,10 @@ class RAGPipeline:
         documents_list = [
             doc for result in doc_result for doc in result["retriever"]["documents"]
         ]
+        stream_handler = self._stream_callback.__self__
+        if hasattr(stream_handler, "set_doc_info"):
+            stream_handler.set_doc_info(len(documents_list))
+            stream_handler.start()
 
         # 处理函数调用结果
         func_response = (
@@ -145,9 +150,13 @@ class RAGPipeline:
         问题：{{query}}；
         工具调用响应内容：{{func_response}}；
         文档参考内容(移除所有URL和网页地址再输出)：
-        {% for doc in documents %}
-        content: {{ doc.content }} score: {{ doc.score }}
-        {% endfor %}
+        {% if documents %}
+            {% for doc in documents %}
+                content: {{ doc.content }} score: {{ doc.score }}
+            {% endfor %}
+        {% else %}
+            None
+        {% endif %}
         """
         prompt_template = [
             ChatMessage.from_system(template),
@@ -165,7 +174,9 @@ class RAGPipeline:
                     "func_response": func_response,
                     "query": query,
                 },
-            }
+                "generator": {"generation_kwargs": generation_kwargs},
+            },
+            include_outputs_from=["doc_joiner"],
         )
 
         answer = str(result["generator"]["replies"][0].content).replace("\n", "")
@@ -183,6 +194,7 @@ class RAGPipeline:
         top_k: int = CONFIG.TOP_K,
         score_threshold: float = CONFIG.SCORE_THRESHOLD,
         messages: List[ChatMessage] = [],
+        generation_kwargs: Dict[str, Any] = {},
     ) -> Dict[str, Any]:
         """
         Running RAG pipeline query
@@ -207,6 +219,7 @@ class RAGPipeline:
                 top_k=top_k,
                 score_threshold=score_threshold,
                 messages=messages,
+                generation_kwargs=generation_kwargs,
             )
         )
         logger.info(f"RAG pipeline query finished, cost {perf_counter() - start:.2f}s")
@@ -221,6 +234,7 @@ class RAGPipeline:
         top_k: int = CONFIG.TOP_K,
         score_threshold: float = CONFIG.SCORE_THRESHOLD,
         messages: List[ChatMessage] = [],
+        generation_kwargs: Dict[str, Any] = {},
     ) -> Dict[str, Any]:
         """
         执行RAG管道查询
@@ -244,6 +258,7 @@ class RAGPipeline:
             top_k=top_k,
             score_threshold=score_threshold,
             messages=messages,
+            generation_kwargs=generation_kwargs,
         )
 
         logger.info(

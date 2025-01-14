@@ -5,6 +5,8 @@ from queue import Queue
 from time import perf_counter
 from typing import List, Optional
 
+from haystack.dataclasses import StreamingChunk
+
 from rag_core.logging import logger
 
 
@@ -32,9 +34,13 @@ class StreamHandler:
         self.stream_start = perf_counter()
         self.queue = Queue()
         self.config = config or StreamConfig()
+        self.doc_length = 0  # 新增属性
 
-    def callback(self, chunk: str):
+    def callback(self, chunk: StreamingChunk):
         self.queue.put(chunk)
+
+    def set_doc_info(self, doc_count: int):
+        self.queue.put({"type": "doc_info", "count": doc_count})
 
     def _create_message(
         self, content: str, meta: dict = None, is_start: int = 0
@@ -54,6 +60,7 @@ class StreamHandler:
             "content": content,
             "model": meta["model"],
             "status": status,
+            "documentCount": self.doc_length,
             "createTime": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         }
 
@@ -72,6 +79,9 @@ class StreamHandler:
             # 流式处理模式
             while True:
                 chunk = self.queue.get()
+                if isinstance(chunk, dict) and chunk.get("type") == "doc_info":
+                    self.doc_length = chunk["count"]
+                    continue
                 if chunk == "[START]":
                     # 开始处理新一批数据
                     data = self._create_message("", is_start=1)
@@ -93,6 +103,9 @@ class StreamHandler:
             current_batch = []
             while True:
                 chunk = self.queue.get()
+                if isinstance(chunk, dict) and chunk.get("type") == "doc_info":
+                    self.doc_length = chunk["count"]
+                    continue
                 if chunk == "[START]":
                     # 开始处理新一批数据
                     data = self._create_message("", is_start=1)
