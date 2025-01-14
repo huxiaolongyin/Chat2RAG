@@ -1,4 +1,3 @@
-# FROM bitnami/pytorch:2.1.2
 FROM python:3.9-slim
 
 USER root
@@ -30,14 +29,19 @@ RUN pip3 install --no-cache-dir . -i https://mirrors.aliyun.com/pypi/simple/
 
 EXPOSE 8000
 
-# 添加健康检查
-HEALTHCHECK --interval=30s --timeout=3s --start-period=30s --retries=3 \
-    CMD curl -f http://localhost:8000/api/v1/health || exit 1
-
 CMD ["uvicorn", "backend.main:app", \
     "--host", "0.0.0.0", \
     "--port", "8000",\
     "--limit-concurrency","500",\
     "--timeout-keep-alive","65",\
     "--loop", "uvloop"]
-# CMD ["gunicorn", "src.main:app", "-w" ,"4", "-k", "uvicorn.workers.UvicornWorker", "-b", "0.0.0.0:8000", "--timeout", "120", "--max-requests", "1000"]
+
+# 多核服务器可使用这个
+# CMD ["gunicorn", \
+#     "--bind", "0.0.0.0:8000", \
+#     "--preload", \
+#     "--worker-connections", "200", \ 
+#     "-k", "uvicorn.workers.UvicornWorker", \
+#     "--timeout", "120", \
+#     "--max-requests", "1000", \
+#     "backend.main:app"]

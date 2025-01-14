@@ -15,8 +15,14 @@ services:
       - QDRANT_HOST=qdrant
     env_file:
       - ../.env
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8000/api/v1/health" ]
+      interval: 30s
+      timeout: 3s
+      retries: 5
+      start_period: 30s
     networks:
-      - my-network
+      - chat2rag-network
     restart: always
 
   frontend:
@@ -30,8 +36,14 @@ services:
       - TZ=Asia/Shanghai
       - BACKEND_HOST=backend
       - BACKEND_PORT=8000
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8501" ]
+      interval: 30s
+      timeout: 3s
+      retries: 5
+      start_period: 30s
     networks:
-      - my-network
+      - chat2rag-network
     restart: always
 
   qdrant:
@@ -51,7 +63,7 @@ services:
     env_file:
       - ../.env
     networks:
-      - my-network
+      - chat2rag-network
     restart: always
 
   xinference:
@@ -68,9 +80,9 @@ services:
       - ../.env
     command: xinference-local -H 0.0.0.0 --log-level debug
     networks:
-      - my-network
+      - chat2rag-network
     restart: always
 
 networks:
-  my-network:
+  chat2rag-network:
     driver: bridge
