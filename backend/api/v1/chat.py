@@ -1,4 +1,3 @@
-import json
 from concurrent.futures import ThreadPoolExecutor
 from enum import Enum
 
@@ -60,7 +59,7 @@ async def _(
         alias="chatRounds",
     ),
     intention_model: str = Query(
-        default="Qwen/Qwen2.5-32B-Instruct",
+        default="Qwen/Qwen2.5-14B-Instruct",
         description="意图模型",
         alias="intentionModel",
     ),
@@ -74,6 +73,11 @@ async def _(
         description="工具列表",
         alias="toolList",
     ),
+    generation_kwargs: str = Query(
+        default="{}",
+        description="生成参数",
+        alias="generationKwargs",
+    ),
 ):
     # 获取使用的工具信息
     tools = tool_manager.get_tool_info(tool_list)
@@ -82,6 +86,15 @@ async def _(
     history_messages = []
     if chat_id:
         history_messages = chat_cache.get_messages(chat_id, chat_rounds)
+
+    if generation_kwargs == "{}":
+        generation_kwargs = {
+            "temperature": 0.1,
+            "presence_penalty": -0.2,
+            "max_tokens": 150,
+        }
+    else:
+        generation_kwargs = eval(generation_kwargs)
 
     pipeline = RAGPipeline(
         qdrant_index=collection_name,
@@ -94,6 +107,7 @@ async def _(
         top_k=top_k,
         score_threshold=score_threshold,
         messages=history_messages,
+        generation_kwargs=generation_kwargs,
     )
     chat_list = response.get("generator").get("replies")
     data = [chat.to_dict() for chat in chat_list]
@@ -143,7 +157,7 @@ async def _(
         alias="chatRounds",
     ),
     intention_model: str = Query(
-        default="Qwen/Qwen2.5-32B-Instruct",
+        default="Qwen/Qwen2.5-14B-Instruct",
         description="意图模型",
         alias="intentionModel",
     ),
@@ -157,11 +171,25 @@ async def _(
         description="工具列表",
         alias="toolList",
     ),
+    generation_kwargs: str = Query(
+        default="{}",
+        description="生成参数",
+        alias="generationKwargs",
+    ),
 ):
     # print(eval(tool_list))
     handler = StreamHandler()
-    handler.start()
+    # handler.start()
     tools = tool_manager.get_tool_info(eval(tool_list))
+
+    if generation_kwargs == "{}":
+        generation_kwargs = {
+            "temperature": 0.1,
+            "presence_penalty": -0.2,
+            "max_tokens": 150,
+        }
+    else:
+        generation_kwargs = eval(generation_kwargs)
 
     # 获取历史消息
     history_messages = []
@@ -185,6 +213,7 @@ async def _(
             top_k=top_k,
             score_threshold=score_threshold,
             messages=history_messages,
+            generation_kwargs=generation_kwargs,
         )
         handler.finish()
         if chat_id:
