@@ -133,7 +133,10 @@ class RAGPipeline:
         documents_list = [
             doc for result in doc_result for doc in result["retriever"]["documents"]
         ]
-        stream_handler = self._stream_callback.__self__
+        if self._stream_callback != print_streaming_chunk:
+            stream_handler = self._stream_callback.__self__
+        else:
+            stream_handler = None
         if hasattr(stream_handler, "set_doc_info"):
             stream_handler.set_doc_info(len(documents_list))
             stream_handler.start()

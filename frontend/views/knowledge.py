@@ -4,10 +4,9 @@ import time
 import pandas as pd
 import streamlit as st
 import streamlit_antd_components as sac
-
-from frontend.controller.knowledge_controller import knowledge_controller
-from frontend.utils.initialize import initialize_page
-from frontend.utils.sidebar import render_sidebar
+from controller.knowledge_controller import knowledge_controller
+from utils.initialize import initialize_page
+from utils.sidebar import render_sidebar
 
 
 def create_knowledge_template():
