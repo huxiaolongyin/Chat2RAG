@@ -4,9 +4,10 @@ import time
 import pandas as pd
 import streamlit as st
 import streamlit_antd_components as sac
-from controller.knowledge_controller import knowledge_controller
-from utils.initialize import initialize_page
-from utils.sidebar import render_sidebar
+
+from frontend.controller.knowledge_controller import knowledge_controller
+from frontend.utils.initialize import initialize_page
+from frontend.utils.sidebar import render_sidebar
 
 
 def create_knowledge_template():
@@ -29,7 +30,20 @@ def process_uploaded_file(file) -> pd.Series:
     处理上传的Excel文件
     """
     df = pd.read_excel(file, header=0)
-    return df.apply(lambda row: f"{row['问题']}: {row['答案']}", axis=1)
+
+    def process_row(row):
+        """
+        处理每一行数据
+        """
+        question = row["问题"]
+        answer = row["答案"]
+
+        # Using a more direct approach with string formatting
+        if pd.notna(question) and pd.notna(answer):
+            return f"{question}: {answer}"
+        return question if pd.notna(question) else answer
+
+    return df.apply(lambda row: f"{process_row(row)}", axis=1)
 
 
 @st.dialog("确认删除知识", width="small")
@@ -211,54 +225,3 @@ def main():
 
 
 main()
-
-# data_with_select = [{"select": False, **item} for item in st.session_state.doc_list]
-# knowledge_control = st.data_editor(
-#     data_with_select,
-#     column_config={
-#         "select": st.column_config.CheckboxColumn(
-#             "选择",
-#             help="选择要操作的知识",
-#             default=False,
-#         ),
-#         "id": st.column_config.TextColumn("ID", width="small"),
-#         "content": st.column_config.TextColumn("内容"),
-#     },
-#     hide_index=True,
-#     use_container_width=True,
-# )
-
-
-# st.markdown("---")
-# st.markdown("### 上传知识库")
-
-
-# st.download_button(
-#     "下载模板",
-#     data=create_template(),
-#     file_name="知识库模板.xlsx",
-#     use_container_width=True,
-#     type="primary",
-# )
-
-# uploader_file = st.file_uploader(
-#     "上传知识库", type=["xlsx", "xls"], label_visibility="collapsed"
-# )
-# if uploader_file:
-#     df = pd.read_excel(uploader_file, header=0)
-#     process_df = df.apply(lambda row: ":".join([row["问题"], row["答案"]]), axis=1)
-#     st.dataframe(process_df, hide_index=True, use_container_width=True)
-#     st.markdown(f"知识总数：{len(process_df)}")
-#     upload_columns = st.columns(3)
-#     with upload_columns[1]:
-#         submit_button = st.button(
-#             "确认上传",
-#             on_click=knowledge_controller.add_document,
-#             args=(
-#                 collection,
-#                 process_df.tolist(),
-#             ),
-#             key="submit_knowledge",
-#             use_container_width=True,
-#             type="primary",
-#         )
