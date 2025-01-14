@@ -45,29 +45,36 @@ class FunctionExecutor:
         Returns:
             dict: 包含函数调用结果的字典
         """
-        function_responses = []
-        for item in function_info:
-            calls = json.loads(item.content)
-            for call in calls:
-                function_name = call["function"]["name"]
-                function_args = json.loads(call["function"]["arguments"])
 
-                # if function_name not in [*functions, *tool_manager.built_in_tools.keys]:
-                #     logger.error(f"未找到函数: {function_name}")
-                #     continue
-                logger.info(f"执行函数调用: {function_name}，参数为{function_args}")
-                try:
-                    result = self._execute_function(function_name, **function_args)
-                    function_responses.append(f"执行{function_name}得到结果{result}")
-                except TimeoutError:
-                    logger.error(f"函数{function_name}执行超时")
-                    function_responses.append(
-                        f"调用{function_name}内容, 执行超时, 请稍后重试"
-                    )
-                except Exception as e:
-                    logger.error(f"函数 {function_name} 执行出错: {str(e)}")
-                    function_responses.append(
-                        f"调用{function_name}失败, 参数为{function_args}， 请稍后重试"
-                    )
+        try:
+            function_responses = []
+            for item in function_info:
+                calls = json.loads(item.content)
+                for call in calls:
+                    function_name = call["function"]["name"]
+                    function_args = json.loads(call["function"]["arguments"])
+
+                    # if function_name not in [*functions, *tool_manager.built_in_tools.keys]:
+                    #     logger.error(f"未找到函数: {function_name}")
+                    #     continue
+                    logger.info(f"执行函数调用: {function_name}，参数为{function_args}")
+                    try:
+                        result = self._execute_function(function_name, **function_args)
+                        function_responses.append(
+                            f"执行{function_name}得到结果{result}"
+                        )
+                    except TimeoutError:
+                        logger.error(f"函数{function_name}执行超时")
+                        function_responses.append(
+                            f"调用{function_name}内容, 执行超时, 请稍后重试"
+                        )
+                    except Exception as e:
+                        logger.error(f"函数 {function_name} 执行出错: {str(e)}")
+                        function_responses.append(
+                            f"调用{function_name}失败, 参数为{function_args}， 请稍后重试"
+                        )
+        except Exception as e:
+            logger.error(f"函数调用出错: {str(e)}")
+            function_responses = ""
 
         return {"response": function_responses}
