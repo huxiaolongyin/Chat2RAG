@@ -5,6 +5,7 @@ from typing import List, Optional, Tuple
 from haystack.dataclasses import Document
 from haystack_integrations.document_stores.qdrant import QdrantDocumentStore
 
+from rag_core.config.setting import CONFIG
 from rag_core.dataclass.document import QADocument
 from rag_core.logging import logger
 from rag_core.pipelines.doc_pipeline import (
@@ -36,9 +37,9 @@ class QAQdrantDocumentStore(QdrantDocumentStore):
     def __init__(
         self,
         index: str = "Document",
-        port: int = 6333,
-        host: Optional[str] = None,
-        grpc_port: int = 6334,
+        port: int = CONFIG.QDRANT_PORT,
+        host: Optional[str] = CONFIG.QDRANT_HOST,
+        grpc_port: int = CONFIG.QDRANT_GRPC_PORT,
         embedding_dim: int = 1024,
     ):
         super().__init__(

@@ -8,10 +8,15 @@ def version_list():
     ### ⭐️ Highlights
     - 新增精准模式匹配，在精准模式下，将优先进行问题的匹配，然后再进行文档的匹配，从而提高匹配的准确性。
     - 新增知识内容的搜索功能
+    - 新增知识数据导出的功能
     ### 🚀 New Features
     - 在知识写入时，拆分为问题，问题-答案，进行向量的存储
+    - 在消息中新增 uuid
+    - 在环境变量中进行 function 的启用
     ### 🐛 Bug Fixe
     - 修复若干 bug
+    - 修复管道时间计算的问题
+    - 修复不能删除没有meta的知识的问题
 """
         st.markdown(content)
     with st.expander("V0.1.0 (2025-01-10)", expanded=False):

@@ -157,7 +157,7 @@ async def _(
 async def _(
     collection_name: str = Query(description="知识库名称", alias="collectionName"),
     current: int = Query(1, ge=1, description="当前页码，默认1"),
-    size: int = Query(10, ge=1, le=100, description="每页数量(1-100)，默认10"),
+    size: int = Query(10, ge=1, le=10000, description="每页数量(1-10000)，默认10"),
     document_content: Optional[str] = Query(
         None,
         description="文档内容",

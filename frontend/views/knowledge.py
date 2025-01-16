@@ -26,6 +26,43 @@ def create_knowledge_template():
     return buffer.getvalue()
 
 
+def export_documents():
+    doc_list, _ = knowledge_controller.get_documents(
+        collection_name=st.session_state["collection_select"],
+        current=st.session_state["current"],
+        size=9999,
+    )
+
+    if not doc_list:
+        return None
+
+    question = []
+    answer = []
+
+    for item in doc_list:
+        content = item["content"]
+        try:
+            q, a = content.split(": ", 1)  # 使用maxsplit=1确保只分割第一个冒号
+            question.append(q)
+            answer.append(a)
+        except ValueError:
+            question.append("")
+            answer.append(content)
+
+    df = pd.DataFrame(
+        {
+            "问题": question,
+            "答案": answer,
+        }
+    )
+
+    buffer = io.BytesIO()
+    df.to_excel(buffer, index=False)
+    buffer.seek(0)  # 重置buffer位置到开始
+
+    return buffer
+
+
 def process_uploaded_file(file) -> List[QADocument]:
     """
     处理上传的Excel文件
@@ -125,10 +162,26 @@ def render_upload_section():
 
     if uploaded_file:
         process_document_list = process_uploaded_file(uploaded_file)
+
+        questions = [item.question for item in process_document_list]
+        answers = [item.answer for item in process_document_list]
+
+        # 转换为Series以便使用isna()检测
+        questions_series = pd.Series(questions)
+        answers_series = pd.Series(answers)
+
+        if questions_series.isna().any() or "" in questions:
+            st.error("问题列不能包含空值")
+            return False
+
+        if answers_series.isna().any() or "" in answers:
+            st.error("答案列不能包含空值")
+            return False
+
         process_df = pd.DataFrame(
             {
-                "问题": [item.question for item in process_document_list],
-                "答案": [item.answer for item in process_document_list],
+                "问题": questions,
+                "答案": answers,
             }
         )
         st.dataframe(process_df, hide_index=True, use_container_width=True)
@@ -247,6 +300,15 @@ def main():
         on_click=del_knowledge_dialog,
         args=(delete_data,),
     )
+
+    if st.session_state["doc_list"]:
+        st.download_button(
+            "导出知识库",
+            data=export_documents(),
+            file_name=f"{st.session_state['collection_select']}.xlsx",
+            use_container_width=True,
+            type="primary",
+        )
     render_upload_section()
 
 
