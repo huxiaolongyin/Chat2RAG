@@ -1,6 +1,8 @@
+import io
 import os
 from typing import List
 
+import pandas as pd
 import requests
 from dataclass.document import QADocument
 
