@@ -1,5 +1,6 @@
 import datetime
 import json
+import uuid
 from dataclasses import dataclass
 from queue import Queue
 from time import perf_counter
@@ -43,7 +44,11 @@ class StreamHandler:
         self.queue.put({"type": "doc_info", "count": doc_count})
 
     def _create_message(
-        self, content: str, meta: dict = None, is_start: int = 0
+        self,
+        content: str,
+        meta: dict = None,
+        is_start: int = 0,
+        message_id: str = None,
     ) -> dict:
         """创建消息格式"""
         if meta is None:
@@ -62,6 +67,7 @@ class StreamHandler:
             "status": status,
             "documentCount": self.doc_length,
             "createTime": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "messageId": message_id,
         }
 
     def _should_flush_batch(self, chunk: str, batch_content: str) -> bool:
@@ -74,17 +80,19 @@ class StreamHandler:
 
     def get_stream(self, is_batch: bool = False):
         first_response = True  # 添加标志位跟踪第一条响应
+        message_id = str(uuid.uuid4().hex[:16])
         if not is_batch:
 
             # 流式处理模式
             while True:
                 chunk = self.queue.get()
+
                 if isinstance(chunk, dict) and chunk.get("type") == "doc_info":
                     self.doc_length = chunk["count"]
                     continue
                 if chunk == "[START]":
                     # 开始处理新一批数据
-                    data = self._create_message("", is_start=1)
+                    data = self._create_message("", is_start=1, message_id=message_id)
                     yield f"data: {json.dumps(data, ensure_ascii=False)}\n\n"
                     continue
 
@@ -96,7 +104,9 @@ class StreamHandler:
                     logger.info(f"RAG pipeline query response time: {elapsed:.3f}s")
                     first_response = False
 
-                data = self._create_message(chunk.content, chunk.meta)
+                data = self._create_message(
+                    chunk.content, chunk.meta, message_id=message_id
+                )
                 yield f"data: {json.dumps(data, ensure_ascii=False)}\n\n"
         else:
             # 批量处理模式
@@ -108,7 +118,7 @@ class StreamHandler:
                     continue
                 if chunk == "[START]":
                     # 开始处理新一批数据
-                    data = self._create_message("", is_start=1)
+                    data = self._create_message("", is_start=1, message_id=message_id)
                     yield f"data: {json.dumps(data, ensure_ascii=False)}\n\n"
                     continue
                 if chunk == "[END]":
@@ -116,7 +126,9 @@ class StreamHandler:
                     if current_batch:
                         combined_content = "".join([c.content for c in current_batch])
                         data = self._create_message(
-                            combined_content, current_batch[-1].meta
+                            combined_content,
+                            current_batch[-1].meta,
+                            message_id=message_id,
                         )
                         yield f"data: {json.dumps(data, ensure_ascii=False)}\n\n"
                     break
@@ -130,7 +142,9 @@ class StreamHandler:
                         logger.info(f"RAG pipeline query response time: {elapsed:.3f}s")
                         first_response = False
 
-                    data = self._create_message(batch_content, chunk.meta)
+                    data = self._create_message(
+                        batch_content, chunk.meta, message_id=message_id
+                    )
                     yield f"data: {json.dumps(data, ensure_ascii=False)}\n\n"
                     current_batch = []
 
