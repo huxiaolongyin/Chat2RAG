@@ -104,7 +104,10 @@ class Config:
     OPENAI_BASE_URL = load_str_env("OPENAI_BASE_URL", required=True)
 
     RAG_PROMPT_TEMPLATE = load_prompt("rag_prompt.txt")
+
+    # Function
     FUNCTION_PROMPT_TEMPLATE = load_prompt("function_prompt.txt")
+    FUNCION_ENABLED = load_bool_env("FUNCION_ENABLED", required=False) or False
 
     # EMBEDDING
     QDRANT_HOST = load_str_env("QDRANT_HOST", required=False) or "localhost"

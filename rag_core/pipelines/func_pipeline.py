@@ -90,16 +90,20 @@ class FunctionPipeline:
             *messages,
             ChatMessage.from_user(query),
         ]
-        # result = ""
-        result = await asyncio.to_thread(
-            self.pipeline.run,
-            data={
-                "intention": {
-                    "messages": messages,
-                    "generation_kwargs": {"tools": tools},
-                }
-            },
-        )
+
+        if CONFIG.FUNCION_ENABLED:
+            result = await asyncio.to_thread(
+                self.pipeline.run,
+                data={
+                    "intention": {
+                        "messages": messages,
+                        "generation_kwargs": {"tools": tools},
+                    }
+                },
+            )
+        else:
+            result = ""
+
         logger.info(
             f"Function pipeline ran successfully. Cost: {perf_counter() - start:.3f} s; Result: {result};"
         )
