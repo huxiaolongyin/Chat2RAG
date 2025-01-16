@@ -43,7 +43,7 @@ class KnowledgeController:
         current: int = 1,
         size: int = 10,
         document_content: str = None,
-    ) -> list:
+    ) -> tuple:
         response = requests.get(
             self.doc_base_url,
             params={

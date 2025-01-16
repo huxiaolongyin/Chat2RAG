@@ -39,6 +39,10 @@ def initialize_page():
     if "precision_mode_state" not in st.session_state:
         st.session_state.precision_mode_state = False
 
+    # 页码
+    if "current" not in st.session_state:
+        st.session_state.current = 1
+
     #  首次进入页面的提示
     if "show_welcome" not in st.session_state:
         st.session_state.show_welcome = True

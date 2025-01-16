@@ -31,65 +31,63 @@ def process_uploaded_file(file) -> List[QADocument]:
     处理上传的Excel文件
     """
     df = pd.read_excel(file, header=0)
-
     result = []
-
-    def process_row(row) -> QADocument:
-        """
-        处理每一行数据
-        """
+    for _, row in df.iterrows():
         question = row["问题"]
         answer = row["答案"]
+        result.append(QADocument(question=question, answer=answer))
 
-        return QADocument(question=question, answer=answer)
-
-    for _, row in df.iterrows():
-        result.append(process_row(row))
     return result
 
 
 @st.dialog("确认删除知识", width="small")
-def del_knowledge_dialog(collection, data):
+def del_knowledge_dialog(data):
     """
     弹出删除确认窗口
     """
     st.write([item["content"] for item in data])
     data_id = [item["id"] for item in data]
     if st.button("确认删除", use_container_width=True, type="primary"):
-        knowledge_controller.delete_documents(collection, data_id)
+        knowledge_controller.delete_documents(
+            st.session_state["collection_select"], data_id
+        )
         st.rerun()
 
 
-@st.dialog("确认删除知识库", width="small")
-def del_knowledge_store_dialog(name: str):
-    """
-    知识库删除确认窗口
-    """
-    st.write(f"知识库：{name}")
-    if st.button("确认删除", use_container_width=True, type="primary"):
-        knowledge_controller.del_collection(name)
-        st.rerun()
+# @st.dialog("确认删除知识库", width="small")
+# def del_knowledge_store_dialog(name: str):
+#     """
+#     知识库删除确认窗口
+#     """
+#     st.write(f"知识库：{name}")
+#     if st.button("确认删除", use_container_width=True, type="primary"):
+#         knowledge_controller.del_collection(name)
+#         st.rerun()
 
 
-def get_knowledge_doc(collection_name: str):
+def get_documents_list():
     """
     获取知识库文档数据到session
     """
-    if "current" not in st.session_state:
-        st.session_state.current = 1
-    result = knowledge_controller.get_documents(
-        collection_name,
-        current=st.session_state.current,
+    st.session_state["doc_list"], st.session_state["doc_total"] = (
+        knowledge_controller.get_documents(
+            collection_name=st.session_state["collection_select"],
+            current=st.session_state["current"],
+            document_content=st.session_state["document_content"],
+        )
     )
-    st.session_state.doc_list, st.session_state.doc_total = result
+    st.session_state["current"] = 1
 
 
-def render_knowledge_table(collection: str):
+def render_knowledge_table():
     """
     渲染知识库表格
     """
-    get_knowledge_doc(collection)
-    data_with_select = [{"select": False, **item} for item in st.session_state.doc_list]
+    get_documents_list()
+
+    data_with_select = [
+        {"select": False, **item} for item in st.session_state["doc_list"]
+    ]
 
     return st.data_editor(
         data_with_select,
@@ -105,7 +103,7 @@ def render_knowledge_table(collection: str):
     )
 
 
-def render_upload_section(collection: str):
+def render_upload_section():
     """渲染上传区域"""
     st.markdown("---")
     st.markdown("### 上传知识")
@@ -175,7 +173,9 @@ def render_upload_section(collection: str):
                 )
 
                 # 上传当前批次
-                knowledge_controller.add_document(collection, batch_data)
+                knowledge_controller.add_document(
+                    st.session_state["collection_select"], batch_data
+                )
 
             total_time = time.time() - start_time
             progress_bar.progress(100)
@@ -198,26 +198,45 @@ def render_upload_section(collection: str):
             st.rerun()
 
 
+def render_search_bar():
+    col1, col2 = st.columns([4, 1])  # 优化列宽比例
+
+    with col1:
+        st.text_input(
+            label="知识搜索",  # 移除重复的标签
+            placeholder="输入关键词搜索知识库...",  # 更友好的提示文本
+            key="document_content",
+        )
+
+    with col2:
+        st.write("")
+        st.button(
+            "🔍 搜索",  # 添加图标提升视觉效果
+            use_container_width=True,
+            on_click=get_documents_list,
+            type="primary",  # 使用主要按钮样式
+        )
+
+
 def main():
     """
     知识库管理页面
     """
     st.title(":material/auto_stories: 知识库管理")
     initialize_page()
-
     render_sidebar()
+    render_search_bar()
 
-    knowledge_table = render_knowledge_table(st.session_state.collection_select)
+    knowledge_table = render_knowledge_table()
 
     # 分页
     sac.pagination(
-        st.session_state.doc_total,
+        st.session_state["doc_total"],
         page_size=10,
         align="center",
         show_total=True,
         key="current",
-        on_change=get_knowledge_doc,
-        args=(st.session_state.collection_select),
+        on_change=get_documents_list,
     )
 
     # 删除选中知识
@@ -226,12 +245,9 @@ def main():
         "删除选中知识",
         use_container_width=True,
         on_click=del_knowledge_dialog,
-        args=(
-            st.session_state.collection_select,
-            delete_data,
-        ),
+        args=(delete_data,),
     )
-    render_upload_section(st.session_state.collection_select)
+    render_upload_section()
 
 
 main()

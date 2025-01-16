@@ -113,7 +113,7 @@ class QAQdrantDocumentStore(QdrantDocumentStore):
         filter: 针对meta的过滤条件
         eg: {"field": "meta.type", "operator": "==", "value": "article"}
         """
-        filters = {"field": "meta.type", "operator": "==", "value": "qa_pair"}
+        filters = {"field": "meta.type", "operator": "!=", "value": "question"}
         return [
             {"id": doc.id, "content": doc.content}
             for doc in self.filter_documents(filters)
@@ -149,14 +149,21 @@ class QAQdrantDocumentStore(QdrantDocumentStore):
             query=query, top_k=top_k, score_threshold=score_threshold
         )
         documents = response.get("retriever").get("documents")
+        # 优化 todo
+        type = "question" if type == "qa_pair" else "question"
 
-        return [doc for doc in documents if doc.meta.get("type") == type]
+        return [doc for doc in documents if doc.meta.get("type") != type]
 
     async def query_exact(self, query: str) -> Optional[str]:
         """
         通过精准匹配模式，直接索引问题，然后匹配答案
         """
-        response = await self.query(query=query, type="question", top_k=1)
+        response = await self.query(
+            query=query,
+            type="question",
+            score_threshold=0.8,
+            top_k=1,
+        )
         if not response:
             return None
 
