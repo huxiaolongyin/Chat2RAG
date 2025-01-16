@@ -123,16 +123,19 @@ class QAQdrantDocumentStore(QdrantDocumentStore):
         """
         根据 id -> 对应 meta.question_id -> 删除
         """
-        documents = super().get_documents_by_id(doc_id_list)
-        question_id_list = [doc.meta.get("question_id") for doc in documents]
-        filters = {
-            "field": "meta.question_id",
-            "operator": "in",
-            "value": question_id_list,
-        }
-        doc_id_list = [doc.id for doc in self.filter_documents(filters)]
-
-        return super().delete_documents(document_ids=doc_id_list)
+        try:
+            documents = super().get_documents_by_id(doc_id_list)
+            question_id_list = [doc.meta.get("question_id") for doc in documents]
+            filters = {
+                "field": "meta.question_id",
+                "operator": "in",
+                "value": question_id_list,
+            }
+            doc_id_list = [doc.id for doc in self.filter_documents(filters)]
+            return super().delete_documents(document_ids=doc_id_list)
+        except Exception as e:
+            logger.info("Only delete document without meta")
+            return super().delete_documents(document_ids=doc_id_list)
 
     async def query(
         self,
