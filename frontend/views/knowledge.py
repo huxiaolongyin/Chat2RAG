@@ -1,10 +1,12 @@
 import io
 import time
+from typing import List
 
 import pandas as pd
 import streamlit as st
 import streamlit_antd_components as sac
 from controller.knowledge_controller import knowledge_controller
+from dataclass.document import QADocument
 from utils.initialize import initialize_page
 from utils.sidebar import render_sidebar
 
@@ -24,25 +26,26 @@ def create_knowledge_template():
     return buffer.getvalue()
 
 
-def process_uploaded_file(file) -> pd.Series:
+def process_uploaded_file(file) -> List[QADocument]:
     """
     处理上传的Excel文件
     """
     df = pd.read_excel(file, header=0)
 
-    def process_row(row):
+    result = []
+
+    def process_row(row) -> QADocument:
         """
         处理每一行数据
         """
         question = row["问题"]
         answer = row["答案"]
 
-        # Using a more direct approach with string formatting
-        if pd.notna(question) and pd.notna(answer):
-            return f"{question}: {answer}"
-        return question if pd.notna(question) else answer
+        return QADocument(question=question, answer=answer)
 
-    return df.apply(lambda row: f"{process_row(row)}", axis=1)
+    for _, row in df.iterrows():
+        result.append(process_row(row))
+    return result
 
 
 @st.dialog("确认删除知识", width="small")
@@ -82,7 +85,9 @@ def get_knowledge_doc(collection_name: str):
 
 
 def render_knowledge_table(collection: str):
-    """渲染知识库表格"""
+    """
+    渲染知识库表格
+    """
     get_knowledge_doc(collection)
     data_with_select = [{"select": False, **item} for item in st.session_state.doc_list]
 
@@ -121,7 +126,13 @@ def render_upload_section(collection: str):
     )
 
     if uploaded_file:
-        process_df = process_uploaded_file(uploaded_file)
+        process_document_list = process_uploaded_file(uploaded_file)
+        process_df = pd.DataFrame(
+            {
+                "问题": [item.question for item in process_document_list],
+                "答案": [item.answer for item in process_document_list],
+            }
+        )
         st.dataframe(process_df, hide_index=True, use_container_width=True)
         st.markdown(f"知识总数：{len(process_df)}")
 
@@ -144,7 +155,7 @@ def render_upload_section(collection: str):
                 end_idx = min(start_idx + batch_size, total_records)
 
                 # 获取当前批次数据
-                batch_data = process_df[start_idx:end_idx].tolist()
+                batch_data = process_document_list[start_idx:end_idx]
 
                 # 计算预计剩余时间
                 if batch_num > 0:

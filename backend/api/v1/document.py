@@ -1,11 +1,12 @@
 from enum import Enum
 from math import ceil
-from typing import Optional, Union
+from typing import List, Optional, Union
 
 from fastapi import APIRouter, Body, Query
 
 from backend.schema import Error, Success
-from rag_core.document.qdrant import QdrantDocumentManage
+from rag_core.dataclass.document import QADocument
+from rag_core.document.qdrant import QAQdrantDocumentStore
 from rag_core.logging import logger
 
 # from pyinstrument import Profiler
@@ -35,7 +36,7 @@ def collection_exists(collection_name: str):
     """
     Judge the collection is already exists
     """
-    if collection_name in QdrantDocumentManage().get_collection_names():
+    if collection_name in QAQdrantDocumentStore().get_collection_names():
         return True
     return False
 
@@ -66,7 +67,7 @@ async def _(
     )
 
     # 获取所有数据
-    collection_list = QdrantDocumentManage().get_collections()
+    collection_list = QAQdrantDocumentStore().get_collections()
 
     # 如果有搜索条件则过滤
     if collection_name:
@@ -118,7 +119,7 @@ async def _(
 
         return Error(msg="知识库已存在", data={"collection_name": collection_name})
 
-    if QdrantDocumentManage(collection_name).create:
+    if QAQdrantDocumentStore(collection_name).create:
         logger.info(
             f"The knowledge collection <{collection_name}> is created successfully."
         )
@@ -139,7 +140,7 @@ async def _(
 
         return Error(msg="知识库不存在")
     try:
-        QdrantDocumentManage(collection_name).delete_collection
+        QAQdrantDocumentStore(collection_name).delete_collection
         logger.info(
             f"The knowledge collection <{collection_name}> is deleted successfully."
         )
@@ -179,7 +180,7 @@ async def _(
     if not collection_exists(collection_name):
         logger.error(f"Knowledge collection <{collection_name}> does not exist.")
         return Error(msg="知识库不存在")
-    document_list = QdrantDocumentManage(collection_name).get_document_list
+    document_list = QAQdrantDocumentStore(collection_name).get_document_list
     # 如果有搜索条件则过滤
     if document_content:
         document_list = [
@@ -215,11 +216,10 @@ async def _(
 @router.post("/collection/document", summary="创建知识")
 async def _(
     collection_name: str = Query(description="知识库名称", alias="collectionName"),
-    doc_list: Union[list, str] = Body(description="知识内容", alias="docList"),
+    doc_list: List[QADocument] = Body(description="知识内容", alias="docList"),
 ):
-    doc_len = len(doc_list if isinstance(doc_list, list) else [doc_list])
     logger.info(
-        f"Create document of collection. Collection name: <{collection_name}>; Number of documents: <{doc_len}>"
+        f"Create document of collection. Collection name: <{collection_name}>; Number of documents: <{len(doc_list)}>"
     )
 
     if not collection_exists(collection_name):
@@ -229,14 +229,15 @@ async def _(
 
         return Error(msg="知识库不存在")
 
-    if isinstance(doc_list, str):
-        doc_list = [doc_list]
+    # Soon to be deprecated
+    # if isinstance(doc_list, list) and all(isinstance(x, str) for x in doc_list):
+    #     doc_list = [QADocumentModel(question="", answer=doc) for doc in doc_list]
     try:
-        response = await QdrantDocumentManage(index=collection_name).write_documents(
-            collection=collection_name, documents=doc_list
+        response = await QAQdrantDocumentStore(index=collection_name).write_documents(
+            qa_document_list=doc_list
         )
 
-        write_docs_count = response.get("writer").get("documents_written")
+        write_docs_count = response.get("writer").get("documents_written") // 2
         logger.info(
             f"Document is created successfully. Collection name: <{collection_name}>; Number of writes: <{write_docs_count}>"
         )
@@ -258,7 +259,7 @@ async def _(
 @router.delete("/collection/document", summary="删除知识")
 async def _(
     collection_name: str = Query(description="知识库名称", alias="collectionName"),
-    doc_id_list: Union[list, str] = Body(description="知识的id", alias="docIdList"),
+    doc_id_list: List[str] = Body(description="知识的id", alias="docIdList"),
 ):
     logger.info(
         f"Delete from documents. Collection name: <{collection_name}>; Document IDs: <{doc_id_list}>"
@@ -269,10 +270,10 @@ async def _(
 
         return Error(msg="知识库不存在")
 
-    if isinstance(doc_id_list, str):
-        doc_id_list = [doc_id_list]
+    # if isinstance(doc_id_list, str):
+    #     doc_id_list = [doc_id_list]
     try:
-        data = QdrantDocumentManage(collection_name).delete_documents(doc_id_list)
+        data = QAQdrantDocumentStore(collection_name).delete_documents(doc_id_list)
         logger.info(
             f"Documents is deleted successfully. Collection name: <{collection_name}>; Document IDs: <{doc_id_list}>"
         )
@@ -300,6 +301,11 @@ async def _(
         description="分数阈值(0-1.00)，默认0.6",
         alias="scoreThreshold",
     ),
+    type: str = Query(
+        default="qa_pair",
+        description="查询类型(question, qa_pair)",
+        alias="type",
+    ),
 ):
 
     # profiler = Profiler()
@@ -313,13 +319,14 @@ async def _(
 
         return Error(msg="知识库不存在")
 
-    doc = QdrantDocumentManage(collection_name)
+    doc = QAQdrantDocumentStore(collection_name)
     try:
-        response = await doc.query(
-            query=query, top_k=top_k, score_threshold=score_threshold
+        doc_list = await doc.query(
+            query=query,
+            top_k=top_k,
+            score_threshold=score_threshold,
+            type=type,
         )
-
-        doc_list = response.get("retriever").get("documents")
 
         processed_docs = [
             {"id": doc.id, "content": doc.content, "score": doc.score}

@@ -97,7 +97,7 @@ class DocumentSearchPipeline:
         self,
         query: str,
         top_k: int = 5,
-        score_threshold: float = 0.7,
+        score_threshold: float = 0.6,
     ):
         """
         Excute the document search pipeline
@@ -195,17 +195,14 @@ class DocumentWriterPipeline:
             f"Document writer pipeline warmed up successfully with qdrant index <{self._qdrant_index}>"
         )
 
-    async def run(self, documents: Union[str, List[str]]):
+    async def run(self, documents: List[Document]):
         """
         Running the document writer pipeline
         """
-        if isinstance(documents, str):
-            documents = [documents]
-
         logger.info(
-            f"Running document writer pipeline with documents: <{', '.join(documents)}>"
+            f"Running document writer pipeline with documents: <{','.join([item.content for item in documents])}>"
         )
-        documents = [Document(content=document) for document in documents]
+        # documents = [Document(content=document) for document in documents]
         result = await asyncio.to_thread(
             self.pipeline.run,
             data={

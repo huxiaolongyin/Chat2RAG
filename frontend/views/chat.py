@@ -30,6 +30,7 @@ def get_stream_response(query: str) -> requests.Response:
             "chatId": st.session_state.message_id,
             "chatRounds": 5,
             "toolList": '["all"]',
+            "precisionMode": 1 if st.session_state.precision_mode else 0,
         },
         stream=True,
     )
@@ -113,7 +114,9 @@ def handle_user_input(query: str):
 
             # 获取引用文档
             documents = knowledge_controller.query_document(
-                st.session_state.collection_select, query=query
+                st.session_state.collection_select,
+                query=query,
+                precision_mode=st.session_state.precision_mode,
             )
 
             display_references(documents)
@@ -130,7 +133,6 @@ def main():
     with chat_container:
         display_chat_history()
 
-    # 处理用户输入
     if query := st.chat_input("你想说什么?"):
         handle_user_input(query)
 

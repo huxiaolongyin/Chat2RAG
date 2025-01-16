@@ -1,11 +1,12 @@
 import os
 from typing import List
 
-import pandas as pd
 import requests
+from dataclass.document import QADocument
 
 BACKEND_HOST = os.environ.get("BACKEND_HOST", "host.docker.internal")
 BACKEND_PORT = os.environ.get("BACKEND_PORT", "8000")
+from dataclasses import asdict
 
 
 class KnowledgeController:
@@ -20,11 +21,10 @@ class KnowledgeController:
             f"http://{BACKEND_HOST}:{BACKEND_PORT}/api/v1/knowledge/query"
         )
 
-    def get_collections(self):
+    def get_collections(self) -> List:
         response = requests.get(
             self.collect_base_url, params={"current": 1, "size": 100}
         )
-        print()
         if response.status_code == 200:
             result = response.json()["data"]["collectionList"]
             return [item["collectionName"] for item in result]
@@ -42,6 +42,7 @@ class KnowledgeController:
         collection_name: str,
         current: int = 1,
         size: int = 10,
+        document_content: str = None,
     ) -> list:
         response = requests.get(
             self.doc_base_url,
@@ -49,6 +50,7 @@ class KnowledgeController:
                 "collectionName": collection_name,
                 "current": current,
                 "size": size,
+                "documentContent": document_content,
             },
         )
         if response.status_code == 200:
@@ -58,11 +60,11 @@ class KnowledgeController:
         else:
             return [], 0
 
-    def add_document(self, collection_name: str, document: List[str]):
+    def add_document(self, collection_name: str, document: List[QADocument]):
         requests.post(
             self.doc_base_url,
             params={"collectionName": collection_name},
-            json=document,
+            json=[asdict(doc) for doc in document],
         )
 
     def delete_documents(self, collection_name: str, document_id: List[str]):
@@ -72,7 +74,7 @@ class KnowledgeController:
             json=document_id,
         )
 
-    def query_document(self, collection_name: str, query: str):
+    def query_document(self, collection_name: str, query: str, precision_mode: bool):
         """
         获取引用文档
         """
@@ -81,6 +83,7 @@ class KnowledgeController:
             params={
                 "collectionName": collection_name,
                 "query": query,
+                "type": "question" if precision_mode else "qa_pair",
             },
         )
         if response.status_code == 200:

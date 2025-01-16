@@ -3,8 +3,10 @@ from enum import Enum
 
 from fastapi import APIRouter, Query
 from fastapi.responses import StreamingResponse
+from haystack.dataclasses import StreamingChunk
 
 from backend.schema import Error, Success
+from rag_core.document.qdrant import QAQdrantDocumentStore
 from rag_core.pipelines.rag_pipeline import RAGPipeline
 from rag_core.tools import ToolManager
 from rag_core.utils.chat_cache import ChatCache
@@ -46,6 +48,11 @@ async def _(
         description="文档匹配分数阈值",
         alias="scoreThreshold",
     ),
+    precision_mode: int = Query(
+        default=0,
+        description="是否使用精确模式",
+        alias="precisionMode",
+    ),
     chat_id: str = Query(
         None,
         description="聊天的标识",
@@ -79,6 +86,12 @@ async def _(
         alias="generationKwargs",
     ),
 ):
+    # 使用精准匹配模式，直接索引问题，然后匹配答案
+    if precision_mode == 1:
+        answer = await QAQdrantDocumentStore(collection_name).query_exact(query)
+        if answer:
+            return Success(data=[{"content": answer, "role": "assistant"}])
+
     # 获取使用的工具信息
     tools = tool_manager.get_tool_info(tool_list)
 
@@ -144,6 +157,11 @@ async def _(
         description="批量或流式",
         alias="batchOrStream",
     ),
+    precision_mode: int = Query(
+        default=0,
+        description="是否使用精确模式",
+        alias="precisionMode",
+    ),
     chat_id: str = Query(
         None,
         description="聊天的标识",
@@ -177,10 +195,59 @@ async def _(
         alias="generationKwargs",
     ),
 ):
-    # print(eval(tool_list))
     handler = StreamHandler()
-    # handler.start()
     tools = tool_manager.get_tool_info(eval(tool_list))
+    is_batch = batch_or_stream == ProcessType.BATCH
+    executor = ThreadPoolExecutor(max_workers=1)  # 创建全局executor避免提前关闭
+
+    # 处理精确模式
+    def run_exact_query():
+        handler.start()
+        for i in answer:
+            meta = {"model": "None", "finish_reason": "none"}
+            handler.callback(StreamingChunk(content=i, meta=meta))
+
+        handler.callback(
+            StreamingChunk(content="", meta={"model": "None", "finish_reason": "stop"})
+        )
+        handler.finish()
+        if chat_id:
+            chat_cache.add_message(chat_id, query, "user")
+            chat_cache.add_message(chat_id, answer, "assistant")
+
+    # 处理大模型、RAG的消息处理
+    def run_rag_pipeline():
+        result = pipeline.run(
+            query=query,
+            tools=tools,
+            top_k=top_k,
+            score_threshold=score_threshold,
+            messages=history_messages,
+            generation_kwargs=generation_kwargs,
+        )
+        handler.finish()
+        if chat_id:
+            chat_cache.add_message(chat_id, query, "user")
+            chat_cache.add_message(
+                chat_id, result["generator"]["replies"][0].content, "assistant"
+            )
+
+    # 使用精准匹配模式，直接索引问题，然后匹配答案
+    if precision_mode == 1:
+        answer = await QAQdrantDocumentStore(collection_name).query_exact(query)
+        if answer:
+            # 启动后台任务
+            executor.submit(run_exact_query)
+
+            return StreamingResponse(
+                handler.get_stream(is_batch),
+                media_type="text/event-stream",
+                headers={
+                    "Cache-Control": "no-cache",
+                    "Connection": "keep-alive",
+                    "Transfer-Encoding": "chunked",
+                },
+            )
 
     if generation_kwargs == "{}":
         generation_kwargs = {
@@ -203,28 +270,8 @@ async def _(
         generator_model=generator_model,
     )
 
-    # 创建全局executor避免提前关闭
-    executor = ThreadPoolExecutor(max_workers=1)
-
-    def run_rag_pipeline():
-        result = pipeline.run(
-            query=query,
-            tools=tools,
-            top_k=top_k,
-            score_threshold=score_threshold,
-            messages=history_messages,
-            generation_kwargs=generation_kwargs,
-        )
-        handler.finish()
-        if chat_id:
-            chat_cache.add_message(chat_id, query, "user")
-            chat_cache.add_message(
-                chat_id, result["generator"]["replies"][0].content, "assistant"
-            )
-
     # 启动后台任务
     executor.submit(run_rag_pipeline)
-    is_batch = batch_or_stream == ProcessType.BATCH
 
     return StreamingResponse(
         handler.get_stream(is_batch),
