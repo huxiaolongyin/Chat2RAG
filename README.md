@@ -55,6 +55,13 @@ pip install -r frontend/requirements.txt
 ```shell
 pip install .
 ```
+- Step4: Start the service
+```shell
+# backend
+python backend/main.py
+# frontend
+streamlit run frontend/app.py
+```
 
 ### Method 2: Install using docker
 

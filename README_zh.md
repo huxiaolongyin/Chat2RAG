@@ -39,25 +39,25 @@ vi .env
 python >= 3.9
 ```
 
-- 安装 qdrant 向量数据库
+- 步骤1：安装 qdrant 向量数据库
 
 ```shell
 docker run -d --name qdrant -p 6333:6333 -p 6334:6334 qdrant/qdrant:latest
 ```
 
-- 安装 web 所需依赖
+- 步骤2：安装 web 所需依赖
 
 ```shell
 pip install -r frontend/requirements.txt
 ```
 
-- 通过 pyproject.toml 进行安装
+- 步骤3：通过 pyproject.toml 进行安装
 
 ```shell
 pip install .
 ```
 
-- 启动服务
+- 步骤4：启动服务
 ```shell
 # 后端服务
 python backend/main.py
