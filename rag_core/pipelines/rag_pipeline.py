@@ -117,16 +117,17 @@ class RAGPipeline:
         score_threshold: float,
         messages: List[ChatMessage],
         generation_kwargs: Dict[str, Any],
+        start=perf_counter(),
     ) -> Dict[str, Any]:
         logger.info(f"Running RAG pipeline with query: <{query}>...")
 
         # 并发执行文档检索和函数调用
         doc_tasks = [
-            pipeline.run(query, top_k, score_threshold)
+            pipeline.run(query, top_k, score_threshold, start=start)
             for pipeline in self.doc_pipeline
         ]
         func_result, *doc_result = await asyncio.gather(
-            self.func_pipeline.run(query, tools, messages), *doc_tasks
+            self.func_pipeline.run(query, tools, messages, start=start), *doc_tasks
         )
 
         # 处理文档结果
@@ -198,6 +199,7 @@ class RAGPipeline:
         score_threshold: float = CONFIG.SCORE_THRESHOLD,
         messages: List[ChatMessage] = [],
         generation_kwargs: Dict[str, Any] = {},
+        start=perf_counter(),
     ) -> Dict[str, Any]:
         """
         Running RAG pipeline query
@@ -213,7 +215,7 @@ class RAGPipeline:
         Returns:
             Dict[str, Any]: 包含生成结果的字典
         """
-        start = perf_counter()
+        # start = perf_counter()
         result = asyncio.run(
             self._run(
                 query=query,
@@ -223,6 +225,7 @@ class RAGPipeline:
                 score_threshold=score_threshold,
                 messages=messages,
                 generation_kwargs=generation_kwargs,
+                start=start,
             )
         )
         logger.info(f"RAG pipeline query finished, cost {perf_counter() - start:.2f}s")
@@ -238,6 +241,7 @@ class RAGPipeline:
         score_threshold: float = CONFIG.SCORE_THRESHOLD,
         messages: List[ChatMessage] = [],
         generation_kwargs: Dict[str, Any] = {},
+        start=perf_counter(),
     ) -> Dict[str, Any]:
         """
         执行RAG管道查询
@@ -253,7 +257,6 @@ class RAGPipeline:
         Returns:
             Dict[str, Any]: 包含生成结果的字典
         """
-        start = perf_counter()
         result = await self._run(
             query=query,
             tools=tools,

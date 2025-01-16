@@ -1,6 +1,6 @@
 from enum import Enum
 from math import ceil
-from typing import List, Optional, Union
+from typing import List, Optional
 
 from fastapi import APIRouter, Body, Query
 

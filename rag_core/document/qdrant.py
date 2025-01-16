@@ -1,4 +1,5 @@
 import asyncio
+from time import perf_counter
 from typing import List, Optional, Tuple
 
 from haystack.dataclasses import Document
@@ -147,15 +148,20 @@ class QAQdrantDocumentStore(QdrantDocumentStore):
         """
         进行 QA 全文的检索
         """
+        start = perf_counter()
         doc_search_pipeline = DocumentSearchPipeline(self.index)
         response = await doc_search_pipeline.run(
-            query=query, top_k=top_k, score_threshold=score_threshold
+            query=query, top_k=top_k, score_threshold=score_threshold, start=start
         )
         documents = response.get("retriever").get("documents")
         # 优化 todo
-        type = "question" if type == "qa_pair" else "question"
+        type_condition = lambda doc: (
+            doc.meta.get("type") == type
+            if type == "question"
+            else doc.meta.get("type") != "question"
+        )
 
-        return [doc for doc in documents if doc.meta.get("type") != type]
+        return [doc for doc in documents if type_condition(doc)]
 
     async def query_exact(self, query: str) -> Optional[str]:
         """

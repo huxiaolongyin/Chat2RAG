@@ -1,5 +1,6 @@
 from concurrent.futures import ThreadPoolExecutor
 from enum import Enum
+from time import perf_counter
 
 from fastapi import APIRouter, Query
 from fastapi.responses import StreamingResponse
@@ -7,6 +8,7 @@ from haystack.dataclasses import StreamingChunk
 
 from backend.schema import Error, Success
 from rag_core.document.qdrant import QAQdrantDocumentStore
+from rag_core.logging import logger
 from rag_core.pipelines.rag_pipeline import RAGPipeline
 from rag_core.tools import ToolManager
 from rag_core.utils.chat_cache import ChatCache
@@ -86,6 +88,7 @@ async def _(
         alias="generationKwargs",
     ),
 ):
+    start = perf_counter()
     # 使用精准匹配模式，直接索引问题，然后匹配答案
     if precision_mode == 1:
         answer = await QAQdrantDocumentStore(collection_name).query_exact(query)
@@ -121,6 +124,7 @@ async def _(
         score_threshold=score_threshold,
         messages=history_messages,
         generation_kwargs=generation_kwargs,
+        start=start,
     )
     chat_list = response.get("generator").get("replies")
     data = [chat.to_dict() for chat in chat_list]
@@ -195,6 +199,7 @@ async def _(
         alias="generationKwargs",
     ),
 ):
+    start = perf_counter()
     handler = StreamHandler()
     tools = tool_manager.get_tool_info(eval(tool_list))
     is_batch = batch_or_stream == ProcessType.BATCH
@@ -224,6 +229,7 @@ async def _(
             score_threshold=score_threshold,
             messages=history_messages,
             generation_kwargs=generation_kwargs,
+            start=start,
         )
         handler.finish()
         if chat_id:
@@ -235,6 +241,7 @@ async def _(
     # 使用精准匹配模式，直接索引问题，然后匹配答案
     if precision_mode == 1:
         answer = await QAQdrantDocumentStore(collection_name).query_exact(query)
+        logger.info(f"RAG pipeline query finished, cost {perf_counter() - start:.2f}s")
         if answer:
             # 启动后台任务
             executor.submit(run_exact_query)

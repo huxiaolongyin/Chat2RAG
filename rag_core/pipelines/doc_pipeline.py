@@ -98,6 +98,7 @@ class DocumentSearchPipeline:
         query: str,
         top_k: int = 5,
         score_threshold: float = 0.6,
+        start=perf_counter(),
     ):
         """
         Excute the document search pipeline
@@ -108,7 +109,6 @@ class DocumentSearchPipeline:
         logger.info(
             f"Running document search pipeline with query: <{query}>, qdrant index: <{self._qdrant_index}>..."
         )
-        start = perf_counter()
 
         result = await asyncio.to_thread(
             self.pipeline.run,
