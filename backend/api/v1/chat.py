@@ -2,11 +2,15 @@ from concurrent.futures import ThreadPoolExecutor
 from enum import Enum
 from time import perf_counter
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Depends, Query
 from fastapi.responses import StreamingResponse
 from haystack.dataclasses import StreamingChunk
+from sqlalchemy.orm import Session
 
 from backend.schema import Error, Success
+from rag_core.config import CONFIG
+from rag_core.database.database import get_db
+from rag_core.database.models import Prompt
 from rag_core.document.qdrant import QAQdrantDocumentStore
 from rag_core.logging import logger
 from rag_core.pipelines.rag_pipeline import RAGPipeline
@@ -67,6 +71,11 @@ async def _(
         description="聊天轮数",
         alias="chatRounds",
     ),
+    prompt_name: str = Query(
+        default="",
+        description="提示词名称选择",
+        alias="promptName",
+    ),
     intention_model: str = Query(
         default="Qwen/Qwen2.5-14B-Instruct",
         description="意图模型",
@@ -87,8 +96,17 @@ async def _(
         description="生成参数",
         alias="generationKwargs",
     ),
+    db: Session = Depends(get_db),
 ):
     start = perf_counter()
+
+    # 提示词
+    rag_prompt_template = CONFIG.RAG_PROMPT_TEMPLATE
+    if prompt_name:
+        prompt = db.query(Prompt).filter(Prompt.prompt_name == prompt_name).first()
+        if prompt:
+            rag_prompt_template = prompt.prompt_text
+
     # 使用精准匹配模式，直接索引问题，然后匹配答案
     if precision_mode == 1:
         answer = await QAQdrantDocumentStore(collection_name).query_exact(query)
@@ -103,7 +121,7 @@ async def _(
     if chat_id:
         history_messages = chat_cache.get_messages(chat_id, chat_rounds)
 
-    if generation_kwargs == "{}":
+    if generation_kwargs == "{}" or generation_kwargs == "":
         generation_kwargs = {
             "temperature": 0.1,
             "presence_penalty": -0.2,
@@ -121,6 +139,7 @@ async def _(
         query=query,
         tools=tools,
         top_k=top_k,
+        rag_prompt_template=rag_prompt_template,
         score_threshold=score_threshold,
         messages=history_messages,
         generation_kwargs=generation_kwargs,
@@ -135,7 +154,7 @@ async def _(
 async def _(
     collection_name: str = Query(
         None,
-        description="知识库名称",
+        description="   ",
         alias="collectionName",
     ),
     query: str = Query(
@@ -178,6 +197,11 @@ async def _(
         description="聊天轮数",
         alias="chatRounds",
     ),
+    prompt_name: str = Query(
+        default="",
+        description="提示词名称选择",
+        alias="promptName",
+    ),
     intention_model: str = Query(
         default="Qwen/Qwen2.5-14B-Instruct",
         description="意图模型",
@@ -198,11 +222,20 @@ async def _(
         description="生成参数",
         alias="generationKwargs",
     ),
+    db: Session = Depends(get_db),
 ):
     start = perf_counter()
     handler = StreamHandler()
     tools = tool_manager.get_tool_info(eval(tool_list))
     is_batch = batch_or_stream == ProcessType.BATCH
+
+    # 提示词
+    rag_prompt_template = CONFIG.RAG_PROMPT_TEMPLATE
+    if prompt_name:
+        prompt = db.query(Prompt).filter(Prompt.prompt_name == prompt_name).first()
+        if prompt:
+            rag_prompt_template = prompt.prompt_text
+
     executor = ThreadPoolExecutor(max_workers=1)  # 创建全局executor避免提前关闭
 
     # 处理精确模式
@@ -224,6 +257,7 @@ async def _(
     def run_rag_pipeline():
         result = pipeline.run(
             query=query,
+            rag_prompt_template=rag_prompt_template,
             tools=tools,
             top_k=top_k,
             score_threshold=score_threshold,
@@ -241,6 +275,9 @@ async def _(
     # 使用精准匹配模式，直接索引问题，然后匹配答案
     if precision_mode == 1:
         answer = await QAQdrantDocumentStore(collection_name).query_exact(query)
+        logger.info(
+            f"RAG pipeline ran successfully. Query: <{query}>; Answer: <{answer}>"
+        )
         logger.info(f"RAG pipeline query finished, cost {perf_counter() - start:.2f}s")
         if answer:
             # 启动后台任务

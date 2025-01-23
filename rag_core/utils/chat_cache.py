@@ -1,6 +1,6 @@
+from typing import List
+
 from cachetools import TTLCache
-from typing import List, Dict
-import time
 from haystack.dataclasses import ChatMessage
 
 

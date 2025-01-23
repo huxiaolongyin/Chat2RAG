@@ -78,7 +78,7 @@ class FunctionPipeline:
         query: str,
         tools: list,
         messages: List[ChatMessage] = None,
-        template: str = CONFIG.FUNCTION_PROMPT_TEMPLATE,
+        system_template: str = CONFIG.FUNCTION_PROMPT_TEMPLATE,
         start=perf_counter(),
     ):
         """
@@ -86,7 +86,7 @@ class FunctionPipeline:
         """
         logger.info(f"Running function pipeline with query: <{query}>...")
         messages = [
-            ChatMessage.from_system(template),
+            ChatMessage.from_system(system_template),
             *messages,
             ChatMessage.from_user(query),
         ]

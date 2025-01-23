@@ -20,7 +20,9 @@ class RAGPipeline:
     @staticmethod
     @lru_cache(maxsize=32)
     def _create_doc_pipeline(index: str) -> DocumentSearchPipeline:
-        """缓存管理"""
+        """
+        Cache document pipeline
+        """
         return DocumentSearchPipeline(index)
 
     def __init__(
@@ -94,6 +96,7 @@ class RAGPipeline:
             self.pipeline.add_component("generator", generator)
             self.pipeline.connect("doc_joiner.documents", "prompt_builder.documents")
             self.pipeline.connect("prompt_builder.prompt", "generator")
+
             logger.info("Initialize RAG pipeline successfully")
 
         except Exception as e:
@@ -111,14 +114,15 @@ class RAGPipeline:
     async def _run(
         self,
         query: str,
+        rag_prompt_template: str,
         tools: list,
-        template: str,
+        messages: List[ChatMessage],
         top_k: int,
         score_threshold: float,
-        messages: List[ChatMessage],
         generation_kwargs: Dict[str, Any],
         start=perf_counter(),
     ) -> Dict[str, Any]:
+
         logger.info(f"Running RAG pipeline with query: <{query}>...")
 
         # 并发执行文档检索和函数调用
@@ -163,7 +167,7 @@ class RAGPipeline:
         {% endif %}
         """
         prompt_template = [
-            ChatMessage.from_system(template),
+            ChatMessage.from_system(rag_prompt_template),
             *messages,
             ChatMessage.from_user(question_template),
         ]
@@ -193,8 +197,8 @@ class RAGPipeline:
     def run(
         self,
         query: str,
+        rag_prompt_template: str = CONFIG.RAG_PROMPT_TEMPLATE,
         tools: list = None,
-        template: str = CONFIG.RAG_PROMPT_TEMPLATE,
         top_k: int = CONFIG.TOP_K,
         score_threshold: float = CONFIG.SCORE_THRESHOLD,
         messages: List[ChatMessage] = [],
@@ -207,7 +211,7 @@ class RAGPipeline:
         Args:
             query: 用户查询文本
             tools: 可用工具列表
-            template: 自定义提示模板
+            rag_prompt_template: 自定义提示模板
             top_k: 返回的最大文档数
             score_threshold: 相似度阈值
             messages: 聊天消息列表
@@ -220,7 +224,7 @@ class RAGPipeline:
             self._run(
                 query=query,
                 tools=tools,
-                template=template,
+                rag_prompt_template=rag_prompt_template,
                 top_k=top_k,
                 score_threshold=score_threshold,
                 messages=messages,
@@ -236,7 +240,7 @@ class RAGPipeline:
         self,
         query: str,
         tools: list = None,
-        template: str = CONFIG.RAG_PROMPT_TEMPLATE,
+        rag_prompt_template: str = CONFIG.RAG_PROMPT_TEMPLATE,
         top_k: int = CONFIG.TOP_K,
         score_threshold: float = CONFIG.SCORE_THRESHOLD,
         messages: List[ChatMessage] = [],
@@ -249,7 +253,7 @@ class RAGPipeline:
         Args:
             query: 用户查询文本
             tools: 可用工具列表
-            template: 自定义提示模板
+            rag_prompt_template: 自定义提示模板
             top_k: 返回的最大文档数
             score_threshold: 相似度阈值
             messages: 聊天消息列表
@@ -259,8 +263,9 @@ class RAGPipeline:
         """
         result = await self._run(
             query=query,
+            rag_prompt_template=rag_prompt_template,
+            qdrant_index=self.qdrant_index,
             tools=tools,
-            template=template,
             top_k=top_k,
             score_threshold=score_threshold,
             messages=messages,

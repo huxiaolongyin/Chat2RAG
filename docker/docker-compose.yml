@@ -66,6 +66,24 @@ services:
       - chat2rag-network
     restart: always
 
+  postgresql:
+    image: timescale/timescaledb:latest-pg17-bitnami
+    container_name: postgresql
+    ports:
+      - "5432:5432"
+    volumes:
+      - ${DATA_PATH}/postgresql:/bitnami/postgresql
+    environment:
+      - POSTGRESQL_PASSWORD=${POSTGRESQL_PASSWORD}
+      - POSTGRESQL_DATABASE=${POSTGRESQL_DATABASE}
+      - POSTGRESQL_SHARED_BUFFERS=1GB # 设置数据库共享内存缓冲区大小，建议设置为服务器内存的25%，更大的值可以提高读取性能
+      - POSTGRESQL_MAX_CONNECTIONS=50 # 控制数据库最大并发连接数，需要根据服务器资源和应用需求设置
+    env_file:
+      - ../.env
+    networks:
+      - chat2rag-network
+    restart: always
+
   xinference:
     image: xprobe/xinference:v1.1.1-cpu
     container_name: embedding-service
@@ -76,6 +94,7 @@ services:
       - ../scripts:/scripts
     environment:
       - XINFERENCE_HOME=/opt/model
+      - XINFERENCE_MODEL_SRC=modelscope
     env_file:
       - ../.env
     command: xinference-local -H 0.0.0.0 --log-level debug

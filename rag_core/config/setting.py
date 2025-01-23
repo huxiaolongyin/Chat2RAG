@@ -96,14 +96,16 @@ class Config:
         VERSION = "unknown"
 
     # 项目目录
-    # ROOT_DIR = Path(__file__).parent.parent.parent
+    ROOT_DIR = Path(__file__).parent.parent.parent
+    DATA_DIR = ROOT_DIR / "data"
+    SQLITE_DIR = DATA_DIR / "sqlite"
     # LOG_DIR = ROOT_DIR / "logs"
 
     # OPENAI
     OPENAI_API_KEY = Secret.from_env_var("OPENAI_API_KEY")
     OPENAI_BASE_URL = load_str_env("OPENAI_BASE_URL", required=True)
 
-    RAG_PROMPT_TEMPLATE = load_prompt("rag_prompt.txt")
+    RAG_PROMPT_TEMPLATE = load_prompt("rag_default_prompt.txt")
 
     # Function
     FUNCTION_PROMPT_TEMPLATE = load_prompt("function_prompt.txt")
@@ -126,9 +128,18 @@ class Config:
 
     EMBEDDING_OPENAI_URL = embedding_monitor.get_current_url()
 
-    # MODEL
+    # MODEL CONFIG
     TOP_K = load_int_env("TOP_K", required=False) or 5
     SCORE_THRESHOLD = load_float_env("SCORE_THRESHOLD", required=False) or 0.7
+
+    # DATABASE
+    # 确保目录存在
+    SQLITE_DIR.mkdir(parents=True, exist_ok=True)
+
+    DATABASE_URL = (
+        load_str_env("POSTGRESQL_DATABASE_URL", required=False)
+        or f"sqlite:///{SQLITE_DIR}/chat2rag.db"
+    )
 
     # WEB
     WEB_ROUTE_PREFIX = load_str_env("WEB_ROUTE_PREFIX", required=False) or "/api/v1"
