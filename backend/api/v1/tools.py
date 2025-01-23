@@ -63,10 +63,15 @@ async def _(
         key=lambda x: x["function"][sort_by], reverse=(sort_order == SortOrder.DESC)
     )
 
-    # 计算分页
+    # 获取总记录数
     total = len(tool_list)
+
+    # 获取分页数据
     start_index = (current - 1) * size
     end_index = start_index + size
+    records = tool_list[start_index:end_index]
+    # 计算总页数
+    pages = ceil(total / size)
 
     logger.info(
         f"Getting tool list successfully. Tool desc: <{tool_desc}>; Total: {total}"
@@ -75,11 +80,11 @@ async def _(
     # 返回分页数据
     return Success(
         data={
-            "tool_list": tool_list[start_index:end_index],
+            "tool_list": records,
             "current": current,
             "size": size,
             "total": total,
-            "pages": ceil(total / size),
+            "pages": pages,
         },
     )
 

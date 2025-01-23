@@ -24,7 +24,7 @@ Web UI Demo 截图：
 git pull https://github.com/huxiaolongyin/Chat2RAG
 ```
 
-  配置 .env 文件
+    配置 .env 文件
 
 ```shell
 cp .env.example .env
@@ -58,12 +58,14 @@ pip install .
 ```
 
 - 步骤4：启动服务
+
 ```shell
 # 后端服务
 python backend/main.py
 # 前端页面
 streamlit run frontend/app.py
 ```
+
 ### 方法二：通过 docker 进行安装
 
 - 通过 docker-compose 进行安装

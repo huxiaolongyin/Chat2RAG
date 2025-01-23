@@ -10,5 +10,6 @@ services:
       - ../scripts:/scripts
     environment:
       - XINFERENCE_HOME=/opt/model
+      - XINFERENCE_MODEL_SRC=modelscope
     command: xinference-local -H 0.0.0.0 --log-level debug
     restart: always
