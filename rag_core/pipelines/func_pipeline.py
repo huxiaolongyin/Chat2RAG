@@ -79,7 +79,6 @@ class FunctionPipeline:
         tools: list,
         messages: List[ChatMessage] = None,
         system_template: str = CONFIG.FUNCTION_PROMPT_TEMPLATE,
-        start=perf_counter(),
     ):
         """
         Running the function pipeline.
@@ -104,8 +103,6 @@ class FunctionPipeline:
         else:
             result = ""
 
-        logger.info(
-            f"Function pipeline ran successfully. Cost: {perf_counter() - start:.3f} s; Result: {result};"
-        )
+        logger.info(f"Function pipeline ran successfully.  Result: {result};")
 
         return result

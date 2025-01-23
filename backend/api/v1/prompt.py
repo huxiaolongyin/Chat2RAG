@@ -29,7 +29,7 @@ class PromptResponse(PromptBase):
     update_time: datetime
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 @router.get("/list", response_model=List[PromptResponse])

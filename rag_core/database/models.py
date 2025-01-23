@@ -1,17 +1,18 @@
 from datetime import datetime
 
 from sqlalchemy import Column, DateTime, Float, Integer, String
-from sqlalchemy.orm import declarative_base
 
-Base = declarative_base()
+from .database import Base, init_database
 
 
 class RAGPipelineMetrics(Base):
     __tablename__ = "rag_pipeline_metrics"
 
-    time = Column(DateTime(timezone=True), primary_key=True)
+    id = Column(Integer, primary_key=True)
+    time = Column(DateTime(timezone=True), nullable=False)
     chat_id = Column(String)
-    question = Column(String, nullable=False)
+    type = Column(String)  # Adding the missing type column
+    question = Column(String)
     answer = Column(String)
     document_ms = Column(Float)
     function_ms = Column(Float)
@@ -41,3 +42,6 @@ class Prompt(Base):
             "create_time": self.create_time.isoformat() if self.create_time else None,
             "update_time": self.update_time.isoformat() if self.update_time else None,
         }
+
+
+init_database()

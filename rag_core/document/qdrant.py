@@ -149,10 +149,9 @@ class QAQdrantDocumentStore(QdrantDocumentStore):
         """
         进行 QA 全文的检索
         """
-        start = perf_counter()
         doc_search_pipeline = DocumentSearchPipeline(self.index)
         response = await doc_search_pipeline.run(
-            query=query, top_k=top_k, score_threshold=score_threshold, start=start
+            query=query, top_k=top_k, score_threshold=score_threshold
         )
         documents = response.get("retriever").get("documents")
         # 优化 todo

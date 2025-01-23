@@ -11,7 +11,7 @@ from rag_core.logging import logger
 class TimescaleDB:
     def __init__(self):
         self.Session = SessionLocal
-        self._init_timescale_hypertable()
+        # self._init_timescale_hypertable()
 
     def _init_timescale_hypertable(self):
         with self.Session() as session:

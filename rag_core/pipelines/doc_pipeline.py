@@ -98,7 +98,6 @@ class DocumentSearchPipeline:
         query: str,
         top_k: int = 5,
         score_threshold: float = 0.6,
-        start=perf_counter(),
     ):
         """
         Excute the document search pipeline
@@ -118,7 +117,7 @@ class DocumentSearchPipeline:
             },
         )
         logger.info(
-            f"Document search pipeline ran successfully with query: <{query}>; Total: <{len(result['retriever']['documents'])}>; Cost: {perf_counter() - start:.3f} s"
+            f"Document search pipeline ran successfully with query: <{query}>; Total: <{len(result['retriever']['documents'])}>;"
         )
         # profiler.stop()
         # print(profiler.output_text(unicode=True, color=True))

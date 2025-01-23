@@ -120,18 +120,17 @@ class RAGPipeline:
         top_k: int,
         score_threshold: float,
         generation_kwargs: Dict[str, Any],
-        start=perf_counter(),
     ) -> Dict[str, Any]:
 
         logger.info(f"Running RAG pipeline with query: <{query}>...")
 
         # 并发执行文档检索和函数调用
         doc_tasks = [
-            pipeline.run(query, top_k, score_threshold, start=start)
+            pipeline.run(query, top_k, score_threshold)
             for pipeline in self.doc_pipeline
         ]
         func_result, *doc_result = await asyncio.gather(
-            self.func_pipeline.run(query, tools, messages, start=start), *doc_tasks
+            self.func_pipeline.run(query, tools, messages), *doc_tasks
         )
 
         # 处理文档结果
@@ -203,7 +202,6 @@ class RAGPipeline:
         score_threshold: float = CONFIG.SCORE_THRESHOLD,
         messages: List[ChatMessage] = [],
         generation_kwargs: Dict[str, Any] = {},
-        start=perf_counter(),
     ) -> Dict[str, Any]:
         """
         Running RAG pipeline query
@@ -229,10 +227,8 @@ class RAGPipeline:
                 score_threshold=score_threshold,
                 messages=messages,
                 generation_kwargs=generation_kwargs,
-                start=start,
             )
         )
-        logger.info(f"RAG pipeline query finished, cost {perf_counter() - start:.2f}s")
 
         return result
 
@@ -245,7 +241,6 @@ class RAGPipeline:
         score_threshold: float = CONFIG.SCORE_THRESHOLD,
         messages: List[ChatMessage] = [],
         generation_kwargs: Dict[str, Any] = {},
-        start=perf_counter(),
     ) -> Dict[str, Any]:
         """
         执行RAG管道查询
@@ -264,16 +259,11 @@ class RAGPipeline:
         result = await self._run(
             query=query,
             rag_prompt_template=rag_prompt_template,
-            qdrant_index=self.qdrant_index,
             tools=tools,
             top_k=top_k,
             score_threshold=score_threshold,
             messages=messages,
             generation_kwargs=generation_kwargs,
-        )
-
-        logger.info(
-            f"Async RAG pipeline query finished, cost {perf_counter() - start:.3f}s"
         )
 
         return result
