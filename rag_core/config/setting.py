@@ -7,7 +7,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 from haystack.utils import Secret
 
-from .embedding_check import EmbeddingUrlMonitor
+# from .embedding_check import EmbeddingUrlMonitor
 
 load_dotenv(override=True)
 
@@ -121,13 +121,13 @@ class Config:
     REMOTE_EMBEDDING_OPENAI_URL = load_str_env(
         "REMOTE_EMBEDDING_OPENAI_URL", required=False
     )
-    embedding_monitor = EmbeddingUrlMonitor.get_instance()
-    embedding_monitor.setup(
-        local_url=LOCAL_EMBEDDING_OPENAI_URL, remote_url=REMOTE_EMBEDDING_OPENAI_URL
-    )
+    # embedding_monitor = EmbeddingUrlMonitor.get_instance()
+    # embedding_monitor.setup(
+    #     local_url=LOCAL_EMBEDDING_OPENAI_URL, remote_url=REMOTE_EMBEDDING_OPENAI_URL
+    # )
 
-    EMBEDDING_OPENAI_URL = embedding_monitor.get_current_url()
-
+    # EMBEDDING_OPENAI_URL = embedding_monitor.get_current_url()
+    EMBEDDING_OPENAI_URL = REMOTE_EMBEDDING_OPENAI_URL
     # MODEL CONFIG
     TOP_K = load_int_env("TOP_K", required=False) or 5
     SCORE_THRESHOLD = load_float_env("SCORE_THRESHOLD", required=False) or 0.7
