@@ -13,7 +13,7 @@ from utils.sidebar import render_sidebar
 
 chat_container = st.container()
 
-BACKEND_HOST = os.environ.get("BACKEND_HOST", "host.docker.internal")
+BACKEND_HOST = os.environ.get("BACKEND_HOST", "127.0.0.1")
 BACKEND_PORT = os.environ.get("BACKEND_PORT", "8000")
 
 

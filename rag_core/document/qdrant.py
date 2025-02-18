@@ -152,7 +152,11 @@ class QAQdrantDocumentStore(QdrantDocumentStore):
         start = perf_counter()
         doc_search_pipeline = DocumentSearchPipeline(self.index)
         response = await doc_search_pipeline.run(
-            query=query, top_k=top_k, score_threshold=score_threshold, start=start
+            query=query,
+            top_k=top_k,
+            score_threshold=score_threshold,
+            start=start,
+            type=type,
         )
         documents = response.get("retriever").get("documents")
         # 优化 todo
@@ -170,9 +174,9 @@ class QAQdrantDocumentStore(QdrantDocumentStore):
         """
         response = await self.query(
             query=query,
-            type="question",
             score_threshold=0.8,
             top_k=1,
+            type="question",
         )
         if not response:
             return None

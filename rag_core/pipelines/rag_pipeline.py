@@ -264,7 +264,7 @@ class RAGPipeline:
         result = await self._run(
             query=query,
             rag_prompt_template=rag_prompt_template,
-            qdrant_index=self.qdrant_index,
+            # qdrant_index=self.qdrant_index,
             tools=tools,
             top_k=top_k,
             score_threshold=score_threshold,

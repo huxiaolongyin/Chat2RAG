@@ -99,6 +99,7 @@ class DocumentSearchPipeline:
         top_k: int = 5,
         score_threshold: float = 0.6,
         start=perf_counter(),
+        type: str = "qa_pair",
     ):
         """
         Excute the document search pipeline
@@ -114,9 +115,18 @@ class DocumentSearchPipeline:
             self.pipeline.run,
             {
                 "embedder": {"text": query},
-                "retriever": {"top_k": top_k, "score_threshold": score_threshold},
+                "retriever": {
+                    "top_k": top_k,
+                    "score_threshold": score_threshold,
+                    "filters": {
+                        "field": "meta.type",
+                        "operator": "==",
+                        "value": type,
+                    },
+                },
             },
         )
+
         logger.info(
             f"Document search pipeline ran successfully with query: <{query}>; Total: <{len(result['retriever']['documents'])}>; Cost: {perf_counter() - start:.3f} s"
         )
