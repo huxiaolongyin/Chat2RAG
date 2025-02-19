@@ -4,19 +4,45 @@ import streamlit as st
 from controller.knowledge_controller import knowledge_controller
 from controller.model_controller import model_controller
 from controller.prompt_controller import prompt_controller
+from streamlit_cookies_manager import EncryptedCookieManager
 from utils.version import version_list
 
 
-@st.dialog("欢迎", width="large")
-def welcome_page():
-    st.write("👋 欢迎使用本应用！")
-    st.write("这里是一些使用说明...")
-    version_list()
-    _, col, _ = st.columns([2, 1, 2])
-    with col:
-        if st.button("我知道了", use_container_width=True):
-            st.session_state.show_welcome = False
-            st.rerun()
+def init_welcome_page():
+    # 配置 Cookie 管理器
+    cookies = EncryptedCookieManager(
+        prefix="Chat2RAG",  # 可选，用于区分不同应用的 Cookie 前缀
+        password="SUPER_SECRET_PASSWORD",  # 用于加密 Cookie 的密码，请自行替换
+    )
+
+    # 等待 Cookie 管理器初始化完成
+    if not cookies.ready():
+        st.stop()
+
+    # 尝试从 Cookie 中加载状态，如果不存在则默认显示欢迎页 (True)
+    if "show_welcome" not in cookies:
+        cookies["show_welcome"] = "True"
+        cookies.save()
+
+    show_welcome = cookies.get("show_welcome", "True") == "True"
+
+    if show_welcome:
+
+        @st.dialog("欢迎", width="large")
+        def welcome_page():
+            st.write("👋 欢迎使用本应用！")
+            st.write("这里是一些使用说明...")
+            version_list()
+            _, col, _ = st.columns([2, 1, 2])
+            with col:
+                if st.button("我知道了", use_container_width=True):
+                    cookies["show_welcome"] = "False"
+                    cookies.save()
+                    # 清空当前容器，避免整个页面刷新
+                    st.session_state.show_welcome = False
+                    st.rerun()
+
+        welcome_page()
 
 
 def initialize_page():
@@ -70,7 +96,7 @@ def initialize_page():
     if "current" not in st.session_state:
         st.session_state.current = 1
 
-    #  首次进入页面的提示
-    if "show_welcome" not in st.session_state:
-        st.session_state.show_welcome = True
-        welcome_page()
+    # #  首次进入页面的提示
+    # if "show_welcome" not in st.session_state:
+    #     st.session_state.show_welcome = True
+    #     welcome_page()

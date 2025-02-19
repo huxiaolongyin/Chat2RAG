@@ -4,7 +4,7 @@ import requests
 import streamlit as st
 from config import CONFIG
 from controller.knowledge_controller import knowledge_controller
-from utils.initialize import initialize_page
+from utils.initialize import init_welcome_page, initialize_page
 from utils.sidebar import render_sidebar
 
 # from pyinstrument import Profiler
@@ -126,6 +126,7 @@ def main():
     """主函数"""
     # 初始化页面
     chat_container = st.container()
+    init_welcome_page()
     initialize_page()
     render_sidebar()
 
