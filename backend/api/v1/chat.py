@@ -55,7 +55,7 @@ class ChatQueryParams(BaseModel):
     query: str = Field(..., description="查询内容")
     top_k: int = Field(default=5, ge=0, le=30, alias="topK", description="返回数量")
     score_threshold: float = Field(
-        default=0.6,
+        default=0.65,
         ge=0.0,
         le=1.0,
         alias="scoreThreshold",

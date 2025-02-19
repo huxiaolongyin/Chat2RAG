@@ -297,8 +297,8 @@ async def _(
         alias="topK",
     ),
     score_threshold: float = Query(
-        default=0.6,
-        description="分数阈值(0-1.00)，默认0.6",
+        default=0.65,
+        description="分数阈值(0-1.00)，默认0.65",
         alias="scoreThreshold",
     ),
     type: str = Query(
