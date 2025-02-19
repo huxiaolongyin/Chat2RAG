@@ -77,6 +77,7 @@ class KnowledgeController:
                 "collectionName": collection_name,
                 "query": query,
                 "type": "question" if precision_mode else "qa_pair",
+                "scoreThreshold": 0.65,
             },
         )
         if response.status_code == 200:

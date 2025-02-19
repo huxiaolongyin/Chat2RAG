@@ -13,6 +13,12 @@ def model_change():
     )
 
 
+def prompt_change():
+    st.session_state.prompt_select_index = st.session_state.prompt_list.index(
+        st.session_state.prompt_select
+    )
+
+
 # 创建回调函数来更新状态
 def update_precision_mode():
     st.session_state.precision_mode_state = st.session_state.precision_mode
@@ -33,6 +39,13 @@ def render_sidebar():
             key="model_select",
             on_change=model_change,
             options=st.session_state.model_list,
+        )
+        st.selectbox(
+            "请选择提示词",
+            index=st.session_state.prompt_select_index,
+            key="prompt_select",
+            on_change=prompt_change,
+            options=st.session_state.prompt_list,
         )
         _, col2, _ = st.columns([1, 5, 1])
         with col2:

@@ -2,8 +2,8 @@ from datetime import datetime
 from math import ceil
 from typing import List
 
-from fastapi import APIRouter, Depends, Query
-from pydantic import BaseModel
+from fastapi import APIRouter, Body, Depends, Query
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from backend.schema import Error, Success
@@ -15,8 +15,8 @@ router = APIRouter()
 
 
 class PromptBase(BaseModel):
-    prompt_name: str
-    prompt_text: str
+    prompt_name: str = Field(..., alias="promptName")
+    prompt_text: str = Field(..., alias="promptText")
 
 
 class PromptCreate(PromptBase):
@@ -32,7 +32,7 @@ class PromptResponse(PromptBase):
         from_attributes = True
 
 
-@router.get("/list", response_model=List[PromptResponse])
+@router.get("/list")
 def _(
     current: int = Query(default=1, ge=1),
     size: int = Query(default=10, ge=1, le=100),
@@ -121,7 +121,11 @@ def _(prompt: PromptCreate, db: Session = Depends(get_db)):
 
 
 @router.put("/update", response_model=PromptResponse)
-def _(prompt_id: int, prompt: PromptCreate, db: Session = Depends(get_db)):
+def _(
+    prompt_id: int = Query(alias="promptId"),
+    prompt: PromptCreate = Body(...),
+    db: Session = Depends(get_db),
+):
     db_prompt = db.query(Prompt).filter(Prompt.id == prompt_id).first()
     if db_prompt is None:
         logger.error(f"Update prompt falied. Prompt id: {prompt_id}")
@@ -137,7 +141,10 @@ def _(prompt_id: int, prompt: PromptCreate, db: Session = Depends(get_db)):
 
 
 @router.delete("/remove")
-def _(prompt_id: int, db: Session = Depends(get_db)):
+def _(
+    prompt_id: int = Query(..., alias="promptId"),
+    db: Session = Depends(get_db),
+):
     db_prompt = db.query(Prompt).filter(Prompt.id == prompt_id).first()
     if db_prompt is None:
         logger.error(f"Update prompt falied. Prompt id: {prompt_id}")

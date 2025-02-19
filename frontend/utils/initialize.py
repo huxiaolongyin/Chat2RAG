@@ -3,6 +3,7 @@ import random
 import streamlit as st
 from controller.knowledge_controller import knowledge_controller
 from controller.model_controller import model_controller
+from controller.prompt_controller import prompt_controller
 from utils.version import version_list
 
 
@@ -30,11 +31,30 @@ def initialize_page():
         st.session_state.collection_select_index = 0
         st.session_state.collection_select = st.session_state.collections_list[0]
 
+    # 模型
     if "model_list" not in st.session_state:
         st.session_state.model_list = model_controller.get_model_list()
     if "model_select_index" not in st.session_state:
-        st.session_state.model_select_index = 0
-        st.session_state.model_select = st.session_state.model_list[0]
+        try:
+            model_index = st.session_state.model_list.index("Qwen/Qwen2.5-32B-Instruct")
+        except:
+            print("Qwen/Qwen2.5-32B-Instruct 不在模型列表中")
+            model_index = 0
+        st.session_state.model_select_index = model_index
+        st.session_state.model_select = st.session_state.model_list[model_index]
+
+    # 提示词
+    if "prompt_list" not in st.session_state:
+        st.session_state.prompt_list = prompt_controller.get_prompt_list()
+    if "prompt_select_index" not in st.session_state:
+        try:
+            prompt_index = st.session_state.prompt_list.index("默认")
+        except ValueError:
+            print("默认 不在 prompt 列表中")
+            prompt_index = 0
+        st.session_state.prompt_select_index = prompt_index
+        st.session_state.prompt_select = st.session_state.prompt_list[prompt_index]
+        # st.session_state.prompt_select = "Qwen/Qwen2.5-32B-Instruct"
 
     # 如果 "messages" 不存在于会话状态中，则初始化它，用于加载历史消息
     if "messages" not in st.session_state:

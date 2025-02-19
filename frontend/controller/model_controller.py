@@ -4,8 +4,8 @@ from config import CONFIG
 
 class ModelController:
     def __init__(self):
-        self.model_base_url = f"{CONFIG.OPEN_BASE_URL}/models"
-        self.token = CONFIG.API_TOKEN
+        self.model_base_url = f"{CONFIG.OPENAI_BASE_URL}/models"
+        self.token = CONFIG.OPENAI_API_KEY
 
     def get_model_list(self):
         headers = {"Authorization": "Bearer " + self.token}

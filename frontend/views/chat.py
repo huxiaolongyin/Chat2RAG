@@ -29,6 +29,8 @@ def get_stream_response(query: str) -> requests.Response:
             "toolList": '["all"]',
             "precisionMode": 1 if st.session_state.precision_mode else 0,
             "generatorModel": st.session_state.model_select,
+            "promptName": st.session_state.prompt_select,
+            "scoreThreshold": 0.65,
         },
         stream=True,
     )

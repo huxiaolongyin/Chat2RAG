@@ -143,7 +143,7 @@ class Config:
 
     # WEB
     WEB_ROUTE_PREFIX = load_str_env("WEB_ROUTE_PREFIX", required=False) or "/api/v1"
-    WEB_PORT = load_int_env("WEB_PORT", required=False) or 8000
+    BACKEND_PORT = load_int_env("BACKEND_PORT", required=False) or 8000
 
     # OTHER SERVICE
     GAODE_API_KEY = load_str_env("GAODE_API_KEY", required=True)

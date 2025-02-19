@@ -45,7 +45,7 @@ if __name__ == "__main__":
     uvicorn.run(
         "backend.main:app",
         host="0.0.0.0",
-        port=CONFIG.WEB_PORT,
+        port=CONFIG.BACKEND_PORT,
         reload=True,
         reload_excludes=["frontend/*", "frontend/**/*", "*.pyc"],
     )
