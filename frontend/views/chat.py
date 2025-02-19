@@ -28,6 +28,7 @@ def get_stream_response(query: str) -> requests.Response:
             "chatRounds": 5,
             "toolList": '["all"]',
             "precisionMode": 1 if st.session_state.precision_mode else 0,
+            "generatorModel": st.session_state.model_select,
         },
         stream=True,
     )

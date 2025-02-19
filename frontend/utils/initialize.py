@@ -2,6 +2,7 @@ import random
 
 import streamlit as st
 from controller.knowledge_controller import knowledge_controller
+from controller.model_controller import model_controller
 from utils.version import version_list
 
 
@@ -22,12 +23,18 @@ def initialize_page():
     初始化知识库列表
     """
     if "collections_list" not in st.session_state:
-        st.session_state.collections_list = knowledge_controller.get_collections()
+        st.session_state.collections_list = knowledge_controller.get_collection_list()
 
     # 初始化知识库选择
     if "collection_select_index" not in st.session_state:
         st.session_state.collection_select_index = 0
         st.session_state.collection_select = st.session_state.collections_list[0]
+
+    if "model_list" not in st.session_state:
+        st.session_state.model_list = model_controller.get_model_list()
+    if "model_select_index" not in st.session_state:
+        st.session_state.model_select_index = 0
+        st.session_state.model_select = st.session_state.model_list[0]
 
     # 如果 "messages" 不存在于会话状态中，则初始化它，用于加载历史消息
     if "messages" not in st.session_state:

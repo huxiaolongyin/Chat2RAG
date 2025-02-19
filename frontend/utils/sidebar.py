@@ -7,6 +7,12 @@ def collection_change():
     )
 
 
+def model_change():
+    st.session_state.model_select_index = st.session_state.model_list.index(
+        st.session_state.model_select
+    )
+
+
 # 创建回调函数来更新状态
 def update_precision_mode():
     st.session_state.precision_mode_state = st.session_state.precision_mode
@@ -20,6 +26,13 @@ def render_sidebar():
             key="collection_select",
             on_change=collection_change,
             options=st.session_state.collections_list,
+        )
+        st.selectbox(
+            "请选择模型",
+            index=st.session_state.model_select_index,
+            key="model_select",
+            on_change=model_change,
+            options=st.session_state.model_list,
         )
         _, col2, _ = st.columns([1, 5, 1])
         with col2:

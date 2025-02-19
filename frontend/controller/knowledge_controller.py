@@ -14,7 +14,7 @@ class KnowledgeController:
             f"http://{CONFIG.BACKEND_HOST}:{CONFIG.BACKEND_PORT}/api/v1/knowledge/query"
         )
 
-    def get_collections(self) -> List:
+    def get_collection_list(self) -> List:
         response = requests.get(
             self.collect_base_url, params={"current": 1, "size": 100}
         )
