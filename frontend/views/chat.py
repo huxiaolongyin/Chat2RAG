@@ -1,8 +1,8 @@
 import json
-import os
 
 import requests
 import streamlit as st
+from config import CONFIG
 from controller.knowledge_controller import knowledge_controller
 from utils.initialize import initialize_page
 from utils.sidebar import render_sidebar
@@ -13,16 +13,13 @@ from utils.sidebar import render_sidebar
 
 chat_container = st.container()
 
-BACKEND_HOST = os.environ.get("BACKEND_HOST", "127.0.0.1")
-BACKEND_PORT = os.environ.get("BACKEND_PORT", "8000")
-
 
 def get_stream_response(query: str) -> requests.Response:
     """
     获取流式响应
     """
     return requests.get(
-        f"http://{BACKEND_HOST}:{BACKEND_PORT}/api/v1/chat/query-stream",
+        f"http://{CONFIG.BACKEND_HOST}:{CONFIG.BACKEND_PORT}/api/v1/chat/query-stream",
         params={
             "collectionName": st.session_state.collection_select,
             "query": query,

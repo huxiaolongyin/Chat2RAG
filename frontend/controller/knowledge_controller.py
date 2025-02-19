@@ -1,26 +1,17 @@
-import io
-import os
+from dataclasses import asdict
 from typing import List
 
-import pandas as pd
 import requests
+from config import CONFIG
 from dataclass.document import QADocument
-
-BACKEND_HOST = os.environ.get("BACKEND_HOST", "127.0.0.1")
-BACKEND_PORT = os.environ.get("BACKEND_PORT", "8000")
-from dataclasses import asdict
 
 
 class KnowledgeController:
     def __init__(self):
-        self.collect_base_url = (
-            f"http://{BACKEND_HOST}:{BACKEND_PORT}/api/v1/knowledge/collection"
-        )
-        self.doc_base_url = (
-            f"http://{BACKEND_HOST}:{BACKEND_PORT}/api/v1/knowledge/collection/document"
-        )
+        self.collect_base_url = f"http://{CONFIG.BACKEND_HOST}:{CONFIG.BACKEND_PORT}/api/v1/knowledge/collection"
+        self.doc_base_url = f"http://{CONFIG.BACKEND_HOST}:{CONFIG.BACKEND_PORT}/api/v1/knowledge/collection/document"
         self.doc_query_url = (
-            f"http://{BACKEND_HOST}:{BACKEND_PORT}/api/v1/knowledge/query"
+            f"http://{CONFIG.BACKEND_HOST}:{CONFIG.BACKEND_PORT}/api/v1/knowledge/query"
         )
 
     def get_collections(self) -> List:

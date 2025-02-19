@@ -1,10 +1,8 @@
-import os
-
 import streamlit as st
+from config import CONFIG
 
-title = "Chat2RAG(正式版)" if os.environ.get("DEPLOY_ENV") else "Chat2RAG(测试版)"
 st.set_page_config(
-    page_title=title,
+    page_title=CONFIG.TITLE,
     layout="centered",
     page_icon="🤖",
 )
