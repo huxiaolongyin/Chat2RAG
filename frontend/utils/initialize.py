@@ -1,15 +1,27 @@
 import random
+import time
 
 import streamlit as st
 from controller.knowledge_controller import knowledge_controller
 from controller.model_controller import model_controller
 from controller.prompt_controller import prompt_controller
-from streamlit_cookies_manager import EncryptedCookieManager
+from streamlit_cookie import EncryptedCookieManager
 from utils.version import version_list
 
 
 def init_welcome_page():
+    """初始化欢迎页"""
     # 配置 Cookie 管理器
+    st.markdown(
+        """
+    <style>
+    .st-key-CookieManager-sync_cookies {
+        display: none;
+    }
+    </style>
+    """,
+        unsafe_allow_html=True,
+    )
     cookies = EncryptedCookieManager(
         prefix="Chat2RAG",  # 可选，用于区分不同应用的 Cookie 前缀
         password="SUPER_SECRET_PASSWORD",  # 用于加密 Cookie 的密码，请自行替换
@@ -38,8 +50,6 @@ def init_welcome_page():
                 if st.button("我知道了", use_container_width=True):
                     cookies["show_welcome"] = "False"
                     cookies.save()
-                    # 清空当前容器，避免整个页面刷新
-                    st.session_state.show_welcome = False
                     st.rerun()
 
         welcome_page()
@@ -96,8 +106,3 @@ def initialize_page():
     # 页码
     if "current" not in st.session_state:
         st.session_state.current = 1
-
-    # #  首次进入页面的提示
-    # if "show_welcome" not in st.session_state:
-    #     st.session_state.show_welcome = True
-    #     welcome_page()
