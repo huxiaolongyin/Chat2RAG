@@ -27,6 +27,7 @@ class Prompt(Base):
 
     id = Column(Integer, primary_key=True)
     prompt_name = Column(String)
+    prompt_intro = Column(String)
     prompt_text = Column(String)
     create_time = Column(DateTime(timezone=True), default=datetime.now())
     update_time = Column(
@@ -37,6 +38,7 @@ class Prompt(Base):
         return {
             "id": self.id,
             "prompt_name": self.prompt_name,
+            "prompt_intro": self.prompt_intro,
             "prompt_text": self.prompt_text,
             "create_time": self.create_time.isoformat() if self.create_time else None,
             "update_time": self.update_time.isoformat() if self.update_time else None,

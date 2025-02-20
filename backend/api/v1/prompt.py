@@ -1,35 +1,15 @@
-from datetime import datetime
 from math import ceil
-from typing import List
 
 from fastapi import APIRouter, Body, Depends, Query
-from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from backend.schema import Error, Success
+from backend.schema.prompt import PromptCreate
 from rag_core.database.database import get_db
 from rag_core.database.models import Prompt
 from rag_core.logging import logger
 
 router = APIRouter()
-
-
-class PromptBase(BaseModel):
-    prompt_name: str = Field(..., alias="promptName")
-    prompt_text: str = Field(..., alias="promptText")
-
-
-class PromptCreate(PromptBase):
-    pass
-
-
-class PromptResponse(PromptBase):
-    id: int
-    create_time: datetime
-    update_time: datetime
-
-    class Config:
-        from_attributes = True
 
 
 @router.get("/list")
@@ -88,8 +68,11 @@ def _(
     )
 
 
-@router.post("/add", response_model=PromptResponse)
-def _(prompt: PromptCreate, db: Session = Depends(get_db)):
+@router.post("/add")
+def _(
+    prompt: PromptCreate,
+    db: Session = Depends(get_db),
+):
     # 检查名称是否已存在
     existing_prompt = (
         db.query(Prompt).filter(Prompt.prompt_name == prompt.prompt_name).first()
@@ -112,15 +95,7 @@ def _(prompt: PromptCreate, db: Session = Depends(get_db)):
     return Success(msg="添加提示词成功")
 
 
-# @router.get("/{prompt_id}", response_model=PromptResponse)
-# def _(prompt_id: int, db: Session = Depends(get_db)):
-#     prompt = db.query(Prompt).filter(Prompt.id == prompt_id).first()
-#     if prompt is None:
-#         raise HTTPException(status_code=404, detail="Prompt not found")
-#     return prompt
-
-
-@router.put("/update", response_model=PromptResponse)
+@router.put("/update")
 def _(
     prompt_id: int = Query(alias="promptId"),
     prompt: PromptCreate = Body(...),
