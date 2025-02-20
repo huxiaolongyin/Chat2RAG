@@ -14,7 +14,7 @@ def model_change():
 
 
 def prompt_change():
-    st.session_state.prompt_select_index = st.session_state.prompt_list.index(
+    st.session_state.prompt_select_index = st.session_state.prompt_name_list.index(
         st.session_state.prompt_select
     )
 
@@ -45,7 +45,7 @@ def render_sidebar():
             index=st.session_state.prompt_select_index,
             key="prompt_select",
             on_change=prompt_change,
-            options=st.session_state.prompt_list,
+            options=st.session_state.prompt_name_list,
         )
         _, col2, _ = st.columns([1, 5, 1])
         with col2:

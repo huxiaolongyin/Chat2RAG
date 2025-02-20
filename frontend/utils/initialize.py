@@ -62,9 +62,9 @@ def initialize_page():
         st.session_state.model_list = model_controller.get_model_list()
     if "model_select_index" not in st.session_state:
         try:
-            model_index = st.session_state.model_list.index("Qwen/Qwen2.5-32B-Instruct")
+            model_index = st.session_state.model_list.index("Qwen2.5-32B")
         except:
-            print("Qwen/Qwen2.5-32B-Instruct 不在模型列表中")
+            print("Qwen2.5-32B 不在模型列表中")
             model_index = 0
         st.session_state.model_select_index = model_index
         st.session_state.model_select = st.session_state.model_list[model_index]
@@ -72,15 +72,16 @@ def initialize_page():
     # 提示词
     if "prompt_list" not in st.session_state:
         st.session_state.prompt_list = prompt_controller.get_prompt_list()
+    if "prompt_name_list" not in st.session_state:
+        st.session_state.prompt_name_list = prompt_controller.get_prompt_name_list()
     if "prompt_select_index" not in st.session_state:
         try:
-            prompt_index = st.session_state.prompt_list.index("默认")
+            prompt_index = st.session_state.prompt_name_list.index("默认")
         except ValueError:
             print("默认 不在 prompt 列表中")
             prompt_index = 0
         st.session_state.prompt_select_index = prompt_index
-        st.session_state.prompt_select = st.session_state.prompt_list[prompt_index]
-        # st.session_state.prompt_select = "Qwen/Qwen2.5-32B-Instruct"
+        st.session_state.prompt_select = st.session_state.prompt_name_list[prompt_index]
 
     # 如果 "messages" 不存在于会话状态中，则初始化它，用于加载历史消息
     if "messages" not in st.session_state:

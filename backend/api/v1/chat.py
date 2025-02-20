@@ -29,8 +29,8 @@ class Config:
     """配置常量集中管理"""
 
     DEFAULT_MODELS = {
-        "intention": "Qwen/Qwen2.5-14B-Instruct",
-        "generator": "Qwen/Qwen2.5-32B-Instruct",
+        "intention": "Qwen2.5-14B",
+        "generator": "Qwen2.5-32B",
     }
 
     GENERATION_KWARGS = {

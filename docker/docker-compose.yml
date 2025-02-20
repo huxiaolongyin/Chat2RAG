@@ -83,24 +83,65 @@ services:
     networks:
       - chat2rag-network
     restart: always
-
-  xinference:
-    image: xprobe/xinference:v1.1.1-cpu
-    container_name: embedding-service
-    ports:
-      - "9998:9997"
-    volumes:
-      - ${MODEL_PATH}:/opt/model
-      - ../scripts:/scripts
+  mysql:
+    # image: registry.cn-hangzhou.aliyuncs.com/fastgpt/mysql:8.0.36 # 阿里云
+    image: mysql:8.0.36
+    container_name: mysql
+    restart: always
+    # ports:
+    #   - 7586:3306
+    networks:
+      - chat2rag-network
+    command: --default-authentication-plugin=mysql_native_password
     environment:
-      - XINFERENCE_HOME=/opt/model
-      - XINFERENCE_MODEL_SRC=modelscope
-    env_file:
-      - ../.env
-    command: xinference-local -H 0.0.0.0 --log-level debug
+      # 默认root密码，仅首次运行有效
+      MYSQL_ROOT_PASSWORD: Aa@123123
+      MYSQL_DATABASE: oneapi
+    volumes:
+      - ${DATA_PATH}/mysql:/var/lib/mysql
+  oneapi:
+    container_name: oneapi
+    image: ghcr.io/songquanpeng/one-api:v0.6.7
+    # image: registry.cn-hangzhou.aliyuncs.com/fastgpt/one-api:v0.6.6 # 阿里云
+    ports:
+      - 3001:3000
+    depends_on:
+      - mysql
     networks:
       - chat2rag-network
     restart: always
+    environment:
+      # mysql 连接参数
+      - SQL_DSN=root:Aa@123123@tcp(mysql:3306)/oneapi
+      # 登录凭证加密密钥
+      - SESSION_SECRET=oneapikey
+      # 内存缓存
+      - MEMORY_CACHE_ENABLED=true
+      # 启动聚合更新，减少数据交互频率
+      - BATCH_UPDATE_ENABLED=true
+      # 聚合更新时长
+      - BATCH_UPDATE_INTERVAL=10
+      # 初始化的 root 密钥（建议部署完后更改，否则容易泄露）
+      - INITIAL_ROOT_TOKEN=mygpt
+    volumes:
+      - ${DATA_PATH}/oneapi:/data
+  # xinference:
+  #   image: xprobe/xinference:v1.1.1-cpu
+  #   container_name: embedding-service
+  #   ports:
+  #     - "9998:9997"
+  #   volumes:
+  #     - ${MODEL_PATH}:/opt/model
+  #     - ../scripts:/scripts
+  #   environment:
+  #     - XINFERENCE_HOME=/opt/model
+  #     - XINFERENCE_MODEL_SRC=modelscope
+  #   env_file:
+  #     - ../.env
+  #   command: xinference-local -H 0.0.0.0 --log-level debug
+  #   networks:
+  #     - chat2rag-network
+  #   restart: always
 
 networks:
   chat2rag-network:

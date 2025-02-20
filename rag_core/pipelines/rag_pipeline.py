@@ -28,8 +28,8 @@ class RAGPipeline:
     def __init__(
         self,
         qdrant_index: Union[str, List[str]],
-        intention_model: str = "Qwen/Qwen2.5-14B-Instruct",
-        generator_model: str = "Qwen/Qwen2.5-32B-Instruct",
+        intention_model: str = "Qwen2.5-14B",
+        generator_model: str = "Qwen2.5-32B",
         stream_callback: Callable = print_streaming_chunk,
     ):
         qdrant_index = (
