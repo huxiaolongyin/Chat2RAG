@@ -40,6 +40,14 @@ class Prompt(Base):
             "prompt_name": self.prompt_name,
             "prompt_intro": self.prompt_intro,
             "prompt_text": self.prompt_text,
-            "create_time": self.create_time.isoformat() if self.create_time else None,
-            "update_time": self.update_time.isoformat() if self.update_time else None,
+            "create_time": (
+                self.create_time.strftime("%Y-%m-%d %H:%M:%S")
+                if self.create_time
+                else None
+            ),
+            "update_time": (
+                self.update_time.strftime("%Y-%m-%d %H:%M:%S")
+                if self.update_time
+                else None
+            ),
         }
