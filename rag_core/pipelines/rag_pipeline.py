@@ -9,6 +9,7 @@ from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.components.generators.utils import print_streaming_chunk
 from haystack.components.joiners.document_joiner import DocumentJoiner
 from haystack.dataclasses import ChatMessage
+from haystack.utils import Secret
 
 from rag_core.config import CONFIG
 from rag_core.logging import logger
@@ -65,7 +66,7 @@ class RAGPipeline:
 
         generator = OpenAIChatGenerator(
             model=self.generator_model,
-            api_key=CONFIG.OPENAI_API_KEY,
+            api_key=Secret.from_env_var("OPENAI_API_KEY"),
             api_base_url=CONFIG.OPENAI_BASE_URL,
             streaming_callback=self._stream_callback,
         )

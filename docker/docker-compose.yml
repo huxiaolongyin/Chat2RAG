@@ -13,6 +13,9 @@ services:
     environment:
       - TZ=Asia/Shanghai
       - QDRANT_HOST=qdrant
+      - POSTGRESQL_HOST=postgresql
+      - ONE_API_HOST=oneapi
+      - ONE_API_PORT=3000
     env_file:
       - ../.env
     healthcheck:
@@ -88,8 +91,8 @@ services:
     image: mysql:8.0.36
     container_name: mysql
     restart: always
-    # ports:
-    #   - 7586:3306
+    ports:
+      - 7586:3306
     networks:
       - chat2rag-network
     command: --default-authentication-plugin=mysql_native_password
@@ -125,23 +128,6 @@ services:
       - INITIAL_ROOT_TOKEN=mygpt
     volumes:
       - ${DATA_PATH}/oneapi:/data
-  # xinference:
-  #   image: xprobe/xinference:v1.1.1-cpu
-  #   container_name: embedding-service
-  #   ports:
-  #     - "9998:9997"
-  #   volumes:
-  #     - ${MODEL_PATH}:/opt/model
-  #     - ../scripts:/scripts
-  #   environment:
-  #     - XINFERENCE_HOME=/opt/model
-  #     - XINFERENCE_MODEL_SRC=modelscope
-  #   env_file:
-  #     - ../.env
-  #   command: xinference-local -H 0.0.0.0 --log-level debug
-  #   networks:
-  #     - chat2rag-network
-  #   restart: always
 
 networks:
   chat2rag-network:

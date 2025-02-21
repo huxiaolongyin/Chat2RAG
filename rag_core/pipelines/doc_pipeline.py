@@ -6,6 +6,7 @@ from haystack import Pipeline
 from haystack.components.embedders import OpenAIDocumentEmbedder, OpenAITextEmbedder
 from haystack.components.writers import DocumentWriter
 from haystack.dataclasses import Document
+from haystack.utils import Secret
 from haystack_integrations.components.retrievers.qdrant import QdrantEmbeddingRetriever
 from haystack_integrations.document_stores.qdrant import QdrantDocumentStore
 
@@ -67,7 +68,7 @@ class DocumentSearchPipeline:
 
         embedder = OpenAITextEmbedder(
             api_base_url=CONFIG.EMBEDDING_OPENAI_URL,
-            api_key=CONFIG.OPENAI_API_KEY,
+            api_key=Secret.from_env_var("OPENAI_API_KEY"),
             model="360Zhinao-search",
             dimensions=1024,
         )
@@ -181,7 +182,7 @@ class DocumentWriterPipeline:
         logger.info("Initializing document writer pipeline...")
         embedder = OpenAIDocumentEmbedder(
             api_base_url=CONFIG.EMBEDDING_OPENAI_URL,
-            api_key=CONFIG.OPENAI_API_KEY,
+            api_key=Secret.from_env_var("OPENAI_API_KEY"),
             model="360Zhinao-search",
             dimensions=1024,
         )

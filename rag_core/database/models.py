@@ -1,9 +1,8 @@
 from datetime import datetime
 
 from sqlalchemy import Column, DateTime, Float, Integer, String
-from sqlalchemy.orm import declarative_base
 
-Base = declarative_base()
+from rag_core.database.database import Base, create_all_tables
 
 
 class RAGPipelineMetrics(Base):
@@ -51,3 +50,16 @@ class Prompt(Base):
                 else None
             ),
         }
+
+
+create_all_tables()
+
+
+# def main():
+#     print("Initializing database tables if they do not exist...")
+#     create_all_tables()
+#     print("Database tables are up-to-date.")
+
+
+# if __name__ == "__main__":
+#     main()

@@ -6,6 +6,7 @@ from haystack import Pipeline
 from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.components.routers import ConditionalRouter
 from haystack.dataclasses import ChatMessage
+from haystack.utils import Secret
 
 from rag_core.components import FunctionExecutor
 from rag_core.config import CONFIG
@@ -37,7 +38,7 @@ class FunctionPipeline:
 
         intention = OpenAIChatGenerator(
             model=self.intention_model,
-            api_key=CONFIG.OPENAI_API_KEY,
+            api_key=Secret.from_env_var("OPENAI_API_KEY"),
             api_base_url=CONFIG.OPENAI_BASE_URL,
         )
         routes = [

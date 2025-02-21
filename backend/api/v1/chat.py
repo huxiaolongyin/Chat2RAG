@@ -98,7 +98,6 @@ async def _(
     start = perf_counter()
 
     # 提示词
-    rag_prompt_template = CONFIG.RAG_PROMPT_TEMPLATE
     if params.prompt_name:
         prompt = (
             db.query(Prompt).filter(Prompt.prompt_name == params.prompt_name).first()

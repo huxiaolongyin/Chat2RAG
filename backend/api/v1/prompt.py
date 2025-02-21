@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from backend.schema import Error, Success
 from backend.schema.prompt import PromptCreate
+from rag_core.config import CONFIG
 from rag_core.database.database import get_db
 from rag_core.database.models import Prompt
 from rag_core.logging import logger
@@ -17,20 +18,27 @@ def _(
     current: int = Query(default=1, ge=1),
     size: int = Query(default=10, ge=1, le=100),
     prompt_name: str = Query(
-        None,
-        description="提示词名称",
-        alias="promptName",
+        None, description="提示词名称", alias="promptName", max_length=10
     ),
     prompt_desc: str = Query(
-        None,
-        description="提示词描述",
-        alias="promptDesc",
+        None, description="提示词描述", alias="promptDesc", max_length=20
     ),
     db: Session = Depends(get_db),
 ):
     """
     Get prompt list
     """
+    rag_prompt_template = CONFIG.RAG_PROMPT_TEMPLATE
+    defaul_prompt = db.query(Prompt).filter(Prompt.prompt_name == "默认").first()
+    if not defaul_prompt:
+        db.add(
+            Prompt(
+                prompt_name="默认",
+                prompt_intro=f"默认",
+                prompt_text=rag_prompt_template,
+            )
+        )
+        db.commit()
     # 构建查询
     query = db.query(Prompt)
 

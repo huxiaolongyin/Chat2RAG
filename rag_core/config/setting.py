@@ -5,7 +5,6 @@ from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 
 from dotenv import load_dotenv
-from haystack.utils import Secret
 
 # from .embedding_check import EmbeddingUrlMonitor
 
@@ -102,8 +101,10 @@ class Config:
     # LOG_DIR = ROOT_DIR / "logs"
 
     # OPENAI
-    OPENAI_API_KEY = Secret.from_env_var("OPENAI_API_KEY")
-    OPENAI_BASE_URL = load_str_env("OPENAI_BASE_URL", required=True)
+    ONE_API_HOST = load_str_env("ONE_API_HOST") or "localhost"
+    ONE_API_PORT = load_int_env("ONE_API_PORT", required=False) or 3001
+    OPENAI_BASE_URL = f"http://{ONE_API_HOST}:{ONE_API_PORT}/v1"
+    OPENAI_API_KEY = load_str_env("OPENAI_API_KEY", required=True)
 
     RAG_PROMPT_TEMPLATE = load_prompt("rag_default_prompt.txt")
 
@@ -115,29 +116,30 @@ class Config:
     QDRANT_HOST = load_str_env("QDRANT_HOST", required=False) or "localhost"
     QDRANT_PORT = load_int_env("QDRANT_PORT", required=False) or 6333
     QDRANT_GRPC_PORT = load_int_env("QDRANT_GRPC_PORT", required=False) or 6334
-    LOCAL_EMBEDDING_OPENAI_URL = load_str_env(
-        "LOCAL_EMBEDDING_OPENAI_URL", required=False
-    )
-    REMOTE_EMBEDDING_OPENAI_URL = load_str_env(
-        "REMOTE_EMBEDDING_OPENAI_URL", required=False
-    )
+    # LOCAL_EMBEDDING_OPENAI_URL = load_str_env(
+    #     "LOCAL_EMBEDDING_OPENAI_URL", required=False
+    # )
+    EMBEDDING_OPENAI_URL = load_str_env("EMBEDDING_OPENAI_URL", required=False)
     # embedding_monitor = EmbeddingUrlMonitor.get_instance()
     # embedding_monitor.setup(
     #     local_url=LOCAL_EMBEDDING_OPENAI_URL, remote_url=REMOTE_EMBEDDING_OPENAI_URL
     # )
 
     # EMBEDDING_OPENAI_URL = embedding_monitor.get_current_url()
-    EMBEDDING_OPENAI_URL = REMOTE_EMBEDDING_OPENAI_URL
+    # EMBEDDING_OPENAI_URL = REMOTE_EMBEDDING_OPENAI_URL
     # MODEL CONFIG
     TOP_K = load_int_env("TOP_K", required=False) or 5
-    SCORE_THRESHOLD = load_float_env("SCORE_THRESHOLD", required=False) or 0.7
+    SCORE_THRESHOLD = load_float_env("SCORE_THRESHOLD", required=False) or 0.65
 
     # DATABASE
     # 确保目录存在
     SQLITE_DIR.mkdir(parents=True, exist_ok=True)
 
+    POSTGRESQL_HOST = load_str_env("POSTGRESQL_HOST") or "localhost"
+    POSTGRESQL_DATABASE = load_str_env("POSTGRESQL_DATABASE") or "chat2rag"
+    POSTGRESQL_PASSWORD = load_str_env("POSTGRESQL_PASSWORD") or "123456"
     DATABASE_URL = (
-        load_str_env("POSTGRESQL_DATABASE_URL", required=False)
+        f"postgresql://postgres:{POSTGRESQL_PASSWORD}@{POSTGRESQL_HOST}:5432/{POSTGRESQL_DATABASE}"
         or f"sqlite:///{SQLITE_DIR}/chat2rag.db"
     )
 

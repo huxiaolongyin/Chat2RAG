@@ -3,3 +3,4 @@ requests>=2.31.0
 streamlit-antd-components>=0.3.2
 openpyxl>=3.1.5
 streamlit_cookie==0.1.0
+python-dotenv>=1.0.0
