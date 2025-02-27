@@ -36,7 +36,6 @@ dependencies = [
     # Web服务
     "fastapi==0.115.6",
     "uvicorn[standard]==0.34.0",
-    "gunicorn>=21.2.0; sys_platform == 'linux'",
 
     # 工具库
     "pyhumps==3.8.0",

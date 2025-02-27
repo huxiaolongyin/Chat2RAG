@@ -1,7 +1,5 @@
 FROM python:3.9-slim
 
-USER root
-
 # 使用清华源加速apt
 RUN echo "deb https://mirrors.tuna.tsinghua.edu.cn/debian/ bookworm main contrib non-free non-free-firmware" > /etc/apt/sources.list && \
     echo "deb https://mirrors.tuna.tsinghua.edu.cn/debian/ bookworm-updates main contrib non-free non-free-firmware" >> /etc/apt/sources.list && \
@@ -24,8 +22,13 @@ COPY ./VERSION.txt .
 COPY ./backend ./backend
 COPY ./rag_core ./rag_core
 
+USER root
+
+# Install UV
+RUN pip3 install uv -i https://mirrors.aliyun.com/pypi/simple/
+
 # 配置pip并安装依赖
-RUN pip3 install --no-cache-dir . -i https://mirrors.aliyun.com/pypi/simple/
+RUN uv pip install --system --no-cache-dir . -i https://mirrors.aliyun.com/pypi/simple/
 
 EXPOSE 8000
 

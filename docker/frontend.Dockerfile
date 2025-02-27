@@ -18,8 +18,11 @@ COPY ./frontend .
 
 USER root
 
+# Install UV
+RUN pip3 install uv -i https://mirrors.aliyun.com/pypi/simple/
+
 # 安装依赖
-RUN pip3 install --no-cache-dir -r requirements.txt -i https://mirrors.aliyun.com/pypi/simple
+RUN uv pip install --system --no-cache-dir -r requirements.txt -i https://mirrors.aliyun.com/pypi/simple
 
 # 暴露端口
 EXPOSE 8051
