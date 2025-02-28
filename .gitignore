@@ -35,3 +35,8 @@ logs
 .env
 
 deploy/
+
+audio_cache
+
+
+ui
