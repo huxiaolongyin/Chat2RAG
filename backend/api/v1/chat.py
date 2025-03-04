@@ -29,8 +29,8 @@ class Config:
     """配置常量集中管理"""
 
     DEFAULT_MODELS = {
-        "intention": "Qwen2.5-14B",
-        "generator": "Qwen2.5-32B",
+        "intention": CONFIG.DEFAULT_INTENTION_MODEL,
+        "generator": CONFIG.DEFAULT_GENERATOR_MODEL,
     }
 
     GENERATION_KWARGS = {
@@ -55,7 +55,7 @@ class ChatQueryParams(BaseModel):
     query: str = Field(..., description="查询内容")
     top_k: int = Field(default=5, ge=0, le=30, alias="topK", description="返回数量")
     score_threshold: float = Field(
-        default=0.65,
+        default=CONFIG.SCORE_THRESHOLD,
         ge=0.0,
         le=1.0,
         alias="scoreThreshold",

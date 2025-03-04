@@ -1,19 +1,12 @@
 import os
-
-# from functools import lru_cache
 from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 
 from dotenv import load_dotenv
 
-# from .embedding_check import EmbeddingUrlMonitor
-
 load_dotenv(override=True)
 
 promt_path = Path(__file__).parent / "prompt"
-# @lru_cache(maxsize=1)
-# def get_embedding_monitor(local_url, remote_url):
-#     return EmbeddingUrlMonitor(local_url=local_url, remote_url=remote_url)
 
 
 def load_str_env(name: str, required: bool = False) -> str:
@@ -98,62 +91,51 @@ class Config:
     ROOT_DIR = Path(__file__).parent.parent.parent
     DATA_DIR = ROOT_DIR / "data"
     SQLITE_DIR = DATA_DIR / "sqlite"
-    # LOG_DIR = ROOT_DIR / "logs"
 
-    # OPENAI
+    # Open AI LLM
     ONE_API_HOST = load_str_env("ONE_API_HOST") or "localhost"
-    ONE_API_PORT = load_int_env("ONE_API_PORT", required=False) or 3001
+    ONE_API_PORT = load_int_env("ONE_API_PORT") or 3001
     OPENAI_BASE_URL = f"http://{ONE_API_HOST}:{ONE_API_PORT}/v1"
     OPENAI_API_KEY = load_str_env("OPENAI_API_KEY", required=True)
+    DEFAULT_INTENTION_MODEL = load_str_env("DEFAULT_INTENTION_MODEL") or "Qwen2.5-14B"
+    DEFAULT_GENERATOR_MODEL = load_str_env("DEFAULT_GENERATOR_MODEL") or "Qwen2.5-32B"
 
-    RAG_PROMPT_TEMPLATE = load_prompt("rag_default_prompt.txt")
+    # Embedding Service
+    EMBEDDING_OPENAI_URL = load_str_env("EMBEDDING_OPENAI_URL")
+    EMBEDDING_MODEL = load_str_env("EMBEDDING_MODEL") or "360Zhinao-search"
+    EMBEDDING_DIMENSIONS = load_int_env("EMBEDDING_DIMENSIONS") or 1024
 
-    # Function
-    FUNCTION_PROMPT_TEMPLATE = load_prompt("function_prompt.txt")
-    FUNCION_ENABLED = load_bool_env("FUNCION_ENABLED", required=False) or False
+    # Vector Store
+    QDRANT_HOST = load_str_env("QDRANT_HOST") or "localhost"
+    QDRANT_PORT = load_int_env("QDRANT_PORT") or 6333
+    QDRANT_GRPC_PORT = load_int_env("QDRANT_GRPC_PORT") or 6334
 
-    # EMBEDDING
-    QDRANT_HOST = load_str_env("QDRANT_HOST", required=False) or "localhost"
-    QDRANT_PORT = load_int_env("QDRANT_PORT", required=False) or 6333
-    QDRANT_GRPC_PORT = load_int_env("QDRANT_GRPC_PORT", required=False) or 6334
-    # LOCAL_EMBEDDING_OPENAI_URL = load_str_env(
-    #     "LOCAL_EMBEDDING_OPENAI_URL", required=False
-    # )
-    EMBEDDING_OPENAI_URL = load_str_env("EMBEDDING_OPENAI_URL", required=False)
-    # embedding_monitor = EmbeddingUrlMonitor.get_instance()
-    # embedding_monitor.setup(
-    #     local_url=LOCAL_EMBEDDING_OPENAI_URL, remote_url=REMOTE_EMBEDDING_OPENAI_URL
-    # )
-
-    # EMBEDDING_OPENAI_URL = embedding_monitor.get_current_url()
-    # EMBEDDING_OPENAI_URL = REMOTE_EMBEDDING_OPENAI_URL
-    # MODEL CONFIG
-    TOP_K = load_int_env("TOP_K", required=False) or 5
-    SCORE_THRESHOLD = load_float_env("SCORE_THRESHOLD", required=False) or 0.65
-    # 精准检索的阈值
-    PRECISION_THRESHOLD = load_float_env("PRECISION_THRESHOLD", required=False) or 0.88
-
-    # DATABASE
-    # 确保目录存在
-    SQLITE_DIR.mkdir(parents=True, exist_ok=True)
-
+    # Database
     POSTGRESQL_HOST = load_str_env("POSTGRESQL_HOST") or "localhost"
     POSTGRESQL_DATABASE = load_str_env("POSTGRESQL_DATABASE") or "chat2rag"
     POSTGRESQL_PASSWORD = load_str_env("POSTGRESQL_PASSWORD") or "123456"
-    DATABASE_URL = (
-        f"postgresql://postgres:{POSTGRESQL_PASSWORD}@{POSTGRESQL_HOST}:5432/{POSTGRESQL_DATABASE}"
-        or f"sqlite:///{SQLITE_DIR}/chat2rag.db"
-    )
+    DATABASE_URL = f"postgresql://postgres:{POSTGRESQL_PASSWORD}@{POSTGRESQL_HOST}:5432/{POSTGRESQL_DATABASE}"
 
-    # WEB
-    WEB_ROUTE_PREFIX = load_str_env("WEB_ROUTE_PREFIX", required=False) or "/api/v1"
-    BACKEND_PORT = load_int_env("BACKEND_PORT", required=False) or 8000
+    # RAG
+    RAG_PROMPT_TEMPLATE = load_prompt("rag_default_prompt.txt")
 
-    # OTHER SERVICE
+    # Retriever
+    TOP_K = load_int_env("TOP_K") or 5
+    SCORE_THRESHOLD = load_float_env("SCORE_THRESHOLD") or 0.65
+    # 精准检索的阈值
+    PRECISION_THRESHOLD = load_float_env("PRECISION_THRESHOLD") or 0.88
+
+    # Function
+    FUNCTION_PROMPT_TEMPLATE = load_prompt("function_prompt.txt")
+    FUNCION_ENABLED = load_bool_env("FUNCION_ENABLED") or False
     GAODE_API_KEY = load_str_env("GAODE_API_KEY", required=True)
 
+    # WEB
+    WEB_ROUTE_PREFIX = load_str_env("WEB_ROUTE_PREFIX") or "/api/v1"
+    BACKEND_PORT = load_int_env("BACKEND_PORT") or 8000
+
     # TELEMETRY
-    TELEMETRY_ENABLED = load_bool_env("TELEMETRY_ENABLED", required=False)
+    TELEMETRY_ENABLED = load_bool_env("TELEMETRY_ENABLED")
 
 
 CONFIG = Config()

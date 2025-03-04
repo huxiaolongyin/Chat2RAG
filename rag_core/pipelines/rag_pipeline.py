@@ -29,8 +29,8 @@ class RAGPipeline:
     def __init__(
         self,
         qdrant_index: Union[str, List[str]],
-        intention_model: str = "Qwen2.5-14B",
-        generator_model: str = "Qwen2.5-32B",
+        intention_model: str = CONFIG.DEFAULT_INTENTION_MODEL,
+        generator_model: str = CONFIG.DEFAULT_GENERATOR_MODEL,
         stream_callback: Callable = print_streaming_chunk,
     ):
         qdrant_index = (

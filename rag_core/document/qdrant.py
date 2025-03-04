@@ -40,7 +40,7 @@ class QAQdrantDocumentStore(QdrantDocumentStore):
         port: int = CONFIG.QDRANT_PORT,
         host: Optional[str] = CONFIG.QDRANT_HOST,
         grpc_port: int = CONFIG.QDRANT_GRPC_PORT,
-        embedding_dim: int = 1024,
+        embedding_dim: int = CONFIG.EMBEDDING_DIMENSIONS,
     ):
         super().__init__(
             host=host,
@@ -142,8 +142,8 @@ class QAQdrantDocumentStore(QdrantDocumentStore):
     async def query(
         self,
         query: str,
-        top_k: int = 5,
-        score_threshold: float = 0.65,
+        top_k: int = CONFIG.TOP_K,
+        score_threshold: float = CONFIG.SCORE_THRESHOLD,
         type: str = "qa_pair",
     ) -> List[Document]:
         """
@@ -201,20 +201,3 @@ class QAQdrantDocumentStore(QdrantDocumentStore):
             logger.warning(f"question: <{query}> and answer is not matched")
             return None
         return "".join(answer[0].content.split(": ")[1:])
-
-
-async def main():
-    qdrant = QAQdrantDocumentStore("测试数据")
-    # await qdrant.write_documents([QADocument("海外博士后项目支持政策有哪些", "123")])
-    # question = await qdrant.search_exact_question("海外博士后项目支持政策有哪些")
-    # question = await qdrant.query_exact("海外博士后项目支持政策有哪些")
-    # print(qdrant.get_document_list)
-    await qdrant.delete_documents_by_ids(
-        ["d243a692f31061401e6f8e3f46e4f326d07341704f0220327476c478c81ea0e1"]
-    )
-    # result = await qdrant.query("海外博士后项目支持政策有哪些")
-    # print(result)
-
-
-if __name__ == "__main__":
-    asyncio.run(main())

@@ -79,7 +79,6 @@ class KnowledgeController:
                     "collectionName": collection_name,
                     "query": query,
                     "type": "question",
-                    # "scoreThreshold": 0.88,  # todo: 提到 env 处理
                 }
                 response = requests.get(self.doc_query_url, params=params, timeout=10)
                 response_data = response.json()

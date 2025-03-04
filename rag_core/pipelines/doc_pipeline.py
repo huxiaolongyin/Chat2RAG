@@ -47,7 +47,7 @@ class DocumentSearchPipeline:
             document_store=QdrantDocumentStore(
                 host=CONFIG.QDRANT_HOST,
                 port=CONFIG.QDRANT_PORT,
-                embedding_dim=1024,
+                embedding_dim=CONFIG.EMBEDDING_DIMENSIONS,
                 index=self._qdrant_index,
             )
         )
@@ -69,8 +69,8 @@ class DocumentSearchPipeline:
         embedder = OpenAITextEmbedder(
             api_base_url=CONFIG.EMBEDDING_OPENAI_URL,
             api_key=Secret.from_env_var("OPENAI_API_KEY"),
-            model="360Zhinao-search",
-            dimensions=1024,
+            model=CONFIG.EMBEDDING_MODEL,
+            dimensions=CONFIG.EMBEDDING_DIMENSIONS,
         )
         retriever = self._create_retriever()
         self.pipeline = Pipeline()
@@ -97,8 +97,8 @@ class DocumentSearchPipeline:
     async def run(
         self,
         query: str,
-        top_k: int = 5,
-        score_threshold: float = 0.6,
+        top_k: int = CONFIG.TOP_K,
+        score_threshold: float = CONFIG.SCORE_THRESHOLD,
         start=perf_counter(),
         type: str = "qa_pair",
     ):
@@ -165,7 +165,7 @@ class DocumentWriterPipeline:
             document_store=QdrantDocumentStore(
                 host=CONFIG.QDRANT_HOST,
                 port=CONFIG.QDRANT_PORT,
-                embedding_dim=1024,
+                embedding_dim=CONFIG.EMBEDDING_DIMENSIONS,
                 index=self._qdrant_index,
             )
         )
@@ -183,8 +183,8 @@ class DocumentWriterPipeline:
         embedder = OpenAIDocumentEmbedder(
             api_base_url=CONFIG.EMBEDDING_OPENAI_URL,
             api_key=Secret.from_env_var("OPENAI_API_KEY"),
-            model="360Zhinao-search",
-            dimensions=1024,
+            model=CONFIG.EMBEDDING_MODEL,
+            dimensions=CONFIG.EMBEDDING_DIMENSIONS,
         )
         writer = self._create_writer()
         self.pipeline = Pipeline()
