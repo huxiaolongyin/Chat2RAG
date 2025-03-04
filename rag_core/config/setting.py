@@ -130,6 +130,8 @@ class Config:
     # MODEL CONFIG
     TOP_K = load_int_env("TOP_K", required=False) or 5
     SCORE_THRESHOLD = load_float_env("SCORE_THRESHOLD", required=False) or 0.65
+    # 精准检索的阈值
+    PRECISION_THRESHOLD = load_float_env("PRECISION_THRESHOLD", required=False) or 0.88
 
     # DATABASE
     # 确保目录存在

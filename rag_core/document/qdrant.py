@@ -143,7 +143,7 @@ class QAQdrantDocumentStore(QdrantDocumentStore):
         self,
         query: str,
         top_k: int = 5,
-        score_threshold: float = 0.6,
+        score_threshold: float = 0.65,
         type: str = "qa_pair",
     ) -> List[Document]:
         """
@@ -174,7 +174,7 @@ class QAQdrantDocumentStore(QdrantDocumentStore):
         """
         response = await self.query(
             query=query,
-            score_threshold=0.8,
+            score_threshold=CONFIG.PRECISION_THRESHOLD,
             top_k=1,
             type="question",
         )

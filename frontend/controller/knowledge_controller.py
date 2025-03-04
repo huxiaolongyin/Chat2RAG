@@ -1,3 +1,4 @@
+import logging
 from dataclasses import asdict
 from typing import List
 
@@ -71,18 +72,48 @@ class KnowledgeController:
         """
         获取引用文档
         """
-        response = requests.get(
-            self.doc_query_url,
-            params={
-                "collectionName": collection_name,
-                "query": query,
-                "type": "question" if precision_mode else "qa_pair",
-                "scoreThreshold": 0.65,
-            },
-        )
-        if response.status_code == 200:
-            return response.json()["data"]["docList"]
-        else:
+        try:
+            # 精确模式查询
+            if precision_mode:
+                params = {
+                    "collectionName": collection_name,
+                    "query": query,
+                    "type": "question",
+                    # "scoreThreshold": 0.88,  # todo: 提到 env 处理
+                }
+                response = requests.get(self.doc_query_url, params=params, timeout=10)
+                response_data = response.json()
+
+                # 如果精确查询没有结果，自动降级到模糊查询
+                if response.status_code == 200 and not response_data.get(
+                    "data", {}
+                ).get("docList", []):
+                    precision_mode = False
+
+            # 模糊查询
+            if not precision_mode:
+                params = {
+                    "collectionName": collection_name,
+                    "query": query,
+                    "type": "qa_pair",
+                }
+                response = requests.get(self.doc_query_url, params=params, timeout=10)
+                response_data = response.json()
+
+            # 处理结果
+            if response.status_code == 200:
+                return response_data.get("data", {}).get("docList", [])
+            else:
+                logging.warning(
+                    f"Query document failed with status code: {response.status_code}"
+                )
+                return []
+
+        except requests.exceptions.RequestException as e:
+            logging.error(f"Request error when querying document: {str(e)}")
+            return []
+        except (ValueError, KeyError) as e:
+            logging.error(f"Error parsing response: {str(e)}")
             return []
 
 

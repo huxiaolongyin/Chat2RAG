@@ -5,6 +5,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Body, Query
 
 from backend.schema import Error, Success
+from rag_core.config import CONFIG
 from rag_core.dataclass.document import QADocument
 from rag_core.document.qdrant import QAQdrantDocumentStore
 from rag_core.logging import logger
@@ -297,8 +298,8 @@ async def _(
         alias="topK",
     ),
     score_threshold: float = Query(
-        default=0.65,
-        description="分数阈值(0-1.00)，默认0.65",
+        default=None,
+        description="分数阈值(0-1.00)，question默认0.65，qa_pair默认0.88",
         alias="scoreThreshold",
     ),
     type: str = Query(
@@ -313,6 +314,11 @@ async def _(
     logger.info(
         f"Query the documents of collection. Collection name: <{collection_name}>; Query: <{query}>; Top K: <{top_k}>; Score threshold: <{score_threshold}>"
     )
+    # 设置默认检索阈值
+    if not score_threshold:
+        score_threshold = (
+            CONFIG.PRECISION_THRESHOLD if type == "question" else CONFIG.SCORE_THRESHOLD
+        )
 
     if not collection_exists(collection_name):
         logger.error(f"Knowledge collection <{collection_name}> does not exist.")
