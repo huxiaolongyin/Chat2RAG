@@ -15,7 +15,7 @@ build
 **egg-info
 
 # Temporary File
-temp
+temp*
 
 # Data File
 data/

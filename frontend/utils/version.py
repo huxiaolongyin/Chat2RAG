@@ -3,6 +3,16 @@ import streamlit as st
 
 def version_list():
     st.subheader("版本更新")
+    with st.expander("V0.1.2rc2 (2025-03-04)", expanded=True):
+        content = """
+    ### 🚀 New Features
+    - 接口中添加 ASCII 标题
+    - 将代码中配置里的内容提取到 env 和 config 文件中
+    ### 🐛 Bug Fixe
+    - 修复精准模式下，文档检索不正确的问题
+    - 修复批处理下，符号分词不正确的情况
+"""
+        st.markdown(content)
     with st.expander("V0.1.2rc1 (2025-02-20)", expanded=True):
         content = """
     ### ⭐️ Highlights
