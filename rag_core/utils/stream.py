@@ -1,3 +1,4 @@
+import copy
 import datetime
 import json
 import uuid
@@ -78,6 +79,10 @@ class StreamHandler:
             or len(batch_content) >= self.config.batch_size
         )
 
+    def _is_split_punctuation(self, char):
+        # 定义需要在何处分割的符号，包括中文标点和英文标点
+        return char in self.config.split_symbols
+
     def get_stream(self, is_batch: bool = False):
         first_response = True  # 添加标志位跟踪第一条响应
         message_id = str(uuid.uuid4().hex[:16])
@@ -113,14 +118,17 @@ class StreamHandler:
             current_batch = []
             while True:
                 chunk = self.queue.get()
+
                 if isinstance(chunk, dict) and chunk.get("type") == "doc_info":
                     self.doc_length = chunk["count"]
                     continue
+
                 if chunk == "[START]":
                     # 开始处理新一批数据
                     data = self._create_message("", is_start=1, message_id=message_id)
                     yield f"data: {json.dumps(data, ensure_ascii=False)}\n\n"
                     continue
+
                 if chunk == "[END]":
                     # 处理最后一批数据
                     if current_batch:
@@ -133,20 +141,47 @@ class StreamHandler:
                         yield f"data: {json.dumps(data, ensure_ascii=False)}\n\n"
                     break
 
-                current_batch.append(chunk)
+                # 检查当前chunk的内容是否包含需要分割的符号
+                content = chunk.content
+                last_split_pos = 0
 
-                batch_content = "".join([c.content for c in current_batch])
-                if self._should_flush_batch(chunk, batch_content):
-                    if first_response:
-                        elapsed = perf_counter() - self.stream_start
-                        logger.info(f"RAG pipeline query response time: {elapsed:.3f}s")
-                        first_response = False
+                for i, char in enumerate(content):
+                    if self._is_split_punctuation(
+                        char
+                    ):  # 新增辅助函数判断是否是需要分割的符号
+                        # 发现符号，准备分割并输出
+                        # 先将chunk分割点之前的内容加入current_batch
+                        split_chunk = copy.copy(chunk)
+                        split_chunk.content = content[
+                            last_split_pos : i + 1
+                        ]  # 包含符号本身
+                        current_batch.append(split_chunk)
 
-                    data = self._create_message(
-                        batch_content, chunk.meta, message_id=message_id
-                    )
-                    yield f"data: {json.dumps(data, ensure_ascii=False)}\n\n"
-                    current_batch = []
+                        # 生成当前批次的内容
+                        batch_content = "".join([c.content for c in current_batch])
+
+                        if first_response:
+                            elapsed = perf_counter() - self.stream_start
+                            logger.info(
+                                f"RAG pipeline query response time: {elapsed:.3f}s"
+                            )
+                            first_response = False
+
+                        # 输出当前批次
+                        data = self._create_message(
+                            batch_content, chunk.meta, message_id=message_id
+                        )
+                        yield f"data: {json.dumps(data, ensure_ascii=False)}\n\n"
+
+                        # 重置批次
+                        current_batch = []
+                        last_split_pos = i + 1
+
+                # 处理剩余未分割的内容
+                if last_split_pos < len(content):
+                    remaining_chunk = copy.copy(chunk)
+                    remaining_chunk.content = content[last_split_pos:]
+                    current_batch.append(remaining_chunk)
 
     def start(self):
         self.queue.put("[START]")
