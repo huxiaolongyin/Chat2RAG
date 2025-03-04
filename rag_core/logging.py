@@ -1,10 +1,35 @@
 import logging
 import sys
+from importlib.metadata import version
 from logging.handlers import TimedRotatingFileHandler
 from pathlib import Path
 
 ROOT_DIR = Path(__file__).parent.parent
 LOG_DIR = ROOT_DIR / "logs"
+
+
+def get_banner():
+    """
+    返回Chat2RAG的ASCII艺术标题
+    """
+    banner = f"""
+    ########################################################################
+    #                                                                      #
+    #   ██████╗██╗  ██╗ █████╗ ████████╗██████╗ ██████╗  █████╗  ██████╗   #
+    #  ██╔════╝██║  ██║██╔══██╗╚══██╔══╝╚════██╗██╔══██╗██╔══██╗██╔════╝   #
+    #  ██║     ███████║███████║   ██║    █████╔╝██████╔╝███████║██║  ███╗  #
+    #  ██║     ██╔══██║██╔══██║   ██║   ██╔═══╝ ██╔══██╗██╔══██║██║   ██║  #
+    #  ╚██████╗██║  ██║██║  ██║   ██║   ███████╗██║  ██║██║  ██║╚██████╔╝  #
+    #   ╚═════╝╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   ╚══════╝╚═╝  ╚═╝╚═╝  ╚═╝ ╚═════╝   #
+    #                                                                      #
+    #                         Version: {version("chat2rag")}                               #
+    #                                                                      #
+    #   Author: https://github.com/huxiaolongyin                           #
+    #   Email: 1453366421@qq.com                                           #
+    #                                                                      #
+    ########################################################################
+    """
+    return banner
 
 
 def setup_logger(name: str = "Chat2RAG"):
@@ -41,6 +66,11 @@ def setup_logger(name: str = "Chat2RAG"):
     file_handler.setFormatter(formatter)
     file_handler.suffix = "%Y-%m-%d.log"  # 日志文件后缀格式
     logger.addHandler(file_handler)
+
+    # 记录启动标题
+    banner = get_banner()
+    logger.info(f"\n{banner}")
+    logger.info("Starting Chat2RAG application")
 
     return logger
 

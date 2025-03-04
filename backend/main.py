@@ -20,7 +20,7 @@ async def lifespan(app: FastAPI):
         setup_telemetry()
         logger.info("Telemetry setup successfully")
 
-    logger.info("Starting Chat2RAG application")
+    # logger.info("Starting Chat2RAG application")
     # 文档检索管道预热，加载向量化嵌入模型
     DocumentSearchPipeline()
     yield
