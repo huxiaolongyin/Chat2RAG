@@ -139,12 +139,13 @@ class StreamHandler:
                             message_id=message_id,
                         )
                         yield f"data: {json.dumps(data, ensure_ascii=False)}\n\n"
+                    data = self._create_message("", meta={"finish_reason":"stop","model":""}, message_id=message_id)
+                    yield f"data: {json.dumps(data, ensure_ascii=False)}\n\n"
                     break
 
                 # 检查当前chunk的内容是否包含需要分割的符号
                 content = chunk.content
                 last_split_pos = 0
-
                 for i, char in enumerate(content):
                     if self._is_split_punctuation(
                         char

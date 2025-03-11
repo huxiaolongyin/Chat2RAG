@@ -158,6 +158,7 @@ async def _(
 ):
     start = perf_counter()
     handler = StreamHandler()
+    handler.start()
     tools = tool_manager.get_tool_info(params.tool_list)
     is_batch = batch_or_stream == ProcessType.BATCH
 
@@ -169,12 +170,11 @@ async def _(
         )
         if prompt:
             rag_prompt_template = prompt.prompt_text
-
     executor = ThreadPoolExecutor(max_workers=1)  # 创建全局executor避免提前关闭
 
     # 处理精确模式
     def run_exact_query():
-        handler.start()
+        # handler.start()
         for i in answer:
             meta = {"model": "None", "finish_reason": "none"}
             handler.callback(StreamingChunk(content=i, meta=meta))
@@ -182,10 +182,10 @@ async def _(
         handler.callback(
             StreamingChunk(content="", meta={"model": "None", "finish_reason": "stop"})
         )
-        handler.finish()
         if params.chat_id:
             chat_cache.add_message(params.chat_id, params.query, "user")
             chat_cache.add_message(params.chat_id, answer, "assistant")
+        handler.finish()
 
     # 处理大模型、RAG的消息处理
     def run_rag_pipeline():
