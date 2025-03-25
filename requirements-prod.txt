@@ -1,0 +1,1 @@
+gunicorn[standard]==23.2.0

@@ -10,7 +10,7 @@ readme = "README.md"
 requires-python = ">=3.9"
 license = { text = "Apache-2.0" }
 authors = [{ name = "Jacob Zheng", email = "1453366421@qq.com" }]
-keywords = ["rag", "llm", "chatbot"]
+keywords = ["rag", "llm", "chatbot", "tts", "asr"]
 classifiers = [  # 添加分类信息
     "Development Status :: 4 - Beta",
     "Programming Language :: Python :: 3",
@@ -18,57 +18,20 @@ classifiers = [  # 添加分类信息
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
 ]
-dependencies = [
-    # 核心RAG组件
-    "haystack-ai==2.8.0",
-    "qdrant-haystack==7.0.0",
-
-    # 监控和性能
-    "openinference-instrumentation-haystack==0.1.12",
-    "opentelemetry-sdk==1.29.0",
-    "opentelemetry-exporter-otlp==1.29.0",
-    "arize-phoenix==7.1.1",
-    "pyinstrument==5.0.0",
-
-    # 数据库
-    "psycopg2-binary>=2.9.10",
-    
-    # Web服务
-    "fastapi==0.115.6",
-    "uvicorn[standard]==0.34.0",
-
-    # 工具库
-    "pyhumps==3.8.0",
-    "python-dotenv>=1.0.0",
-    "fuzzywuzzy==0.18.0",
-    "python-Levenshtein>=0.26.1",
-    "jsonref==1.1.0",
-    "jsonschema>=4.23.0",
-
-    # 农历
-    "zhdate==0.1",
-    "lunar-python==1.3.12",
-]
 
 [project.optional-dependencies]
-dev = [
-    "pytest==8.3.4",
-    "fastapi-cache2[redis]==0.2.2",
-    "black",          # 代码格式化
-    "isort",          # import排序
-    "mypy",           # 类型检查
-    "pre-commit"      # git hooks
-]
-prod = [
-    "gunicorn[standard]==23.2.0",
-    ]
+dev = { file = "requirements-dev.txt" }
+prod = { file = "requirements-prod.txt" }
 
 [tool.hatch.version]
 path = "VERSION.txt"
 pattern = "(?P<version>.+)"
 
+[tool.hatch.metadata.hooks.requirements_txt]
+filename = "requirements.txt"
+
 [tool.hatch.build.targets.wheel]
-packages = ["rag_core", "backend"]
+packages = ["chat2rag"]
 
 [project.urls]
 "GitHub: issues" = "https://github.com/huxiaolongyin/Chat2RAG/issues"

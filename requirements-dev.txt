@@ -1,0 +1,6 @@
+pytest==8.3.4
+fastapi-cache2[redis]==0.2.2
+black
+isort
+mypy
+pre-commit
