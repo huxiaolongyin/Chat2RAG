@@ -1,40 +1,31 @@
-# Virtual Environment
-.venv
-
-# Python Compile File
-**_pycache__
-
-# VScode Settings
-.vscode
-
-# Pytest Temporary File
-.pytest_cache
-
-# Package File
+#=======================#
+#       Dev Cache       #
+#=======================#
 build
 **egg-info
-
-# Temporary File
+.venv
+.vscode
+.env
 temp*
+**_pycache__
+.pytest_cache
 
-# Data File
-data/
-BigModels
 
-# Log File
+#=======================#
+#       Logs file       #
+#=======================#
 logs
 
-# Interface Document
-**API接口**.docx
 
-# Docker File
+#=======================#
+#     Deploy files      #
+#=======================#
 **.tar
 **.zip
-
-# ENV File
-.env
-
 deploy/
 
-audio_cache
 
+#=======================#
+#      Data files       #
+#=======================#
+data/
