@@ -1,5 +1,9 @@
-from rag_core.config import CONFIG
+from typing import Annotated
+
 import requests
+from haystack.tools import tool
+
+from rag_core.config import CONFIG
 
 key = CONFIG.GAODE_API_KEY
 
@@ -55,7 +59,8 @@ def format_route_to_text(route_result: dict) -> str:
 
 def get_gps_coordinates(address: str, city: str) -> str:
     """
-        给定地址信息, 通过高德服务, 返回 GPS 坐标
+    给定地址信息, 通过高德服务, 返回 GPS 坐标
+
     Args:
         address: 地址名称
         city: 城市名称
@@ -73,7 +78,8 @@ def get_gps_coordinates(address: str, city: str) -> str:
 
 def get_city_name_from_gps(gps: str) -> str:
     """
-        输入GPS信息, 通过高德服务, 返回城市名称
+    输入GPS信息, 通过高德服务, 返回城市名称
+
     Args:
         gps: 地址 gps 坐标
     Returns:
@@ -108,20 +114,14 @@ def get_gaode_route(
     return response.json()
 
 
+@tool
 def get_translit_info(
-    origin: str = None,
-    destination: str = None,
+    origin: Annotated[str, "用户给定的经纬度坐标"] = "119.235434,26.062731",
+    destination: Annotated[
+        str, "用户给的终点名称, 请给出明确名称; 如: 厦门大学"
+    ] = None,
 ):
-    """
-        获取高德地图路径规划结果
-    Args:
-        origin: 起点 gps 坐标
-        destination: 终点名称
-    Returns:
-        str: 高德地图路径规划结果
-    """
-    if origin is None:
-        origin = "119.235434,26.062731"
+    "仅在询问路线规划时使用, 用于获取高德地图路径规划结果"
     # 根据起点坐标获取起点的城市
     origin_city = get_city_name_from_gps(origin)
 
@@ -133,22 +133,3 @@ def get_translit_info(
 
     # 解析成自然语言描述
     return format_route_to_text(route_json)
-
-
-translit_info = {
-    "type": "function",
-    "function": {
-        "name": "translit_tool",
-        "description": "仅在询问路线规划时使用, 用于获取高德地图路径规划结果",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "destination": {
-                    "type": "str",
-                    "description": "终点名称, 请给出明确名称; 如: 厦门大学",
-                },
-            },
-            "required": ["destination"],
-        },
-    },
-}

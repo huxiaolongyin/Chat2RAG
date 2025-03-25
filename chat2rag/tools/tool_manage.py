@@ -4,9 +4,9 @@ from typing import Dict, List, Union
 
 import requests
 import yaml
+from haystack.tools import Tool
 
 from .bazi import bazi_info, get_bazi_info
-from .today import get_today_info, today_info
 from .translit import get_translit_info, translit_info
 from .weather import get_weather_info, weather_info
 from .weibo import get_weibo_info, weibo_info
@@ -36,11 +36,6 @@ class ToolManager:
             "translit_tool": {
                 "functions": get_translit_info,
                 "info": translit_info,
-                "type": ToolType.BUILT_IN,
-            },
-            "today_tool": {
-                "functions": get_today_info,
-                "info": today_info,
                 "type": ToolType.BUILT_IN,
             },
             "bazi_tool": {

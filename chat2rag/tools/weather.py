@@ -1,14 +1,19 @@
 import json
 from pathlib import Path
+from typing import Annotated
 
 import requests
 from fuzzywuzzy import process
+from haystack.tools import tool
 
 from rag_core.config import CONFIG
 
 
-def get_weather_info(city_name: str = None) -> str:
-    """获取城市当前的天气信息"""
+@tool
+def get_weather_info(
+    city_name: Annotated[str, "获取中国城市的名称，如果不指定则会返回空值"] = None
+) -> str:
+    "获取某个城市的气象信息，询问天气、温度、降水、气温等气象信息时使用，从聊天记录获取城市，如无指定，则获取当地天气情况。"
     key = CONFIG.GAODE_API_KEY
     if not city_name:
 
@@ -52,23 +57,3 @@ def find_city_code(city_name):
             return city_dict[best_match[0]]
 
         return None
-
-
-# 仅在用户明确询问天气、温度、降水、气温等气象信息时使用，获取指定城市的当前天气情况，如果用户没有指定城市，则返回空值以获取当地天气情况。
-weather_info = {
-    "type": "function",
-    "function": {
-        "name": "weather_tool",
-        "description": "询问天气、温度、降水、气温等气象信息时使用，默认为空值，获取当地天气情况。",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "city_name": {
-                    "type": "string",
-                    "description": "中国城市的名称，如果不指定则会返回空值",
-                }
-            },
-            "required": [],
-        },
-    },
-}

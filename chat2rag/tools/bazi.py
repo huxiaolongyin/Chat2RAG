@@ -1,4 +1,7 @@
 from datetime import datetime
+from typing import Annotated
+
+from haystack.tools import tool
 from lunar_python import Lunar, Solar
 
 
@@ -41,15 +44,12 @@ def get_constellation(month, day):
         return constellations[month % 12]
 
 
-def get_bazi_info(date_str, hour):
-    """
-    计算生辰八字和五行属性
-    参数:
-        date_str: 阳历日期字符串，格式为 'YYYY-MM-DD'
-        hour: 小时 (0-23)
-    返回:
-        包含八字和五行信息的字典
-    """
+@tool
+def get_bazi_info(
+    date_str: Annotated[str, "阳历日期，格式为 'YYYY-MM-DD'"],
+    hour: Annotated[int, "小时 (0-23)"],
+):
+    "通过阳历日期和小时计算生辰八字和五行属性， 需要用户明确提供阳历日期和小时"
     # 解析日期
     date_obj = datetime.strptime(date_str, "%Y-%m-%d")
 
@@ -78,26 +78,3 @@ def get_bazi_info(date_str, hour):
     }
 
     return bazi_info
-
-
-bazi_info = {
-    "type": "function",
-    "function": {
-        "name": "bazi_tool",
-        "description": "通过阳历日期和小时计算生辰八字和五行属性， 需要用户明确提供阳历日期和小时",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "date_str": {
-                    "type": "string",
-                    "description": "阳历日期，格式为 'YYYY-MM-DD'",
-                },
-                "hour": {
-                    "type": "integer",
-                    "description": "小时 (0-23)",
-                },
-            },
-            "required": ["date", "hour"],
-        },
-    },
-}
