@@ -6,7 +6,7 @@ import requests
 from fuzzywuzzy import process
 from haystack.tools import tool
 
-from rag_core.config import CONFIG
+from chat2rag.config import CONFIG
 
 
 @tool

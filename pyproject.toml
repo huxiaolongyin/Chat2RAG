@@ -63,6 +63,7 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     "pytest==8.3.4",
+    "responses==0.25.7",
     "fastapi-cache2[redis]==0.2.2",
     "black",
     "isort",

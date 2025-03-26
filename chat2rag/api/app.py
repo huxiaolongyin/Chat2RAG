@@ -46,6 +46,6 @@ if __name__ == "__main__":
         "chat2rag.api.app:app",
         host="0.0.0.0",
         port=CONFIG.BACKEND_PORT,
-        reload=True,
-        reload_excludes=["frontend/*", "frontend/**/*", "*.pyc"],
+        # reload=True,
+        # reload_excludes=["logs/*", "*.pyc"],
     )

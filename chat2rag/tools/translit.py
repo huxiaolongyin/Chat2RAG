@@ -3,7 +3,7 @@ from typing import Annotated
 import requests
 from haystack.tools import tool
 
-from rag_core.config import CONFIG
+from chat2rag.config import CONFIG
 
 key = CONFIG.GAODE_API_KEY
 
