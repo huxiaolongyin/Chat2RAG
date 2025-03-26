@@ -16,11 +16,6 @@ from chat2rag.pipelines.base import BasePipeline
 
 logger = get_logger(__name__)
 
-# 监控
-# from chat2rag.telemetry import setup_telemetry
-
-# setup_telemetry()
-
 
 class DocumentSearchPipeline(BasePipeline):
     """

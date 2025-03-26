@@ -20,7 +20,6 @@ async def lifespan(app: FastAPI):
         setup_telemetry()
         logger.info("Telemetry setup successfully")
 
-    # logger.info("Starting Chat2RAG application")
     # 预热 RAG 管道
     RAGPipeline("Document")
     yield
@@ -40,6 +39,10 @@ app = create_app()
 
 
 if __name__ == "__main__":
+    # from chat2rag.telemetry import setup_telemetry
+
+    # setup_telemetry()
+
     import uvicorn
 
     uvicorn.run(

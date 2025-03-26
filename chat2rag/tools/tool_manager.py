@@ -8,6 +8,8 @@ from haystack.tools import Tool
 
 from chat2rag.logger import get_logger
 
+logger = get_logger(__name__)
+
 
 class ToolManager:
     """Tool manager responsible for loading and managing built-in and custom tools"""
@@ -20,7 +22,6 @@ class ToolManager:
             tools_yaml_path: Custom tool configuration file path, defaults to tools.yaml in the current file directory
         """
         # Initialize logger
-        self.logger = get_logger(__name__)
 
         self.tools: List[Tool] = []
         self.custom_tools: List[Tool] = []  # Store custom tools separately
@@ -47,7 +48,7 @@ class ToolManager:
                 get_weibo_info,
             ]
         except ImportError as e:
-            self.logger.error("Error importing built-in tools, %s", str(e))
+            logger.error("Error importing built-in tools, %s", str(e))
             self.builtin_tools = []
 
         # Load tools immediately on instantiation
@@ -86,6 +87,7 @@ class ToolManager:
     def load_tools(self) -> None:
         """Load all tools"""
         # Clear existing tools
+        logger.info("Loading tools...")
         self.tools = []
         self.tool_list = []
 
@@ -96,7 +98,7 @@ class ToolManager:
         if self.tools_yaml_path.exists():
             self.load_yaml_tools(self.tools_yaml_path)
 
-        self.logger.info("Finished loading tools, total: %d", len(self.tools))
+        logger.info("Finished loading tools, total: %d", len(self.tools))
 
     def load_builtin_tools(self) -> None:
         """Load built-in tools"""
@@ -125,7 +127,7 @@ class ToolManager:
 
                 # Add to tool list
                 self.tool_list.append(tool_desc)
-                self.logger.debug("Loaded built-in tool: %s", tool_data.get("name", ""))
+                logger.debug("Loaded built-in tool: %s", tool_data.get("name", ""))
 
     def load_yaml_tools(self, yaml_path: Path) -> None:
         """
@@ -158,7 +160,7 @@ class ToolManager:
                     parameters = function_config.get("parameters", {})
 
                     if not name or not url:
-                        self.logger.warning(
+                        logger.warning(
                             "Incomplete API tool configuration, skipping, funciton: %s",
                             function_config,
                         )
@@ -194,10 +196,10 @@ class ToolManager:
                             },
                         }
                     )
-                    self.logger.debug("Loaded custom API tool, name: %s", name)
+                    logger.debug("Loaded custom API tool, name: %s", name)
 
         except Exception as e:
-            self.logger.error("Error loading YAML tools, Error info: %s", str(e))
+            logger.error("Error loading YAML tools, Error info: %s", str(e))
 
     def _save_yaml_tools(self) -> None:
         """Save custom tools to YAML file"""
@@ -225,14 +227,14 @@ class ToolManager:
                     config, file, default_flow_style=False, allow_unicode=True
                 )
 
-            self.logger.info(
+            logger.info(
                 "Saved custom tools to file, path: %s, count: %d",
                 self.tools_yaml_path,
                 len(tool_configs),
             )
 
         except Exception as e:
-            self.logger.error("Error saving tool configuration, Error info: %s", str(e))
+            logger.error("Error saving tool configuration, Error info: %s", str(e))
 
     def _create_api_function(self, name: str, url: str, method: str) -> Callable:
         """
@@ -259,9 +261,7 @@ class ToolManager:
                 response.raise_for_status()
                 return response.json()
             except Exception as e:
-                self.logger.error(
-                    "API call failed, name: %s, Error info: %s", name, str(e)
-                )
+                logger.error("API call failed, name: %s, Error info: %s", name, str(e))
                 return {"error": str(e)}
 
         # Set function name
@@ -293,7 +293,7 @@ class ToolManager:
         """
         # Check if tool name already exists
         if self.get_tool_by_name(name) is not None:
-            self.logger.warning("Tool name: <%s> already exists", name)
+            logger.warning("Tool name: <%s> already exists", name)
             return False
 
         # Process parameters
@@ -329,7 +329,7 @@ class ToolManager:
 
         # Save configuration
         self._save_yaml_tools()
-        self.logger.info("Added custom tool, name: %s", name)
+        logger.info("Added custom tool, name: %s", name)
 
         return True
 
@@ -409,11 +409,11 @@ class ToolManager:
 
                 # Save configuration
                 self._save_yaml_tools()
-                self.logger.info("Updated custom tool, name: %s", name)
+                logger.info("Updated custom tool, name: %s", name)
 
                 return True
 
-        self.logger.warning("Cannot find custom tool with name: %s", name)
+        logger.warning("Cannot find custom tool with name: %s", name)
         return False
 
     def delete_custom_tool(self, name: str) -> bool:
@@ -448,10 +448,10 @@ class ToolManager:
         if tool_found:
             # Save configuration
             self._save_yaml_tools()
-            self.logger.info("Deleted custom tool, name: %s", name)
+            logger.info("Deleted custom tool, name: %s", name)
             return True
         else:
-            self.logger.warning("Cannot find custom tool with name: %s", name)
+            logger.warning("Cannot find custom tool with name: %s", name)
             return False
 
     def get_custom_tool(self, name: str) -> Optional[Dict[str, Any]]:
@@ -470,7 +470,7 @@ class ToolManager:
                 and desc.get("function", {}).get("name") == name
             ):
                 return desc
-        self.logger.debug("Custom tool not found, Name: %s", name)
+        logger.debug("Custom tool not found, Name: %s", name)
         return None
 
     def get_tools(self, filter: List[str] = None) -> List[Tool]:
@@ -506,7 +506,7 @@ class ToolManager:
         for tool in self.tools:
             if tool.name == name:
                 return tool
-        self.logger.debug("Tool not found, Name: %s", name)
+        logger.debug("Tool not found, Name: %s", name)
         return None
 
 

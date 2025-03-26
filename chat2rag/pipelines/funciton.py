@@ -17,9 +17,6 @@ from chat2rag.tools.tool_manager import tool_manager
 logger = get_logger(__name__)
 
 all_tools = tool_manager.get_tools()
-# 监控
-# from chat2rag.telemetry import setup_telemetry
-# setup_telemetry()
 
 
 class FunctionPipeline(BasePipeline):
@@ -74,8 +71,12 @@ class FunctionPipeline(BasePipeline):
         """
         Run the function pipeline
         """
-        logger.info("Running function pipeline with query: <%s>...", query)
         start_time = time.time()
+        if not CONFIG.FUNCION_ENABLED:
+            logger.debug(
+                "Passing function pipeline due to CONFIG.FUNCION_ENABLED is False"
+            )
+            return {}
         messages = [
             ChatMessage.from_system(CONFIG.FUNCTION_PROMPT_TEMPLATE),
             *history_messages,

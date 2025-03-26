@@ -19,9 +19,6 @@ from chat2rag.pipelines.document import DocumentSearchPipeline
 from chat2rag.pipelines.funciton import FunctionPipeline
 
 logger = get_logger(__name__)
-# from chat2rag.telemetry import setup_telemetry
-
-# setup_telemetry()
 
 
 class RAGPipeline(BasePipeline):
@@ -36,7 +33,7 @@ class RAGPipeline(BasePipeline):
         """
         Cache document pipeline
         """
-        logger.debug(f"Creating new document pipeline for index: {index}")
+        logger.info(f"Creating new document pipeline for index: {index}")
         return DocumentSearchPipeline(index)
 
     @staticmethod
@@ -45,7 +42,7 @@ class RAGPipeline(BasePipeline):
         """
         Cache function pipeline
         """
-        logger.debug(f"Creating new function pipeline for model: {intention_model}")
+        logger.info(f"Creating new function pipeline for model: {intention_model}")
         return FunctionPipeline(intention_model)
 
     def __init__(
@@ -213,9 +210,10 @@ class RAGPipeline(BasePipeline):
 
         # 处理函数调用结果
         func_response = ""
-        for func_message in func_results["tool_invoker"]["tool_messages"]:
-            if func_message.tool_call_result:
-                func_response += func_message.tool_call_result.result
+        if func_results and "tool_invoker" in func_results:
+            for func_message in func_results["tool_invoker"]["tool_messages"]:
+                if func_message.tool_call_result:
+                    func_response += func_message.tool_call_result.result
 
         # 构建问题模板
         question_template = """

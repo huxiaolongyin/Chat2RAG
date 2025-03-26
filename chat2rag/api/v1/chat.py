@@ -95,15 +95,16 @@ class ChatQueryParams(BaseModel):
         populate_by_name = True
 
 
-@lru_cache(maxsize=32)
-def _create_rag_pipeline(*args, **kwargs) -> RAGPipeline:
-    """
-    Cache rag pipeline
-    """
-    logger.debug(
-        "Creating new rag pipeline for args: %s and kargs: %s", ", ".join(args), kwargs
-    )
-    return RAGPipeline(*args, **kwargs)
+# @lru_cache(maxsize=32)
+# def _create_rag_pipeline(*args, **kwargs) -> RAGPipeline:
+#     """
+#     Cache rag pipeline
+#     """
+#     logger.info(
+#         "Creating new rag pipeline",
+#     )
+#     logger.debug("Creating rag pipeline with args: %s and kargs: %s", args, kwargs)
+#     return RAGPipeline(*args, **kwargs)
 
 
 def get_prompt_template(prompt_name: str, db: Session) -> Optional[str]:
@@ -190,7 +191,7 @@ async def chat_rag(
     generation_kwargs = parse_generation_kwargs(params.generation_kwargs)
 
     # 创建并运行RAG管道
-    pipeline = _create_rag_pipeline(
+    pipeline = RAGPipeline(
         qdrant_index=params.collection_name,
         intention_model=params.intention_model,
         generator_model=params.generator_model,
@@ -236,7 +237,6 @@ async def chat_rag_stream(
     db: Session = Depends(get_db),
 ):
     start = perf_counter()
-    logger.info("Processing streaming query request: '%s'", params.query)
 
     # 初始化流处理器
     handler = StreamHandler()
@@ -252,8 +252,9 @@ async def chat_rag_stream(
     history_messages = []
     if params.chat_id:
         history_messages = chat_cache.get_messages(params.chat_id, params.chat_rounds)
-        logger.debug(
-            "Retrieved %d history messages for chat_id: %s",
+        logger.info(
+            "Processing query: '%s'; history messages length: %d; chat_id: %s",
+            params.query,
             len(history_messages),
             params.chat_id,
         )
@@ -290,8 +291,8 @@ async def chat_rag_stream(
     # 处理RAG管道的函数
     async def process_rag_pipeline():
         try:
-            logger.debug("Starting RAG pipeline for streaming response")
-            pipeline = _create_rag_pipeline(
+            logger.debug("Starting RAG pipeline...")
+            pipeline = RAGPipeline(
                 qdrant_index=params.collection_name,
                 stream_callback=handler.callback,
                 intention_model=params.intention_model,
@@ -320,10 +321,6 @@ async def chat_rag_stream(
                     params.chat_id, result["generator"]["replies"][0].text, "assistant"
                 )
 
-            logger.info(
-                "RAG pipeline completed successfully, took %.2fs",
-                perf_counter() - start,
-            )
         except Exception as e:
             logger.error("Error in RAG pipeline: %s", str(e))
             # 发送错误信息到流
