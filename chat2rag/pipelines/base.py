@@ -1,7 +1,5 @@
 from abc import ABC, abstractmethod
 
-from haystack import Pipeline
-
 
 class BasePipeline(ABC):
     def __init__(self):
@@ -14,7 +12,7 @@ class BasePipeline(ABC):
         return str(self.pipeline)
 
     @abstractmethod
-    def _initialize_pipeline(self) -> Pipeline:
+    def _initialize_pipeline(self):
         """
         Initialize RAG pipeline
         """
@@ -28,7 +26,7 @@ class BasePipeline(ABC):
         pass
 
     @abstractmethod
-    def run(self, *args, **kwargs):
+    async def run(self, *args, **kwargs):
         """
         Run the RAG pipeline
         """

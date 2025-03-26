@@ -1,3 +1,4 @@
+import asyncio
 import time
 from typing import List
 
@@ -16,9 +17,9 @@ from chat2rag.pipelines.base import BasePipeline
 logger = get_logger(__name__)
 
 # 监控
-from chat2rag.telemetry import setup_telemetry
+# from chat2rag.telemetry import setup_telemetry
 
-setup_telemetry()
+# setup_telemetry()
 
 
 class DocumentSearchPipeline(BasePipeline):
@@ -43,26 +44,22 @@ class DocumentSearchPipeline(BasePipeline):
         logger.debug("Initialize document search pipeline...")
         try:
             pipeline = Pipeline()
-            pipeline.add_component(
-                "embedder",
-                OpenAITextEmbedder(
-                    api_base_url=CONFIG.EMBEDDING_OPENAI_URL,
-                    api_key=Secret.from_env_var("OPENAI_API_KEY"),
-                    model=CONFIG.EMBEDDING_MODEL,
-                    dimensions=CONFIG.EMBEDDING_DIMENSIONS,
-                ),
+            embedder = OpenAITextEmbedder(
+                api_base_url=CONFIG.EMBEDDING_OPENAI_URL,
+                api_key=Secret.from_env_var("OPENAI_API_KEY"),
+                model=CONFIG.EMBEDDING_MODEL,
+                dimensions=CONFIG.EMBEDDING_DIMENSIONS,
             )
-            pipeline.add_component(
-                "retriever",
-                QdrantEmbeddingRetriever(
-                    document_store=QdrantDocumentStore(
-                        host=CONFIG.QDRANT_HOST,
-                        port=CONFIG.QDRANT_PORT,
-                        embedding_dim=CONFIG.EMBEDDING_DIMENSIONS,
-                        index=self._qdrant_index,
-                    )
-                ),
+            retriever = QdrantEmbeddingRetriever(
+                document_store=QdrantDocumentStore(
+                    host=CONFIG.QDRANT_HOST,
+                    port=CONFIG.QDRANT_PORT,
+                    embedding_dim=CONFIG.EMBEDDING_DIMENSIONS,
+                    index=self._qdrant_index,
+                )
             )
+            pipeline.add_component("embedder", embedder)
+            pipeline.add_component("retriever", retriever)
             pipeline.connect("embedder.embedding", "retriever.query_embedding")
             logger.debug("Document search pipeline initialized successfully.")
             return pipeline
@@ -84,7 +81,7 @@ class DocumentSearchPipeline(BasePipeline):
             logger.error("Failed to warm up document search pipeline: %s", e)
             raise
 
-    def run(
+    async def run(
         self,
         query: str,
         top_k: int = 5,
@@ -108,8 +105,9 @@ class DocumentSearchPipeline(BasePipeline):
         )
         start_time = time.time()
         try:
-            result = self.pipeline.run(
-                {
+            result = await asyncio.to_thread(
+                self.pipeline.run,
+                data={
                     "embedder": {"text": query},
                     "retriever": {
                         "top_k": top_k,
@@ -120,7 +118,7 @@ class DocumentSearchPipeline(BasePipeline):
                             "value": doc_type,
                         },
                     },
-                }
+                },
             )
             logger.info(
                 "Document search pipeline ran successfully in %.2f seconds",
@@ -153,26 +151,22 @@ class DocumentWriterPipeline(BasePipeline):
         logger.debug("Initializing document writer pipeline...")
         try:
             pipeline = Pipeline()
-            pipeline.add_component(
-                "embedder",
-                OpenAIDocumentEmbedder(
-                    api_base_url=CONFIG.EMBEDDING_OPENAI_URL,
-                    api_key=Secret.from_env_var("OPENAI_API_KEY"),
-                    model=CONFIG.EMBEDDING_MODEL,
-                    dimensions=CONFIG.EMBEDDING_DIMENSIONS,
+            embedder = OpenAIDocumentEmbedder(
+                api_base_url=CONFIG.EMBEDDING_OPENAI_URL,
+                api_key=Secret.from_env_var("OPENAI_API_KEY"),
+                model=CONFIG.EMBEDDING_MODEL,
+                dimensions=CONFIG.EMBEDDING_DIMENSIONS,
+            )
+            writer = DocumentWriter(
+                document_store=QdrantDocumentStore(
+                    host=CONFIG.QDRANT_HOST,
+                    port=CONFIG.QDRANT_PORT,
+                    embedding_dim=CONFIG.EMBEDDING_DIMENSIONS,
+                    index=self._qdrant_index,
                 ),
             )
-            pipeline.add_component(
-                "writer",
-                DocumentWriter(
-                    document_store=QdrantDocumentStore(
-                        host=CONFIG.QDRANT_HOST,
-                        port=CONFIG.QDRANT_PORT,
-                        embedding_dim=CONFIG.EMBEDDING_DIMENSIONS,
-                        index=self._qdrant_index,
-                    ),
-                ),
-            )
+            pipeline.add_component("embedder", embedder)
+            pipeline.add_component("writer", writer)
             pipeline.connect("embedder", "writer")
             logger.debug("Document writer pipeline initialized successfully.")
             return pipeline
@@ -194,7 +188,7 @@ class DocumentWriterPipeline(BasePipeline):
             logger.error("Failed to warm up document writer pipeline: %s", e)
             raise
 
-    def run(self, documents: List[Document]):
+    async def run(self, documents: List[Document]):
         """
         Running the document writer pipeline
         """
@@ -202,7 +196,9 @@ class DocumentWriterPipeline(BasePipeline):
             f"Running document writer pipeline with documents: <{','.join([item.content for item in documents])}>"
         )
         try:
-            result = self.pipeline.run({"embedder": {"documents": documents}})
+            result = await asyncio.to_thread(
+                self.pipeline.run, data={"embedder": {"documents": documents}}
+            )
             logger.info("Document writer pipeline ran successfully")
             return result
         except Exception as e:

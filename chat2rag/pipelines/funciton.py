@@ -1,3 +1,4 @@
+import asyncio
 import time
 from typing import List
 
@@ -26,7 +27,7 @@ class FunctionPipeline(BasePipeline):
         self.pipeline = self._initialize_pipeline()
         super().__init__()
 
-    def _initialize_pipeline(self) -> Pipeline:
+    def _initialize_pipeline(self):
         """
         Initialize Function pipeline
         """
@@ -62,7 +63,7 @@ class FunctionPipeline(BasePipeline):
             logger.error("Failed to warm up function pipeline: %s", e)
             raise
 
-    def run(self, query: str, history_messages: List[ChatMessage] = []) -> dict:
+    async def run(self, query: str, history_messages: List[ChatMessage] = []) -> dict:
         """
         Run the function pipeline
         """
@@ -74,13 +75,14 @@ class FunctionPipeline(BasePipeline):
             ChatMessage.from_user(query),
         ]
         try:
-            result = self.pipeline.run(
+            result = await asyncio.to_thread(
+                self.pipeline.run,
                 data={
                     "intention": {
                         "messages": messages,
                         "tools": tools,
                     }
-                }
+                },
             )
             logger.info(
                 "Function pipeline run successfully in %.2f seconds",
