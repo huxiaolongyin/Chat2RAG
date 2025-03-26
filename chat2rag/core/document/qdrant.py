@@ -7,8 +7,10 @@ from haystack_integrations.document_stores.qdrant import QdrantDocumentStore
 
 from chat2rag.config import CONFIG
 from chat2rag.dataclass.document import QADocument
-from chat2rag.logger import logger
+from chat2rag.logger import get_logger
 from chat2rag.pipelines.document import DocumentSearchPipeline, DocumentWriterPipeline
+
+logger = get_logger(__name__)
 
 
 def prepare_documents(qa: QADocument) -> Tuple[Document, Document]:
@@ -141,29 +143,29 @@ class QAQdrantDocumentStore(QdrantDocumentStore):
         query: str,
         top_k: int = CONFIG.TOP_K,
         score_threshold: float = CONFIG.SCORE_THRESHOLD,
-        type: str = "qa_pair",
+        doc_type: str = "qa_pair",
     ) -> List[Document]:
         """
         进行 QA 全文的检索
         """
-        start = perf_counter()
         doc_search_pipeline = DocumentSearchPipeline(self.index)
         response = await doc_search_pipeline.run(
             query=query,
             top_k=top_k,
             score_threshold=score_threshold,
-            start=start,
-            type=type,
+            doc_type=doc_type,
         )
+
         documents = response.get("retriever").get("documents")
         # 优化 todo
         type_condition = lambda doc: (
-            doc.meta.get("type") == type
-            if type == "question"
+            doc.meta.get("type") == doc_type
+            if doc_type == "question"
             else doc.meta.get("type") != "question"
         )
-
-        return [doc for doc in documents if type_condition(doc)]
+        result = [doc for doc in documents if type_condition(doc)]
+        logger.debug("Query result count: %d", len(result))
+        return result
 
     async def query_exact(self, query: str) -> Optional[str]:
         """
@@ -173,11 +175,10 @@ class QAQdrantDocumentStore(QdrantDocumentStore):
             query=query,
             score_threshold=CONFIG.PRECISION_THRESHOLD,
             top_k=1,
-            type="question",
+            doc_type="question",
         )
         if not response:
             return None
-
         filters = {
             "operator": "AND",
             "conditions": [
@@ -194,6 +195,7 @@ class QAQdrantDocumentStore(QdrantDocumentStore):
             ],
         }
         answer = self.filter_documents(filters=filters)
+
         if not answer:
             logger.warning(f"question: <{query}> and answer is not matched")
             return None

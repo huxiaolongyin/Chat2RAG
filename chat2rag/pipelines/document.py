@@ -121,8 +121,9 @@ class DocumentSearchPipeline(BasePipeline):
                 },
             )
             logger.info(
-                "Document search pipeline ran successfully in %.2f seconds",
+                "Document search pipeline ran successfully in %.2f seconds with result: %d",
                 time.time() - start_time,
+                len(result),
             )
             return result
 

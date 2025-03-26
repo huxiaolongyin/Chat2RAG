@@ -78,6 +78,11 @@ def initialize_logging():
             },
             # 添加 httpcore 的特定配置，设置更高的日志级别
             "httpcore": {"level": "ERROR", "propagate": True},  # 只显示错误及以上级别
+            "haystack": {"level": "ERROR", "propagate": True},
+            "httpx": {"level": "ERROR", "propagate": True},
+            "urllib3": {"level": "ERROR", "propagate": True},
+            "asyncio": {"level": "ERROR", "propagate": True},
+            "openai": {"level": "ERROR", "propagate": True},
             # 可以在这里添加其他logger的配置
         },
         # 根logger设置
@@ -88,7 +93,7 @@ def initialize_logging():
     logging.config.dictConfig(config)
 
     # 打印banner (只执行一次)
-    logger = logging.getLogger("Chat2RAG")
+    logger = logging.getLogger("chat2rag")
     banner = get_banner()
     logger.info(f"\n{banner}")
     logger.info("Starting Chat2RAG application")
@@ -96,7 +101,7 @@ def initialize_logging():
     _is_initialized = True
 
 
-def get_logger(name: str = "Chat2RAG"):
+def get_logger(name: str = "chat2rag"):
     """
     获取配置好的logger实例
     """
