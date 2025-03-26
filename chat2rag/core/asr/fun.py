@@ -6,7 +6,7 @@ import torch
 from funasr import AutoModel
 from funasr.utils.postprocess_utils import rich_transcription_postprocess
 
-from VoiceGenius.core.asr.base import BaseASR
+from chat2rag.core.asr.base import BaseASR
 
 logger = logging.getLogger(__name__)
 
