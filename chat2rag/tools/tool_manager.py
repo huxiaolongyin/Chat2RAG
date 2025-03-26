@@ -473,13 +473,15 @@ class ToolManager:
         self.logger.debug("Custom tool not found, Name: %s", name)
         return None
 
-    def get_tools(self) -> List[Tool]:
+    def get_tools(self, filter: List[str] = None) -> List[Tool]:
         """
         Get list of all tool objects
 
         Returns:
             List of Tool objects
         """
+        if filter:
+            return [t for t in self.tools if t.name in filter]
         return self.tools
 
     def get_tool_list(self) -> Dict[str, List[Dict[str, Any]]]:
@@ -506,3 +508,6 @@ class ToolManager:
                 return tool
         self.logger.debug("Tool not found, Name: %s", name)
         return None
+
+
+tool_manager = ToolManager()

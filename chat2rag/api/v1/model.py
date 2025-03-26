@@ -8,7 +8,7 @@ router = APIRouter()
 
 
 @router.get("/list", summary="获取模型列表")
-def _():
+def get_model_list():
     """
     获取模型列表
     """

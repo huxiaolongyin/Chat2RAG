@@ -7,13 +7,13 @@ from haystack import component
 from haystack.dataclasses import ChatMessage
 
 from chat2rag.logger import get_logger
-from chat2rag.tools.tool_manager import ToolManager
+from chat2rag.tools.tool_manager import tool_manager
 
 logger = get_logger(__name__)
 # 默认函数执行超时时间(秒)
 DEFAULT_TIMEOUT = 3
 
-tool_manager = ToolManager()
+# tool_manager = ToolManager()
 
 
 @component

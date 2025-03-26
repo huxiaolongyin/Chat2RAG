@@ -6,18 +6,19 @@ from haystack import Pipeline
 from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.components.tools.tool_invoker import ToolInvoker
 from haystack.dataclasses import ChatMessage
+from haystack.tools import Tool
 from haystack.utils import Secret
 
 from chat2rag.config import CONFIG
 from chat2rag.logger import get_logger
 from chat2rag.pipelines.base import BasePipeline
-from chat2rag.tools import tools
+from chat2rag.tools.tool_manager import tool_manager
 
 logger = get_logger(__name__)
 
+all_tools = tool_manager.get_tools()
 # 监控
 # from chat2rag.telemetry import setup_telemetry
-
 # setup_telemetry()
 
 
@@ -42,8 +43,9 @@ class FunctionPipeline(BasePipeline):
                     api_base_url=CONFIG.OPENAI_BASE_URL,
                 ),
             )
-            pipeline.add_component("tool_invoker", ToolInvoker(tools=tools))
+            pipeline.add_component("tool_invoker", ToolInvoker(tools=all_tools))
             pipeline.connect("intention.replies", "tool_invoker.messages")
+            logger.debug("Function pipeline initialized successfully")
             return pipeline
 
         except Exception as e:
@@ -63,7 +65,12 @@ class FunctionPipeline(BasePipeline):
             logger.error("Failed to warm up function pipeline: %s", e)
             raise
 
-    async def run(self, query: str, history_messages: List[ChatMessage] = []) -> dict:
+    async def run(
+        self,
+        query: str,
+        history_messages: List[ChatMessage] = [],
+        tools: List[Tool] = [],
+    ) -> dict:
         """
         Run the function pipeline
         """
@@ -88,6 +95,7 @@ class FunctionPipeline(BasePipeline):
                 "Function pipeline run successfully in %.2f seconds",
                 time.time() - start_time,
             )
+            logger.debug("Function pipeline result: %s", result)
             return result
         except Exception as e:
             logger.error("Failed to run function pipeline: %s", e)

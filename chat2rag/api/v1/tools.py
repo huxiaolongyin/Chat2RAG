@@ -6,10 +6,10 @@ from fastapi import APIRouter, Body, Query
 
 from chat2rag.api.schema import Error, Success, ToolConfig
 from chat2rag.logger import logger
-from chat2rag.tools.tool_manager import ToolManager
+from chat2rag.tools.tool_manager import tool_manager
 
 router = APIRouter()
-tool_manager = ToolManager()
+# tool_manager = ToolManager()
 
 
 class SortOrder(str, Enum):

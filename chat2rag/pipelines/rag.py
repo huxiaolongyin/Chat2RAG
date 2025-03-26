@@ -9,6 +9,7 @@ from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.components.generators.utils import print_streaming_chunk
 from haystack.components.joiners.document_joiner import DocumentJoiner
 from haystack.dataclasses import ChatMessage
+from haystack.tools import Tool
 from haystack.utils import Secret
 
 from chat2rag.config import CONFIG
@@ -38,6 +39,15 @@ class RAGPipeline(BasePipeline):
         logger.debug(f"Creating new document pipeline for index: {index}")
         return DocumentSearchPipeline(index)
 
+    @staticmethod
+    @lru_cache(maxsize=32)
+    def _create_function_pipeline(intention_model: str) -> FunctionPipeline:
+        """
+        Cache function pipeline
+        """
+        logger.debug(f"Creating new function pipeline for model: {intention_model}")
+        return FunctionPipeline(intention_model)
+
     def __init__(
         self,
         qdrant_index: Union[str, List[str]],
@@ -64,7 +74,7 @@ class RAGPipeline(BasePipeline):
         ]
 
         # 创建函数调用管道
-        self.func_pipeline = FunctionPipeline(intention_model)
+        self.func_pipeline = self._create_function_pipeline(intention_model)
 
         # 保存基本配置
         self.intention_model = intention_model
@@ -101,7 +111,7 @@ class RAGPipeline(BasePipeline):
             pipeline.connect("doc_joiner.documents", "prompt_builder.documents")
             pipeline.connect("prompt_builder.prompt", "generator")
 
-            logger.info("Initialize RAG pipeline successfully")
+            logger.debug("Initialize RAG pipeline successfully")
             return pipeline
 
         except Exception as e:
@@ -138,10 +148,11 @@ class RAGPipeline(BasePipeline):
     async def run(
         self,
         query: str,
-        prompt_template: str = CONFIG.RAG_PROMPT_TEMPLATE,
-        messages: List[ChatMessage] = [],
-        top_k: int = CONFIG.TOP_K,
-        score_threshold: float = CONFIG.SCORE_THRESHOLD,
+        tools: List[Tool] = [],
+        prompt_template: str = None,
+        messages: List[ChatMessage] = None,
+        top_k: int = None,
+        score_threshold: float = None,
         generation_kwargs: Dict[str, Any] = {},
     ) -> Dict[str, Any]:
         """
@@ -161,13 +172,23 @@ class RAGPipeline(BasePipeline):
         start_time = time.time()
         logger.info(f"Running RAG pipeline with query: <{query}>...")
 
+        if not prompt_template:
+            prompt_template = CONFIG.RAG_PROMPT_TEMPLATE
+            logger.debug("Using default rag prompt template")
+        if not top_k:
+            top_k = CONFIG.TOP_K
+            logger.debug("Using default top_k")
+        if not score_threshold:
+            score_threshold = CONFIG.SCORE_THRESHOLD
+            logger.debug("Using default score_threshold")
+
         # 并发执行文档检索和函数调用
         tasks = [
             *[
                 pipeline.run(query, top_k, score_threshold)
                 for pipeline in self.doc_pipeline
             ],
-            self.func_pipeline.run(query, messages),
+            self.func_pipeline.run(query, messages, tools=tools),
         ]
 
         all_results = await asyncio.gather(*tasks)

@@ -1,34 +1,17 @@
-import functools
-import time
 from enum import Enum
 from math import ceil
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query
-from fastapi.responses import JSONResponse
 
 from chat2rag.api.schema import Error, Success
 from chat2rag.config import CONFIG
 from chat2rag.core.document.qdrant import QAQdrantDocumentStore
 from chat2rag.dataclass.document import QADocument
 from chat2rag.logger import logger
+from chat2rag.utils.monitoring import async_performance_logger
 
 router = APIRouter()
-
-
-# 性能监控装饰器
-def timing_decorator(func: Callable):
-    @functools.wraps(func)  # 保留原始函数的签名和元数据
-    async def wrapper(*args, **kwargs):
-        start_time = time.perf_counter()
-        result = await func(*args, **kwargs)
-        elapsed_time = time.perf_counter() - start_time
-        logger.debug(
-            f"API Function <{func.__name__}> took {elapsed_time:.3f} seconds to complete"
-        )
-        return result
-
-    return wrapper
 
 
 class SortOrder(str, Enum):
@@ -57,7 +40,7 @@ async def validate_collection(
 
 
 @router.get("/collection", summary="获取知识库列表")
-@timing_decorator
+@async_performance_logger
 async def get_collections(
     current: int = Query(1, ge=1, description="当前页码，默认1"),
     size: int = Query(10, ge=1, le=100, description="每页数量(1-100)，默认10"),
@@ -125,7 +108,7 @@ async def get_collections(
 
 
 @router.post("/collection", summary="创建新的知识库")
-@timing_decorator
+@async_performance_logger
 async def create_collection(
     collection_name: str = Query(
         description="知识库名称",
@@ -167,7 +150,7 @@ async def create_collection(
 
 
 @router.delete("/collection", summary="删除知识库")
-@timing_decorator
+@async_performance_logger
 async def delete_collection(collection_name: str = Depends(validate_collection)):
     """删除知识库"""
     logger.info(f"Deleting knowledge collection <{collection_name}>")
@@ -186,7 +169,7 @@ async def delete_collection(collection_name: str = Depends(validate_collection))
 
 
 @router.get("/collection/document", summary="获取知识库所有文档")
-@timing_decorator
+@async_performance_logger
 async def get_documents(
     collection_name: str = Depends(validate_collection),
     current: int = Query(1, ge=1, description="当前页码，默认1"),
@@ -256,7 +239,7 @@ async def get_documents(
 
 
 @router.post("/collection/document", summary="创建知识")
-@timing_decorator
+@async_performance_logger
 async def create_documents(
     collection_name: str = Depends(validate_collection),
     doc_list: List[QADocument] = Body(description="知识内容", alias="docList"),
@@ -294,7 +277,7 @@ async def create_documents(
 
 
 @router.delete("/collection/document", summary="删除知识")
-@timing_decorator
+@async_performance_logger
 async def delete_documents(
     collection_name: str = Depends(validate_collection),
     doc_id_list: List[str] = Body(description="知识的id", alias="docIdList"),
@@ -321,7 +304,7 @@ async def delete_documents(
 
 
 @router.get("/query", summary="知识内容查询")
-@timing_decorator
+@async_performance_logger
 async def query_documents(
     collection_name: str = Depends(validate_collection),
     query: str = Query(description="查询内容", alias="query"),
@@ -402,7 +385,7 @@ async def query_documents(
 
 
 @router.get("/exact-query", summary="精确知识查询")
-@timing_decorator
+@async_performance_logger
 async def exact_query(
     collection_name: str = Depends(validate_collection),
     query: str = Query(description="查询内容", alias="query"),
@@ -447,7 +430,7 @@ async def exact_query(
 
 
 @router.get("/collection/stats", summary="获取知识库统计信息")
-@timing_decorator
+@async_performance_logger
 async def get_collection_stats(
     collection_name: str = Depends(validate_collection),
 ):
@@ -483,7 +466,7 @@ async def get_collection_stats(
 
 
 @router.put("/collection/document", summary="更新知识")
-@timing_decorator
+@async_performance_logger
 async def update_document(
     collection_name: str = Depends(validate_collection),
     doc_id: str = Query(description="知识ID", alias="docId"),

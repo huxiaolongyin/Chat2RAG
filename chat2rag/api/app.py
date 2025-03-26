@@ -3,7 +3,7 @@ from fastapi import FastAPI
 from chat2rag.api.routes import router
 from chat2rag.config import CONFIG
 from chat2rag.logger import logger
-from chat2rag.pipelines.document import DocumentSearchPipeline
+from chat2rag.pipelines.rag import RAGPipeline
 
 
 # @asynccontextmanager
@@ -21,8 +21,8 @@ async def lifespan(app: FastAPI):
         logger.info("Telemetry setup successfully")
 
     # logger.info("Starting Chat2RAG application")
-    # 文档检索管道预热，加载向量化嵌入模型
-    DocumentSearchPipeline()
+    # 预热 RAG 管道
+    RAGPipeline("Document")
     yield
     # 关闭时执行
     # await FastAPICache.clear()

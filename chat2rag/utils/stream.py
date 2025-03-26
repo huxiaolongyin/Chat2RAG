@@ -9,7 +9,9 @@ from typing import List, Optional
 
 from haystack.dataclasses import StreamingChunk
 
-from chat2rag.logger import logger
+from chat2rag.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 @dataclass
