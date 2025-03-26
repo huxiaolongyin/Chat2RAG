@@ -57,7 +57,7 @@ dependencies = [
     "lunar-python==1.3.12",
     
     # TTS 服务
-    "kokoro==0.7.16",
+    # "kokoro==0.7.16",
 ]
 
 [project.optional-dependencies]

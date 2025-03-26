@@ -8,12 +8,12 @@
 
 ### Added
 
-- Add Automatic Speech Recognition (ASR) functionality
-- Add Text-to-Speech (TTS) service
+- 新增 ASR 的服务
+- 新增 TTS 的服务
 
 ### Changed
 
-- Move frontend directory to core/ui for better organizetion.
+- 将 frontend、rag_core、backend 整合到chat2rag中
 
 ## [V0.1.2] - 2025-02-20
 

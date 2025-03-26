@@ -1,10 +1,11 @@
 name: chat2rag
 services:
-  backend:
-    image: jacob0827/chat2rag-backend:latest
-    container_name: backend
+  service:
+    image: jacob0827/chat2rag:latest
+    container_name: service
     ports:
       - "8000:8000"
+      - "8501:8501"
     volumes:
       - ${DATA_PATH}/phoenix:/.phoenix
       - ${LOG_PATH}:/code/logs
@@ -20,27 +21,6 @@ services:
       - ../.env
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://localhost:8000/api/v1/health" ]
-      interval: 30s
-      timeout: 3s
-      retries: 5
-      start_period: 30s
-    networks:
-      - chat2rag-network
-    restart: always
-
-  frontend:
-    image: jacob0827/chat2rag-frontend:latest
-    container_name: frontend
-    ports:
-      - "8501:8501"
-    depends_on:
-      - backend
-    environment:
-      - TZ=Asia/Shanghai
-      - BACKEND_HOST=backend
-      - BACKEND_PORT=8000
-    healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:8501" ]
       interval: 30s
       timeout: 3s
       retries: 5

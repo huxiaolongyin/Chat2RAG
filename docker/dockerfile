@@ -13,38 +13,26 @@ RUN apt-get update -o Dir::Etc::sourcelist="sources.list" \
 
 WORKDIR /code
 
-# 只复制依赖相关文件,利用缓存
+# 复制源代码
+COPY ./chat2rag ./chat2rag
 COPY ./pyproject.toml  .
 COPY ./README.md .
 COPY ./VERSION.txt .
 
-# 复制源代码
-COPY ./backend ./backend
-COPY ./rag_core ./rag_core
 
 USER root
 
 # Install UV
-RUN pip3 install uv -i https://mirrors.aliyun.com/pypi/simple/
+RUN pip3 install uv 
 
 # 配置pip并安装依赖
-RUN uv pip install --system --no-cache-dir . -i https://mirrors.aliyun.com/pypi/simple/
+RUN uv pip install --system --no-cache-dir . 
 
-EXPOSE 8000
+# 暴露端口
+EXPOSE 8051 8000
 
-CMD ["uvicorn", "backend.main:app", \
-    "--host", "0.0.0.0", \
-    "--port", "8000",\
-    "--limit-concurrency","500",\
-    "--timeout-keep-alive","65",\
-    "--loop", "uvloop"]
+# 添加启动脚本
+COPY ./scripts/start.sh .
+RUN chmod +x start.sh
 
-# 多核服务器可使用这个
-# CMD ["gunicorn", \
-#     "--bind", "0.0.0.0:8000", \
-#     "--preload", \
-#     "--worker-connections", "200", \ 
-#     "-k", "uvicorn.workers.UvicornWorker", \
-#     "--timeout", "120", \
-#     "--max-requests", "1000", \
-#     "backend.main:app"]
+CMD ["./start.sh"]
