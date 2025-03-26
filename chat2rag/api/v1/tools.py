@@ -4,9 +4,9 @@ from typing import Optional
 
 from fastapi import APIRouter, Body, Query
 
-from backend.schema import Error, Success, ToolConfig
-from rag_core.logging import logger
-from rag_core.tools.tool_manage import ToolManager
+from chat2rag.api.schema import Error, Success, ToolConfig
+from chat2rag.logger import logger
+from chat2rag.tools import ToolManager, tools
 
 router = APIRouter()
 tool_manager = ToolManager()
@@ -48,13 +48,13 @@ async def _(
     logger.info(
         f"Getting tool list. Tool desc: <{tool_desc}>; Current: {current}; Page size: {size}"
     )
-    tool_list = tool_manager.get_all_tools()
+    # tool_list = tool_manager.get_all_tools()
 
     # 如果有搜索条件则过滤
     if tool_desc:
         tool_list = [
             tool
-            for tool in tool_list
+            for tool in tools
             if tool_desc.lower() in tool["function"]["description"].lower()
         ]
 

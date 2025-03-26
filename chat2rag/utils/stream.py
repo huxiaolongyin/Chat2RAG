@@ -9,7 +9,7 @@ from typing import List, Optional
 
 from haystack.dataclasses import StreamingChunk
 
-from rag_core.logging import logger
+from chat2rag.logger import logger
 
 
 @dataclass
@@ -139,7 +139,11 @@ class StreamHandler:
                             message_id=message_id,
                         )
                         yield f"data: {json.dumps(data, ensure_ascii=False)}\n\n"
-                    data = self._create_message("", meta={"finish_reason":"stop","model":""}, message_id=message_id)
+                    data = self._create_message(
+                        "",
+                        meta={"finish_reason": "stop", "model": ""},
+                        message_id=message_id,
+                    )
                     yield f"data: {json.dumps(data, ensure_ascii=False)}\n\n"
                     break
 

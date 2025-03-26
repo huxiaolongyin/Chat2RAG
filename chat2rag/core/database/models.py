@@ -2,7 +2,7 @@ from datetime import datetime
 
 from sqlalchemy import Column, DateTime, Float, Integer, String
 
-from rag_core.database.database import Base, create_all_tables
+from chat2rag.core.database.database import Base, create_all_tables
 
 
 class RAGPipelineMetrics(Base):
@@ -53,13 +53,3 @@ class Prompt(Base):
 
 
 create_all_tables()
-
-
-# def main():
-#     print("Initializing database tables if they do not exist...")
-#     create_all_tables()
-#     print("Database tables are up-to-date.")
-
-
-# if __name__ == "__main__":
-#     main()

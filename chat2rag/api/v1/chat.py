@@ -9,20 +9,21 @@ from haystack.dataclasses import StreamingChunk
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from backend.schema import Error, Success
-from rag_core.config import CONFIG
-from rag_core.database.database import get_db
-from rag_core.database.models import Prompt
-from rag_core.document.qdrant import QAQdrantDocumentStore
-from rag_core.logging import logger
-from rag_core.pipelines.rag_pipeline import RAGPipeline
-from rag_core.tools import ToolManager
-from rag_core.utils.chat_cache import ChatCache
-from rag_core.utils.stream import StreamHandler
+from chat2rag.api.schema import Error, Success
+from chat2rag.config import CONFIG
+from chat2rag.core.database import Prompt, get_db
+from chat2rag.core.document.qdrant import QAQdrantDocumentStore
+from chat2rag.logger import logger
+from chat2rag.pipelines.rag import RAGPipeline
+from chat2rag.tools import tools
+
+# from chat2rag.tools import ToolManager
+from chat2rag.utils.chat_cache import ChatCache
+from chat2rag.utils.stream import StreamHandler
 
 router = APIRouter()
 chat_cache = ChatCache()
-tool_manager = ToolManager()
+# tool_manager = ToolManager()
 
 
 class Config:
@@ -114,7 +115,7 @@ async def _(
             return Success(data=[{"content": answer, "role": "assistant"}])
 
     # 获取使用的工具信息
-    tools = tool_manager.get_tool_info(params.tool_list)
+    # tools = tool_manager.get_tool_info(params.tool_list)
 
     # 获取历史消息
     history_messages = []
@@ -159,7 +160,7 @@ async def _(
     start = perf_counter()
     handler = StreamHandler()
     handler.start()
-    tools = tool_manager.get_tool_info(params.tool_list)
+    # tools = tool_manager.get_tool_info(params.tool_list)
     is_batch = batch_or_stream == ProcessType.BATCH
 
     # 提示词

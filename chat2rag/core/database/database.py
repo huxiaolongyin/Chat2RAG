@@ -1,7 +1,7 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import declarative_base, sessionmaker
 
-from rag_core.config import CONFIG
+from chat2rag.config import CONFIG
 
 engine = create_engine(
     CONFIG.DATABASE_URL,

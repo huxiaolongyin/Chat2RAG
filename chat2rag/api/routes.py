@@ -2,7 +2,7 @@ from datetime import datetime
 
 from fastapi import APIRouter
 
-from backend.api.v1 import (
+from chat2rag.api.v1 import (
     chat_router,
     knowledge_router,
     model_router,

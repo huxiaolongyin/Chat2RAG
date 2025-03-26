@@ -1,9 +1,9 @@
 from fastapi import FastAPI
 
-from backend.api.routes import router
-from rag_core.config import CONFIG
-from rag_core.logging import logger
-from rag_core.pipelines.doc_pipeline import DocumentSearchPipeline
+from chat2rag.api.routes import router
+from chat2rag.config import CONFIG
+from chat2rag.logger import logger
+from chat2rag.pipelines.document import DocumentSearchPipeline
 
 
 # @asynccontextmanager
@@ -13,7 +13,7 @@ async def lifespan(app: FastAPI):
 
     # 进行 RAG 流程监控
     if CONFIG.TELEMETRY_ENABLED:
-        from rag_core.telemetry import setup_telemetry
+        from chat2rag.telemetry import setup_telemetry
 
         logger.info("Setting up telemetry...")
         # 需要先启动 server 服务： python -m phoenix.server.main serve
@@ -43,7 +43,7 @@ if __name__ == "__main__":
     import uvicorn
 
     uvicorn.run(
-        "backend.main:app",
+        "chat2rag.api.app:app",
         host="0.0.0.0",
         port=CONFIG.BACKEND_PORT,
         reload=True,

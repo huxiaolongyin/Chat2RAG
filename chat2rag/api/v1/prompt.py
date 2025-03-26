@@ -3,12 +3,11 @@ from math import ceil
 from fastapi import APIRouter, Body, Depends, Query
 from sqlalchemy.orm import Session
 
-from backend.schema import Error, Success
-from backend.schema.prompt import PromptCreate
-from rag_core.config import CONFIG
-from rag_core.database.database import get_db
-from rag_core.database.models import Prompt
-from rag_core.logging import logger
+from chat2rag.api.schema import Error, Success
+from chat2rag.api.schema.prompt import PromptCreate
+from chat2rag.config import CONFIG
+from chat2rag.core.database import Prompt, get_db
+from chat2rag.logger import logger
 
 router = APIRouter()
 

@@ -4,11 +4,11 @@ from typing import List, Optional
 
 from fastapi import APIRouter, Body, Query
 
-from backend.schema import Error, Success
-from rag_core.config import CONFIG
-from rag_core.dataclass.document import QADocument
-from rag_core.document.qdrant import QAQdrantDocumentStore
-from rag_core.logging import logger
+from chat2rag.api.schema import Error, Success
+from chat2rag.config import CONFIG
+from chat2rag.core.document.qdrant import QAQdrantDocumentStore
+from chat2rag.dataclass.document import QADocument
+from chat2rag.logger import logger
 
 # from pyinstrument import Profiler
 

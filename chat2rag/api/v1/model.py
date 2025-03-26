@@ -1,8 +1,8 @@
 import requests
 from fastapi import APIRouter
 
-from backend.schema import Error, Success
-from rag_core.config import CONFIG
+from chat2rag.api.schema import Error, Success
+from chat2rag.config import CONFIG
 
 router = APIRouter()
 

@@ -5,13 +5,10 @@ from typing import List, Optional, Tuple
 from haystack.dataclasses import Document
 from haystack_integrations.document_stores.qdrant import QdrantDocumentStore
 
-from rag_core.config.setting import CONFIG
-from rag_core.dataclass.document import QADocument
-from rag_core.logging import logger
-from rag_core.pipelines.doc_pipeline import (
-    DocumentSearchPipeline,
-    DocumentWriterPipeline,
-)
+from chat2rag.config import CONFIG
+from chat2rag.dataclass.document import QADocument
+from chat2rag.logger import logger
+from chat2rag.pipelines.document import DocumentSearchPipeline, DocumentWriterPipeline
 
 
 def prepare_documents(qa: QADocument) -> Tuple[Document, Document]:

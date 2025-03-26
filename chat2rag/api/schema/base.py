@@ -1,8 +1,10 @@
-from typing import Any
-from rag_core.config import CONFIG
 from datetime import datetime
+from typing import Any
+
 from fastapi.responses import JSONResponse
 from humps import camelize
+
+from chat2rag.config import CONFIG
 
 
 def camelize_dict(obj):

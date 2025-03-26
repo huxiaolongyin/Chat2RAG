@@ -6,13 +6,13 @@ With the rapid development of artificial intelligence and large model technology
 
 Web UI Demo Screenshot:
 
-![1734327559151](image/README/1734327559151.png)
+![1734327559151](assets/image/README/1734327559151.png)
 
-![1734327568403](image/README/1734327568403.png)
+![1734327568403](assets/image/README/1734327568403.png)
 
-![1734327575603](image/README/1734327575603.png)
+![1734327575603](assets/image/README/1734327575603.png)
 
-![1734327581312](image/README/1734327581312.png)
+![1734327581312](assets/image/README/1734327581312.png)
 
 ## Install
 
