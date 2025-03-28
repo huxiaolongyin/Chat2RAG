@@ -6,9 +6,12 @@ build
 .venv
 .vscode
 .env
+tmp
 temp*
 **_pycache__
 .pytest_cache
+model
+audio_chat
 
 
 #=======================#

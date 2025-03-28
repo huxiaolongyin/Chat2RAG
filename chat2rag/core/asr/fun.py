@@ -1,4 +1,3 @@
-import logging
 import time
 
 import soundfile as sf
@@ -7,8 +6,9 @@ from funasr import AutoModel
 from funasr.utils.postprocess_utils import rich_transcription_postprocess
 
 from chat2rag.core.asr.base import BaseASR
+from chat2rag.logger import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class FunASR(BaseASR):
@@ -24,9 +24,9 @@ class FunASR(BaseASR):
         logger.info("正在初始化ASR模型...")
         try:
             return AutoModel(
-                model="iic/SenseVoiceSmall",
-                vad_model="fsmn-vad",
-                vad_kwargs={"max_single_segment_time": 30000},
+                model="paraformer-zh",
+                # vad_model="fsmn-vad",
+                # vad_kwargs={"max_single_segment_time": 30000},
                 device=self.device,
                 disable_update=True,
             )
@@ -49,14 +49,14 @@ class FunASR(BaseASR):
             res = self.model.generate(
                 input=audio_file,
                 cache={},
-                language="auto",  # "zn", "en", "yue", "ja", "ko", "nospeech"
+                language="zn",  # "zn", "en", "yue", "ja", "ko", "nospeech"
                 use_itn=True,
                 batch_size_s=60,
                 merge_vad=True,  #
                 merge_length_s=15,
             )
             logger.info("ASR识别完成，耗时: %.2f秒", time.time() - start_time)
-            return rich_transcription_postprocess(res[0]["text"])
+            return rich_transcription_postprocess(res[0]["text"]).replace(" ", "")
         except Exception as e:
             logger.error("ASR识别失败: %s", e)
             raise

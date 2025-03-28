@@ -1,6 +1,7 @@
 import asyncio
 import io
 import logging
+from pathlib import Path
 from typing import Any, AsyncGenerator, Dict, List, Tuple
 
 import soundfile as sf
@@ -13,14 +14,13 @@ logger = logging.getLogger(__name__)
 
 
 class KokoroTTS(BaseTTS):
-    def __init__(self, voice="zm_045", speed=1.0):
+    def __init__(self, speed=1.2):
         """
         使用 kokoro 进行语音合成
         Args:
             voice: 要使用的声音标识符
             language: 语言代码(例如："zh", "en")
         """
-        self.voice = voice
         self.speed = speed
         self.REPO_ID = "hexgrad/Kokoro-82M-v1.1-zh"
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -54,7 +54,7 @@ class KokoroTTS(BaseTTS):
             logger.error("初始化kokoroTTS模型失败: %s", e)
             raise
 
-    def speak(self, text: str) -> Tuple[bytes, int]:
+    def speak(self, text: str, voice: str = None) -> Tuple[bytes, int]:
         """
         将文本转换为语音数据
 
@@ -64,10 +64,13 @@ class KokoroTTS(BaseTTS):
         Returns:
             语音数据的字节, 采样率
         """
-        logger.info("正在将文本转换为语音数据: %s", text)
+        logger.info("Processing TTS segment: %s", text)
+        if not voice:
+            voice = "zf_001"
+            logger.warning("未指定语音，使用默认语音: %s", voice)
         try:
             # 获取音频数据
-            generator = self.zh_pipeline(text, voice=self.voice, speed=self.speed)
+            generator = self.zh_pipeline(text, voice=voice, speed=self.speed)
             result = next(generator)
             wav_tensor = result.audio
             numpy_array = wav_tensor.numpy()
@@ -84,7 +87,9 @@ class KokoroTTS(BaseTTS):
             logger.error("文本转换语音失败: %s", e)
             raise
 
-    async def stream_speak(self, text: str) -> AsyncGenerator[bytes, None]:
+    async def stream_speak(
+        self, text: str, voice: str = None
+    ) -> AsyncGenerator[bytes, None]:
         """
         异步方法：将文本转换为语音数据流
 
@@ -95,6 +100,9 @@ class KokoroTTS(BaseTTS):
             语音数据的字节块
         """
         logger.info("正在将文本转换为语音数据流: %s", text)
+        if not voice:
+            voice = "zf_001"
+            logger.warning("未指定语音，使用默认语音: %s", voice)
         try:
             # 分割文本为句子
             sentences = self._split_into_sentences(text)
@@ -108,9 +116,7 @@ class KokoroTTS(BaseTTS):
                 loop = asyncio.get_running_loop()
                 generator = await loop.run_in_executor(
                     None,
-                    lambda: self.zh_pipeline(
-                        sentence, voice=self.voice, speed=self.speed
-                    ),
+                    lambda: self.zh_pipeline(sentence, voice=voice, speed=self.speed),
                 )
                 result = await loop.run_in_executor(None, lambda: next(generator))
                 wav_tensor = result.audio
@@ -130,11 +136,22 @@ class KokoroTTS(BaseTTS):
             logger.error("文本转换语音流失败: %s", e)
             raise
 
-    def get_available_voices(self) -> List[Dict[str, Any]]:
+    @staticmethod
+    def get_available_voices() -> List[Dict[str, Any]]:
         """
         获取可用的语音列表
 
         Returns:
             语音信息列表
         """
-        pass
+        voices_dir = Path("model") / "Kokoro-82M-v1.1-zh" / "voices"
+
+        # 检查目录是否存在
+        if not voices_dir.exists():
+            print(f"目录 {voices_dir} 不存在")
+            return []
+
+        # 使用列表推导式获取所有文件名（不含后缀）
+        voices = [file.stem for file in voices_dir.iterdir() if file.is_file()]
+
+        return voices

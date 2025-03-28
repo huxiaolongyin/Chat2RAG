@@ -1,0 +1,783 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat2RAG - 语音交互助手</title>
+    <style>
+        :root {
+            --primary-color: #4F46E5;
+            --secondary-color: #E5E7EB;
+            --background-color: #F9FAFB;
+            --text-color: #111827;
+            --user-message-bg: #E9F2FF;
+            --assistant-message-bg: #F3F4F6;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        header {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 1rem;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .container {
+            max-width: 90%;
+            margin: 0 auto;
+            padding: 1rem;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chat-container {
+            flex: 1;
+            overflow-y: auto;
+            margin-bottom: 1rem;
+            padding: 1rem;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+            max-height: 60vh;
+            min-height: 300px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .message {
+            padding: 0.75rem 1rem;
+            margin: 0.5rem 0;
+            border-radius: 8px;
+            max-width: 85%;
+            word-wrap: break-word;
+            line-height: 1.5;
+        }
+
+        .user-message {
+            background-color: var(--user-message-bg);
+            align-self: flex-end;
+            margin-left: auto;
+        }
+
+        .assistant-message {
+            background-color: var(--assistant-message-bg);
+            align-self: flex-start;
+        }
+
+        .controls {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            padding: 1rem;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        }
+
+        .button-row {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        button {
+            padding: 0.75rem 1.5rem;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: background-color 0.2s;
+            flex: 1;
+        }
+
+        button:hover {
+            background-color: #4338CA;
+        }
+
+        button:disabled {
+            background-color: #9CA3AF;
+            cursor: not-allowed;
+        }
+
+        #recordButton {
+            background-color: #DC2626;
+        }
+
+        #recordButton.recording {
+            background-color: #7F1D1D;
+        }
+
+        .status {
+            font-size: 0.9rem;
+            color: #6B7280;
+            margin-top: 0.5rem;
+            text-align: center;
+        }
+
+        .audio-visualizer {
+            height: 40px;
+            background-color: var(--secondary-color);
+            border-radius: 4px;
+            margin-bottom: 0.5rem;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .visualizer-canvas {
+            width: 100%;
+            height: 100%;
+        }
+
+        footer {
+            text-align: center;
+            padding: 1rem;
+            font-size: 0.8rem;
+            color: #6B7280;
+            margin-top: auto;
+        }
+
+        .voice-selector {
+            margin-bottom: 1rem;
+        }
+
+        select {
+            padding: 0.5rem;
+            border-radius: 4px;
+            border: 1px solid var(--secondary-color);
+            width: 100%;
+        }
+
+        .debug-panel {
+            margin-top: 1rem;
+            padding: 0.5rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            display: none;
+        }
+
+        /* 响应式设计调整 */
+        @media (min-width: 1200px) {
+            .container {
+                max-width: 1000px;
+            }
+
+            .message {
+                max-width: 70%;
+            }
+        }
+
+        @media (min-width: 768px) and (max-width: 1199px) {
+            .container {
+                max-width: 85%;
+            }
+
+            .message {
+                max-width: 75%;
+            }
+        }
+
+        @media (max-width: 767px) {
+            .container {
+                max-width: 95%;
+                padding: 0.5rem;
+            }
+
+            .message {
+                max-width: 85%;
+            }
+
+            button {
+                padding: 0.6rem 1rem;
+                font-size: 0.9rem;
+            }
+
+            h1 {
+                font-size: 1.5rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .container {
+                padding: 0.25rem;
+            }
+
+            .chat-container {
+                padding: 0.5rem;
+                min-height: 250px;
+            }
+
+            .message {
+                padding: 0.5rem 0.75rem;
+                margin: 0.4rem 0;
+                max-width: 90%;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <h1>Chat2RAG 语音交互助手</h1>
+    </header>
+
+    <div class="container">
+        <div class="voice-selector">
+            <label for="voice-select">选择语音：</label>
+            <select id="voice-select">
+                <option value="default">默认语音</option>
+                <!-- 语音选项将通过JavaScript动态加载 -->
+            </select>
+        </div>
+
+        <div class="chat-container" id="chatContainer">
+            <!-- 对话内容将在这里动态生成 -->
+        </div>
+
+        <div class="controls">
+            <div class="audio-visualizer">
+                <canvas id="visualizer" class="visualizer-canvas"></canvas>
+            </div>
+            <div class="button-row">
+                <button id="recordButton">开始录音</button>
+                <button id="clearButton">清空对话</button>
+            </div>
+            <div class="status" id="status">准备就绪...</div>
+        </div>
+
+        <div class="debug-panel" id="debugPanel">
+            <div>调试信息：<span id="debugInfo">无</span></div>
+        </div>
+    </div>
+
+    <footer>
+        <p>Chat2RAG - 语音交互 AI 助手 © 2023</p>
+    </footer>
+
+    <script>
+        // 全局变量
+        let websocket;
+        let audioContext;
+        let analyser;
+        let isRecording = false;
+        let audioQueue = [];
+        let isPlaying = false;
+        let mediaStream = null;
+
+        // 对话管理变量
+        let currentConversationId = Date.now(); // 当前对话的唯一ID
+        let isNewUserMessage = true;            // 标记是否收到新的用户消息
+
+        // 音频处理变量
+        let microphone;
+        let audioProcessor;
+        let sampleRateConverter;
+        let audioBuffer = [];
+
+        // 音频配置
+        const TARGET_SAMPLE_RATE = 16000;  // 16kHz
+        const REQUIRED_SAMPLES = 512;     // 512个样本
+
+        // 调试设置
+        const DEBUG_MODE = true;         // 显示调试信息
+
+        // DOM 元素
+        const recordButton = document.getElementById('recordButton');
+        const clearButton = document.getElementById('clearButton');
+        const chatContainer = document.getElementById('chatContainer');
+        const statusElement = document.getElementById('status');
+        const visualizer = document.getElementById('visualizer');
+        const voiceSelect = document.getElementById('voice-select');
+        const debugPanel = document.getElementById('debugPanel');
+        const debugInfo = document.getElementById('debugInfo');
+
+        // Canvas 上下文
+        const canvasCtx = visualizer.getContext('2d');
+
+        // 初始化
+        window.addEventListener('load', initialize);
+
+        function initialize() {
+            // 设置 Canvas 尺寸
+            visualizer.width = visualizer.offsetWidth;
+            visualizer.height = visualizer.offsetHeight;
+
+            // 配置调试面板
+            if (DEBUG_MODE) {
+                debugPanel.style.display = 'block';
+            }
+
+            // 加载可用语音
+            loadVoices();
+
+            // 连接 WebSocket
+            connectWebSocket();
+
+            // 添加事件监听器
+            recordButton.addEventListener('click', toggleRecording);
+            clearButton.addEventListener('click', clearChat);
+            voiceSelect.addEventListener('change', changeVoice);
+
+            // 初始化音频上下文 - 尝试强制16kHz采样率
+            initAudioContext();
+
+            // 显示欢迎消息
+            addMessage("你好！我是Chat2RAG语音助手。请点击'开始录音'按钮开始对话。", "assistant");
+        }
+
+        function debug(message) {
+            if (DEBUG_MODE) {
+                console.log(message);
+                debugInfo.textContent = message;
+            }
+        }
+
+        function loadVoices() {
+            fetch('/voice_list')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.voices && Array.isArray(data.voices)) {
+                        voiceSelect.innerHTML = '';
+                        data.voices.forEach(voice => {
+                            const option = document.createElement('option');
+                            option.value = voice;
+                            option.textContent = voice;
+                            voiceSelect.appendChild(option);
+                        });
+                    }
+                })
+                .catch(error => {
+                    console.error('加载语音失败:', error);
+                    updateStatus('加载语音列表失败');
+                });
+        }
+
+        function connectWebSocket() {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${protocol}//${window.location.host}/ws/chat/audio`;
+
+            debug(`正在连接WebSocket: ${wsUrl}`);
+
+            if (websocket && websocket.readyState !== WebSocket.CLOSED) {
+                websocket.close();
+            }
+
+            websocket = new WebSocket(wsUrl);
+
+            websocket.onopen = () => {
+                debug('WebSocket连接成功！');
+                updateStatus('已连接到服务器');
+            };
+
+            websocket.onclose = (event) => {
+                debug(`WebSocket断开: 代码=${event.code}`);
+                updateStatus('服务器连接已断开');
+                setTimeout(connectWebSocket, 3000);
+            };
+
+            websocket.onerror = (error) => {
+                console.error('WebSocket错误:', error);
+                debug('WebSocket连接错误');
+                updateStatus('连接错误，请刷新页面重试');
+            };
+
+            websocket.onmessage = handleWebSocketMessage;
+        }
+
+        function initAudioContext() {
+            try {
+                // 尝试创建16kHz采样率的上下文
+                // 注意：许多浏览器不支持改变默认采样率
+                audioContext = new (window.AudioContext || window.webkitAudioContext)({
+                    sampleRate: TARGET_SAMPLE_RATE
+                });
+
+                analyser = audioContext.createAnalyser();
+                analyser.fftSize = 256;
+
+                debug(`音频上下文初始化成功，采样率: ${audioContext.sampleRate}Hz`);
+            } catch (e) {
+                console.error('无法初始化音频上下文:', e);
+                updateStatus('您的浏览器不支持音频处理');
+                debug('音频上下文初始化失败');
+            }
+        }
+
+        function toggleRecording() {
+            if (isRecording) {
+                stopRecording();
+            } else {
+                startRecording();
+            }
+        }
+
+        async function startRecording() {
+            try {
+                if (audioContext.state === 'suspended') {
+                    await audioContext.resume();
+                }
+
+                // 检查WebSocket连接
+                if (websocket.readyState !== WebSocket.OPEN) {
+                    updateStatus('服务器连接中断，正在重连...');
+                    connectWebSocket();
+                    setTimeout(startRecording, 1000);
+                    return;
+                }
+
+                // 请求麦克风访问权限
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    audio: {
+                        channelCount: 1,             // 单声道
+                        sampleRate: TARGET_SAMPLE_RATE,  // 尝试请求16kHz (许多设备可能不支持)
+                        echoCancellation: true,      // 启用回声消除
+                        noiseSuppression: true,      // 启用噪声抑制
+                        autoGainControl: true        // 自动增益控制
+                    }
+                });
+
+                // 保存流以便后续停止
+                mediaStream = stream;
+                debug('麦克风访问成功，开始录音');
+
+                // 设置录音状态
+                isRecording = true;
+                recordButton.textContent = '停止录音';
+                recordButton.classList.add('recording');
+                updateStatus('正在录音...');
+
+                // 创建媒体流源
+                microphone = audioContext.createMediaStreamSource(stream);
+
+                // 检查实际采样率
+                const actualSampleRate = audioContext.sampleRate;
+                debug(`实际音频采样率: ${actualSampleRate}Hz`);
+
+                // 创建缓冲区用于存储音频数据
+                let pendingAudioData = new Float32Array(0);
+
+                // 创建脚本处理节点
+                const bufferSize = 4096;
+                audioProcessor = audioContext.createScriptProcessor(bufferSize, 1, 1);
+
+                audioProcessor.onaudioprocess = (e) => {
+                    if (!isRecording || websocket.readyState !== WebSocket.OPEN) return;
+
+                    // 获取输入缓冲区数据 
+                    const inputData = e.inputBuffer.getChannelData(0);
+
+                    // 将新数据添加到待处理缓冲区
+                    const newBuffer = new Float32Array(pendingAudioData.length + inputData.length);
+                    newBuffer.set(pendingAudioData);
+                    newBuffer.set(inputData, pendingAudioData.length);
+                    pendingAudioData = newBuffer;
+
+                    // 当我们有足够的数据时，进行处理
+                    while (pendingAudioData.length >= REQUIRED_SAMPLES) {
+                        // 提取所需数量的样本
+                        const samplesForProcessing = pendingAudioData.slice(0, REQUIRED_SAMPLES);
+
+                        // 处理数据: 将float32转换为int16
+                        const int16Data = new Int16Array(REQUIRED_SAMPLES);
+                        for (let i = 0; i < REQUIRED_SAMPLES; i++) {
+                            // 将[-1,1]的float32转换为[-32768,32767]的int16
+                            int16Data[i] = Math.max(-32768, Math.min(32767, Math.round(samplesForProcessing[i] * 32767)));
+                        }
+
+                        // 发送精确大小的数据包
+                        websocket.send(int16Data.buffer);
+
+                        // 保留剩余数据
+                        pendingAudioData = pendingAudioData.slice(REQUIRED_SAMPLES);
+                    }
+                };
+
+                // 连接节点
+                microphone.connect(analyser);
+                analyser.connect(audioProcessor);
+                audioProcessor.connect(audioContext.destination);
+
+                debug('音频处理管道设置完成');
+
+                // 启动可视化
+                visualize();
+
+            } catch (error) {
+                console.error('录音失败:', error);
+                updateStatus('无法访问麦克风: ' + error.message);
+                debug(`录音失败: ${error.message}`);
+            }
+        }
+
+        function stopRecording() {
+            if (isRecording) {
+                debug('停止录音');
+
+                // 停止处理
+                if (audioProcessor) {
+                    audioProcessor.disconnect();
+                }
+
+                if (analyser) {
+                    analyser.disconnect();
+                }
+
+                if (microphone) {
+                    microphone.disconnect();
+                }
+
+                // 停止所有轨道
+                if (mediaStream) {
+                    mediaStream.getTracks().forEach(track => {
+                        track.stop();
+                    });
+                }
+
+                isRecording = false;
+                recordButton.textContent = '开始录音';
+                recordButton.classList.remove('recording');
+                updateStatus('录音已停止');
+
+                // 停止可视化
+                canvasCtx.clearRect(0, 0, visualizer.width, visualizer.height);
+            }
+        }
+
+        function visualize() {
+            if (!isRecording) return;
+
+            const bufferLength = analyser.frequencyBinCount;
+            const dataArray = new Uint8Array(bufferLength);
+
+            function draw() {
+                if (!isRecording) return;
+
+                requestAnimationFrame(draw);
+
+                analyser.getByteFrequencyData(dataArray);
+
+                canvasCtx.fillStyle = 'rgb(249, 250, 251)';
+                canvasCtx.fillRect(0, 0, visualizer.width, visualizer.height);
+
+                const barWidth = (visualizer.width / bufferLength) * 2.5;
+                let barHeight;
+                let x = 0;
+
+                for (let i = 0; i < bufferLength; i++) {
+                    barHeight = dataArray[i] / 255 * visualizer.height;
+
+                    canvasCtx.fillStyle = `rgb(${79}, ${70}, ${229})`;
+                    canvasCtx.fillRect(x, visualizer.height - barHeight, barWidth, barHeight);
+
+                    x += barWidth + 1;
+                }
+            }
+
+            draw();
+        }
+
+        function handleWebSocketMessage(event) {
+            // 文本消息
+            if (typeof event.data === 'string') {
+                try {
+                    const data = JSON.parse(event.data);
+
+                    switch (data.type) {
+                        case 'text':
+                            // 用户输入的文本
+                            addMessage(data.text, 'user');
+                            debug('收到用户文本消息');
+                            break;
+
+                        case 'audio':
+                            // 助手响应的文本，实际音频会在二进制消息中到达
+                            addMessage(data.text, 'assistant', true);
+                            debug('收到助手音频文本消息');
+                            break;
+
+                        case 'done':
+                            // 响应完成
+                            updateStatus('响应完成');
+                            debug('响应完成');
+                            break;
+
+                        case 'warning':
+                        case 'error':
+                            // 错误或警告消息
+                            updateStatus(data.message || '发生错误');
+                            debug(`收到错误消息: ${data.message}`);
+                            break;
+
+                        case 'config_applied':
+                            // 配置应用确认
+                            updateStatus(`语音已切换为: ${data.voice}`);
+                            debug(`语音切换确认: ${data.voice}`);
+                            break;
+                    }
+                } catch (error) {
+                    console.error('解析WebSocket消息失败:', error);
+                    debug('解析WebSocket消息失败');
+                }
+            }
+            // 二进制音频数据
+            else if (event.data instanceof Blob) {
+                // 将收到的音频加入队列
+                const audioBlob = new Blob([event.data], { type: 'audio/wav' });
+                audioQueue.push(audioBlob);
+                debug('收到音频数据');
+
+                // 如果没有正在播放，则开始播放
+                if (!isPlaying) {
+                    playNextAudio();
+                }
+            }
+        }
+
+        function addMessage(text, role, isPartial = false) {
+            let messageElement = document.querySelector(`.${role}-message[data-partial="true"]`);
+
+            if (isPartial && messageElement) {
+                // 更新现有的部分消息
+                messageElement.textContent += text;
+            } else {
+                // 创建新消息元素
+                messageElement = document.createElement('div');
+                messageElement.className = `message ${role}-message`;
+                messageElement.textContent = text;
+
+                if (isPartial) {
+                    messageElement.setAttribute('data-partial', 'true');
+                }
+
+                chatContainer.appendChild(messageElement);
+            }
+
+            // 滚动到最新消息
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        function playNextAudio() {
+            if (audioQueue.length === 0) {
+                isPlaying = false;
+                return;
+            }
+
+            isPlaying = true;
+
+            const audioBlob = audioQueue.shift();
+            const audioUrl = URL.createObjectURL(audioBlob);
+            const audio = new Audio(audioUrl);
+
+            // 当前音频播放完成后，播放队列中的下一个
+            audio.onended = () => {
+                URL.revokeObjectURL(audioUrl);  // 释放URL资源
+                playNextAudio();
+            };
+
+            audio.onerror = (error) => {
+                console.error('音频播放错误:', error);
+                URL.revokeObjectURL(audioUrl);
+                playNextAudio();  // 尝试播放下一个
+            };
+
+            // 播放音频
+            audio.play().catch(error => {
+                console.error('无法播放音频:', error);
+                URL.revokeObjectURL(audioUrl);
+                playNextAudio();  // 尝试播放下一个
+            });
+        }
+
+        function clearChat() {
+            // 清空聊天内容
+            chatContainer.innerHTML = '';
+
+            // 清空音频队列
+            audioQueue = [];
+            isPlaying = false;
+
+            // 显示欢迎消息
+            addMessage("对话已清空。有什么可以帮助你的吗？", "assistant");
+            updateStatus('对话已清空');
+        }
+
+        function changeVoice() {
+            const selectedVoice = voiceSelect.value;
+            // 发送语音选择请求
+            if (websocket.readyState === WebSocket.OPEN) {
+                websocket.send(JSON.stringify({
+                    type: "config",
+                    voice: selectedVoice
+                }));
+                updateStatus(`已选择语音: ${selectedVoice}`);
+                debug(`语音选择已发送: ${selectedVoice}`);
+            } else {
+                updateStatus('语音选择失败: 服务器未连接');
+                debug('语音选择失败: WebSocket未连接');
+            }
+        }
+
+        function updateStatus(message) {
+            statusElement.textContent = message;
+        }
+
+        // 窗口大小变化时重设Canvas尺寸
+        window.addEventListener('resize', () => {
+            visualizer.width = visualizer.offsetWidth;
+            visualizer.height = visualizer.offsetHeight;
+        });
+
+        // 资源释放辅助函数
+        function cleanup() {
+            debug('执行资源清理');
+
+            if (isRecording) {
+                stopRecording();
+            }
+
+            if (audioProcessor) {
+                audioProcessor.disconnect();
+            }
+
+            if (analyser) {
+                analyser.disconnect();
+            }
+
+            if (microphone) {
+                microphone.disconnect();
+            }
+
+            if (mediaStream) {
+                mediaStream.getTracks().forEach(track => track.stop());
+            }
+
+            if (websocket && websocket.readyState === WebSocket.OPEN) {
+                websocket.close();
+            }
+
+            // 清理音频队列
+            audioQueue = [];
+            isPlaying = false;
+        }
+
+        // 页面关闭时断开连接和清理资源
+        window.addEventListener('beforeunload', cleanup);
+        window.addEventListener('unload', cleanup);
+    </script>
+</body>
+
+</html>

@@ -11,7 +11,7 @@ from utils.sidebar import render_sidebar
 # profiler = Profiler()
 # profiler.start()
 
-chat_container = st.container()
+# chat_container = st.container()
 
 
 def get_stream_response(query: str) -> requests.Response:
@@ -98,7 +98,7 @@ def handle_user_input(query: str):
 
     # 处理助手响应
     with st.chat_message("assistant"):
-        with st.spinner("生成回答中"):
+        with st.spinner("生成回答中", show_time=True):
             message_placeholder = st.empty()
 
             # 获取并处理响应
@@ -121,11 +121,35 @@ def handle_user_input(query: str):
             display_references(documents)
 
 
+def transcribe_audio(audio_bytes):
+    """
+    将音频转换为文本
+    使用speech_recognition库处理音频并转为文本
+    """
+    return "暂不支持语音输入"
+
+
 def main():
     """主函数"""
+
+    # 添加自定义CSS使音频输入按钮固定在右下角
+    # st.markdown(
+    #     """
+    # <style>
+    # /* 语音输入按钮容器 */
+    # .stAudioInput {
+    #     position: fixed;
+    #     bottom: 20%;
+    # }
+    # </style>
+    # """,
+    #     unsafe_allow_html=True,
+    # )
+
     # 初始化页面
     chat_container = st.container()
-    init_welcome_page()
+
+    # init_welcome_page()
     initialize_page()
     render_sidebar()
 
@@ -133,7 +157,22 @@ def main():
     with chat_container:
         display_chat_history()
 
-    if query := st.chat_input("你想说什么?"):
+    # 使用callback方式存储录音数据到session_state
+    audio_bytes = st.audio_input(
+        "🎤",
+        key="audio_recorder",
+        label_visibility="hidden",
+    )
+
+    # 语音处理逻辑
+    if audio_bytes is not None:
+        with st.spinner("正在识别语音..."):
+            text = transcribe_audio(audio_bytes)
+            if text:
+                handle_user_input(text)
+
+    # 正常使用chat_input
+    if query := st.chat_input("你想说什么?", accept_file="multiple"):
         handle_user_input(query)
 
 

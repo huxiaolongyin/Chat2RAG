@@ -8,6 +8,7 @@ from chat2rag.api.v1 import (
     model_router,
     prompt_router,
     tools_router,
+    ws_router,
 )
 
 router = APIRouter()
@@ -23,3 +24,4 @@ router.include_router(router=tools_router, prefix="/tools", tags=["工具"])
 router.include_router(router=prompt_router, prefix="/prompt", tags=["提示词"])
 router.include_router(router=model_router, prefix="/model", tags=["模型"])
 router.include_router(router=chat_router, prefix="/chat", tags=["聊天"])
+# router.include_router(router=ws_router, tags=["流式"])
