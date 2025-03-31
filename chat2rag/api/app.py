@@ -1,7 +1,8 @@
 from fastapi import FastAPI
 
 from chat2rag.api.routes import router
-from chat2rag.api.v1 import ws_router
+
+# from chat2rag.api.v1 import ws_router
 from chat2rag.config import CONFIG
 from chat2rag.logger import logger
 from chat2rag.pipelines.rag import RAGPipeline
@@ -32,7 +33,7 @@ async def lifespan(app: FastAPI):
 def create_app():
     app = FastAPI(title="Chat2RAG", version=CONFIG.VERSION, lifespan=lifespan)
     app.include_router(router, prefix=CONFIG.WEB_ROUTE_PREFIX)
-    app.include_router(ws_router)
+    # app.include_router(ws_router)
 
     return app
 

@@ -140,7 +140,7 @@ class RAGPipeline(BasePipeline):
         """
         if stream_handler and hasattr(stream_handler, "set_doc_info"):
             stream_handler.set_doc_info(len(documents_list))
-            stream_handler.start()
+            # stream_handler.start()
 
     async def run(
         self,

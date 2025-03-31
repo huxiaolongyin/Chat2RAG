@@ -8,8 +8,9 @@ from chat2rag.api.v1 import (
     model_router,
     prompt_router,
     tools_router,
-    ws_router,
 )
+
+#
 
 router = APIRouter()
 

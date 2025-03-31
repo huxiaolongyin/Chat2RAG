@@ -3,4 +3,3 @@ from .document import router as knowledge_router
 from .model import router as model_router
 from .prompt import router as prompt_router
 from .tools import router as tools_router
-from .websocket import router as ws_router
