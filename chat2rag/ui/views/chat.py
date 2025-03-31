@@ -121,6 +121,7 @@ def handle_user_input(query: str):
             display_references(documents)
 
 
+# TODO
 def transcribe_audio(audio_bytes):
     """
     将音频转换为文本
@@ -158,22 +159,22 @@ def main():
         display_chat_history()
 
     # 使用callback方式存储录音数据到session_state
-    audio_bytes = st.audio_input(
-        "🎤",
-        key="audio_recorder",
-        label_visibility="hidden",
-    )
+    # audio_bytes = st.audio_input(
+    #     "🎤",
+    #     key="audio_recorder",
+    #     label_visibility="hidden",
+    # )
 
-    # 语音处理逻辑
-    if audio_bytes is not None:
-        with st.spinner("正在识别语音..."):
-            text = transcribe_audio(audio_bytes)
-            if text:
-                handle_user_input(text)
+    # # 语音处理逻辑
+    # if audio_bytes is not None:
+    #     with st.spinner("正在识别语音..."):
+    #         text = transcribe_audio(audio_bytes)
+    #         if text:
+    #             handle_user_input(text)
 
     # 正常使用chat_input
     if query := st.chat_input("你想说什么?", accept_file="multiple"):
-        handle_user_input(query)
+        handle_user_input(query.get("text"))
 
 
 main()

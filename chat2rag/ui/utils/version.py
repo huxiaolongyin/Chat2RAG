@@ -13,7 +13,7 @@ def version_list():
     - 修复批处理下，符号分词不正确的情况
 """
         st.markdown(content)
-    with st.expander("V0.1.2rc1 (2025-02-20)", expanded=True):
+    with st.expander("V0.1.2rc1 (2025-02-20)", expanded=False):
         content = """
     ### ⭐️ Highlights
     - 新增选择模型的功能，增加对 deepseek-v3 的支持
