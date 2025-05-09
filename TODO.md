@@ -45,3 +45,4 @@
 ## 其他
 
 - [ ] 🟢P4 添加requirements.txt，并在 pyproject.toml 添加为动态参数
+- [ ] 🟢P4 docker 镜像启动顺序影响 后端程序运行
