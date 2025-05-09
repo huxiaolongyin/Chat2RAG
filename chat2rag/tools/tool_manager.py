@@ -69,7 +69,6 @@ class ToolManager:
 
         # Create a deep copy to prevent modifying the original object
         processed = copy.deepcopy(parameters)
-
         # Process properties dictionary
         if "properties" in processed and isinstance(processed["properties"], dict):
             for prop_name, prop_value in processed["properties"].items():
@@ -81,6 +80,12 @@ class ToolManager:
                     # Recursively process potentially nested objects
                     if "properties" in prop_value:
                         prop_value = self._process_parameters(prop_value)
+        if "required" in processed and isinstance(processed["required"], list):
+            processed["required"] = [
+                req for req in processed["required"] if req is not None
+            ]
+        else:
+            processed["required"] = []
 
         return processed
 
@@ -122,7 +127,7 @@ class ToolManager:
                         "name": tool_data.get("name", ""),
                         "description": tool_data.get("description", ""),
                         "parameters": processed_parameters,
-                        "required": tool_data.get("required", []),
+                        # "required": tool_data.get("required", []),
                     },
                 }
 
