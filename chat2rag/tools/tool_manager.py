@@ -122,6 +122,7 @@ class ToolManager:
                         "name": tool_data.get("name", ""),
                         "description": tool_data.get("description", ""),
                         "parameters": processed_parameters,
+                        "required": tool_data.get("required", []),
                     },
                 }
 
