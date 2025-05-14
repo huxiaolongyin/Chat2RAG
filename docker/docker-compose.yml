@@ -10,7 +10,10 @@ services:
       - ${DATA_PATH}/phoenix:/.phoenix
       - ${LOG_PATH}:/code/logs
     depends_on:
-      - qdrant
+      postgresql:
+        condition: service_healthy
+      qdrant:
+        condition: service_healthy
     environment:
       - TZ=Asia/Shanghai
       - QDRANT_HOST=qdrant
@@ -63,6 +66,11 @@ services:
       - POSTGRESQL_MAX_CONNECTIONS=50 # 控制数据库最大并发连接数，需要根据服务器资源和应用需求设置
     env_file:
       - ../.env
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres && PGPASSWORD=${POSTGRESQL_PASSWORD} psql -U postgres -d ${POSTGRESQL_DATABASE} -c 'SELECT 1'" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
     networks:
       - chat2rag-network
     restart: always
