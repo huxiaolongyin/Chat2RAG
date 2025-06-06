@@ -1,7 +1,9 @@
 import asyncio
+import time
 from concurrent.futures import ThreadPoolExecutor
 from enum import Enum
-from functools import lru_cache
+
+# from functools import lru_cache
 from time import perf_counter
 from typing import List, Optional
 
@@ -90,6 +92,10 @@ class ChatQueryParams(BaseModel):
         description="生成参数",
     )
     tool_list: List[str] = Field(default=[], alias="toolList", description="工具列表")
+    vin: str = Field(default="", alias="vin", description="设备的vin码")
+    lat: float = Field(default=26.062731, alias="lat", description="纬度")
+    lng: float = Field(default=119.235434, alias="lng", description="经度")
+    city: str = Field(default="福州", alias="city", description="所在城市")
 
     class Config:
         populate_by_name = True
@@ -107,8 +113,12 @@ class ChatQueryParams(BaseModel):
 #     return RAGPipeline(*args, **kwargs)
 
 
-def get_prompt_template(prompt_name: str, db: Session) -> Optional[str]:
+def get_prompt_template(
+    prompt_name: str,
+    db: Session,
+) -> Optional[str]:
     """获取提示词模板"""
+
     if not prompt_name:
         return None
 
@@ -159,6 +169,7 @@ async def chat_rag(
     logger.info("Processing query request, query: '%s'", params.query)
 
     # 获取提示词模板
+    prefix_prompt = f"你的设备码是{params.vin}，当前时间{time.strftime('%Y-%m-%d %H:%M:%S')}，当前坐标({params.lat},{params.lng})，所在城市{params.city}"
     prompt_template = get_prompt_template(params.prompt_name, db)
 
     # 使用精准匹配模式，直接索引问题，然后匹配答案
@@ -202,6 +213,7 @@ async def chat_rag(
         query=params.query,
         tools=tools,
         top_k=params.top_k,
+        prefix_prompt=prefix_prompt,
         prompt_template=prompt_template,
         score_threshold=params.score_threshold,
         messages=history_messages,
@@ -245,6 +257,7 @@ async def chat_rag_stream(
     # 获取参数
     tools = get_tools(params.tool_list)
     is_batch = batch_or_stream == ProcessType.BATCH
+    prefix_prompt = f"你的设备码是{params.vin}，当前时间{time.strftime('%Y-%m-%d %H:%M:%S')}，当前坐标({params.lat},{params.lng})，所在城市{params.city}"
     prompt_template = get_prompt_template(params.prompt_name, db)
     generation_kwargs = parse_generation_kwargs(params.generation_kwargs)
 
@@ -301,6 +314,7 @@ async def chat_rag_stream(
 
             result = await pipeline.run(
                 query=params.query,
+                prefix_prompt=prefix_prompt,
                 prompt_template=prompt_template,
                 tools=tools,
                 top_k=params.top_k,

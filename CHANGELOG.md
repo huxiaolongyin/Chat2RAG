@@ -10,6 +10,7 @@
 
 - 新增 ASR 的服务
 - 新增 TTS 的服务
+- 在 prompt 中添加基础信息：时间、vin、地点
 
 ### Changed
 

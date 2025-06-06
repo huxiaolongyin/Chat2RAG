@@ -146,6 +146,7 @@ class RAGPipeline(BasePipeline):
         self,
         query: str,
         tools: List[Tool] = [],
+        prefix_prompt: str = None,
         prompt_template: str = None,
         messages: List[ChatMessage] = None,
         top_k: int = None,
@@ -157,6 +158,7 @@ class RAGPipeline(BasePipeline):
 
         Args:
             query: The user query
+            prefix_prompt: The prefix prompt for the prompt template
             prompt_template: The template for response generation
             messages: Previous chat messages for context
             top_k: Maximum number of documents to retrieve
@@ -171,6 +173,7 @@ class RAGPipeline(BasePipeline):
 
         if not prompt_template:
             prompt_template = CONFIG.RAG_PROMPT_TEMPLATE
+
             logger.debug("Using default rag prompt template")
         if not top_k:
             top_k = CONFIG.TOP_K
@@ -185,7 +188,7 @@ class RAGPipeline(BasePipeline):
                 pipeline.run(query, top_k, score_threshold)
                 for pipeline in self.doc_pipeline
             ],
-            self.func_pipeline.run(query, messages, tools=tools),
+            self.func_pipeline.run(query, prefix_prompt, messages, tools=tools),
         ]
 
         all_results = await asyncio.gather(*tasks)
@@ -228,8 +231,9 @@ class RAGPipeline(BasePipeline):
             None
         {% endif %}
         """
-        prompt_template = [
-            ChatMessage.from_system(prompt_template),
+
+        prompt = [
+            ChatMessage.from_system(prefix_prompt + prompt_template),
             *messages,
             ChatMessage.from_user(question_template),
         ]
@@ -239,7 +243,7 @@ class RAGPipeline(BasePipeline):
             data={
                 "doc_joiner": {"documents": documents_list},
                 "prompt_builder": {
-                    "template": prompt_template,
+                    "template": prompt,
                     "func_response": func_response,
                     "query": query,
                 },

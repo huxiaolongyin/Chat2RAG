@@ -65,11 +65,17 @@ class FunctionPipeline(BasePipeline):
     async def run(
         self,
         query: str,
+        prefix_prompt: str = None,
         history_messages: List[ChatMessage] = [],
         tools: List[Tool] = [],
     ) -> dict:
         """
         Run the function pipeline
+        Args:
+            query: The user query
+            prefix_prompt: The prefix prompt for the prompt template
+            history_messages: The history messages for the prompt template
+            tools: The tools for the prompt template
         """
         start_time = time.time()
         if not CONFIG.FUNCION_ENABLED:
@@ -78,7 +84,7 @@ class FunctionPipeline(BasePipeline):
             )
             return {}
         messages = [
-            ChatMessage.from_system(CONFIG.FUNCTION_PROMPT_TEMPLATE),
+            ChatMessage.from_system(prefix_prompt + CONFIG.FUNCTION_PROMPT_TEMPLATE),
             *history_messages,
             ChatMessage.from_user(query),
         ]

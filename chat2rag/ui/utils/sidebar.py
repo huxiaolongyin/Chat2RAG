@@ -26,6 +26,7 @@ def update_precision_mode():
 
 def render_sidebar():
     with st.sidebar:
+        st.text_input("请输入vin码", key="vin", placeholder="请输入vin码")
         st.selectbox(
             "请选择知识库",
             index=st.session_state.collection_select_index,
