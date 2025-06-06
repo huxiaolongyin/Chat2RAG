@@ -37,6 +37,7 @@ class ToolManager:
 
         # Import built-in tools
         try:
+            from .htw_mcp import lead_way_tool
             from .translit import get_translit_info
             from .weather import get_weather_info
             from .weibo import get_weibo_info
@@ -46,6 +47,7 @@ class ToolManager:
                 get_translit_info,
                 get_weather_info,
                 get_weibo_info,
+                lead_way_tool,
             ]
         except ImportError as e:
             logger.error("Error importing built-in tools, %s", str(e))

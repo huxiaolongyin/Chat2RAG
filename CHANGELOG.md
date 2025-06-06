@@ -11,10 +11,12 @@
 - 新增 ASR 的服务
 - 新增 TTS 的服务
 - 在 prompt 中添加基础信息：时间、vin、地点
-
+- 新增 汉特云内部mcp服务
 ### Changed
 
 - 将 frontend、rag_core、backend 整合到chat2rag中
+- 将天气查询改为高德 MCP
+
 
 ## [V0.1.2] - 2025-02-20
 
