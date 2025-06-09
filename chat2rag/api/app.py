@@ -42,10 +42,6 @@ app = create_app()
 
 
 if __name__ == "__main__":
-    # from chat2rag.telemetry import setup_telemetry
-
-    # setup_telemetry()
-
     import uvicorn
 
     uvicorn.run(

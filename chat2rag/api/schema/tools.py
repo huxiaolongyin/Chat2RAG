@@ -1,5 +1,8 @@
+from typing import Dict, List, Optional
+
 from pydantic import BaseModel, Field
-from typing import Dict, Optional, List
+
+from chat2rag.core.database.enums import ToolMethod, ToolType
 
 
 class ToolParameter(BaseModel):
@@ -14,11 +17,13 @@ class ToolParameters(BaseModel):
 
 
 class ToolFunction(BaseModel):
+    type: ToolType = Field(ToolType.API, description="工具类型")
     name: str = Field(..., description="工具名称")
-    description: str = Field(..., description="工具描述")
-    url: str = Field(..., description="API接口地址")
-    method: str = Field("GET", description="HTTP请求方法")
+    description: Optional[str] = Field(None, description="工具描述")
+    url: Optional[str] = Field(None, description="API接口地址")
+    method: Optional[ToolMethod] = Field(ToolMethod.NONE, description="HTTP请求方法")
     parameters: Optional[ToolParameters] = Field(None, description="工具参数配置")
+    command: Optional[str] = Field(None, description="命令行命令")
 
 
 class ToolConfig(BaseModel):

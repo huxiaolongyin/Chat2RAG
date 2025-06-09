@@ -131,7 +131,7 @@ class Config:
     GAODE_API_KEY = load_str_env("GAODE_API_KEY", required=True)
 
     # WEB
-    WEB_ROUTE_PREFIX = load_str_env("WEB_ROUTE_PREFIX") or "/api/v1"
+    WEB_ROUTE_PREFIX = load_str_env("WEB_ROUTE_PREFIX") or "/api"
     BACKEND_PORT = load_int_env("BACKEND_PORT") or 8000
 
     # TELEMETRY

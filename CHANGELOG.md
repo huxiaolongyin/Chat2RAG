@@ -12,6 +12,8 @@
 - 新增 TTS 的服务
 - 在 prompt 中添加基础信息：时间、vin、地点
 - 新增 汉特云内部mcp服务
+- 新增 tool v2 接口，进行 MCP 和 api tool 的增删改查
+
 ### Changed
 
 - 将 frontend、rag_core、backend 整合到chat2rag中
