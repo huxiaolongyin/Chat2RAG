@@ -1,12 +1,13 @@
 import time
+from typing import AsyncGenerator
 
 import soundfile as sf
 import torch
 from funasr import AutoModel
 from funasr.utils.postprocess_utils import rich_transcription_postprocess
+from logger import get_logger
 
-from chat2rag.core.asr.base import BaseASR
-from chat2rag.logger import get_logger
+from .base import BaseASR
 
 logger = get_logger(__name__)
 
@@ -43,10 +44,17 @@ class FunASR(BaseASR):
             raise e
 
     def transcribe(self, audio_file: str) -> str:
+        """
+        使用ASR识别音频文件
+        Args:
+            audio_file (str): 音频文件路径
+        Returns:
+            str: 识别结果
+        """
         logger.info("开始ASR识别...")
         try:
             start_time = time.time()
-            res = self.model.generate(
+            response = self.model.generate(
                 input=audio_file,
                 cache={},
                 language="zn",  # "zn", "en", "yue", "ja", "ko", "nospeech"
@@ -55,13 +63,20 @@ class FunASR(BaseASR):
                 merge_vad=True,  #
                 merge_length_s=15,
             )
-            logger.info("ASR识别完成，耗时: %.2f秒", time.time() - start_time)
-            return rich_transcription_postprocess(res[0]["text"]).replace(" ", "")
+            logger.info("ASR识别结果: %s", response)
+            result = rich_transcription_postprocess(response[0]["text"]).replace(
+                " ", ""
+            )
+
+            logger.info(
+                "ASR识别完成， 内容为%s，耗时: %.2f秒", result, time.time() - start_time
+            )
+            return result
         except Exception as e:
             logger.error("ASR识别失败: %s", e)
-            raise
+            raise e
 
-    async def stream_transcribe(self, audio_file):
+    async def stream_transcribe(self, audio_file: str) -> AsyncGenerator[str, None]:
         logger.info("开始ASR流式识别...")
         try:
             start_time = time.time()
@@ -85,4 +100,4 @@ class FunASR(BaseASR):
             logger.info("ASR流式识别完成，耗时: %.2f秒", time.time() - start_time)
         except Exception as e:
             logger.error("ASR流式识别失败: %s", e)
-            raise
+            raise e

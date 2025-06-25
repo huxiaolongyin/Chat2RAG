@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 
 from chat2rag.api.service.audio_processor import AudioProcessor
-from chat2rag.core.tts.kokorotts import KokoroTTS
+from chat2rag.core.providers.tts import KokoroTTS
 from chat2rag.logger import get_logger
 
 # Setup logging
@@ -38,12 +38,6 @@ os.makedirs("tmp/voice", exist_ok=True)
 audio_processor = AudioProcessor()
 # TODO: 🟡P2 依赖注入：应该在应用启动时初始化AudioProcessor，并通过依赖注入使用，而不是全局实例
 
-
-@app.get("/")
-async def web():
-    """Serve the web interface"""
-    return FileResponse("chat2rag/api/static/index.html")
-    # TODO: 🟡P2 路径管理：使用相对路径可能导致问题，建议使用绝对路径或配置变量
 
 
 @app.get("/voice_list")
