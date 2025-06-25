@@ -4,21 +4,31 @@
 
 这个格式基于 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)，还有这个原则遵循 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unrelesed]
+## [V0.2.0] - 2025-06-25
 
 ### Added
 
-- 新增 ASR 的服务
-- 新增 TTS 的服务
+- 新增 ASR 的服务(暂未全部接入)
+- 新增 TTS 的服务(暂未全部接入)
 - 在 prompt 中添加基础信息：时间、vin、地点
 - 新增 汉特云内部mcp服务
-- 新增 tool v2 接口，进行 MCP 和 api tool 的增删改查
+- 新增 tool v2 接口，进行 MCP 和 api tool 的增删改查.
+- 新增 对多个 MCP 服务的处理，增加单例模式进行MCP的连接
+- 支持 多个知识库的检索
 
 ### Changed
 
 - 将 frontend、rag_core、backend 整合到chat2rag中
 - 将天气查询改为高德 MCP
+- 更新 document 从 str -> DocumentType 类型
+- 将管道的 warmup() 改到 base 中
+- 更新 haystack 和相关依赖
+- 优化冗余的配置文件，统一到 config.py 中
 
+
+### Removed
+
+- 移除 语音交互的 html
 
 ## [V0.1.2] - 2025-02-20
 

@@ -1,7 +1,8 @@
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 
-from haystack.tools import Tool
+import requests
+from haystack.tools import Tool, Toolset
 from haystack_integrations.tools.mcp import MCPToolset, SSEServerInfo, StdioServerInfo
 from sqlalchemy import JSON, Column, DateTime, Enum, Float, Integer, String
 
@@ -60,7 +61,7 @@ class Prompt(Base):
         }
 
 
-class MCPTool(Base):
+class CustomTool(Base):
     __tablename__ = "tools"
 
     id = Column(Integer, primary_key=True)
@@ -143,19 +144,87 @@ class MCPTool(Base):
 
         return {"properties": {}, "required": [], "type": "object"}
 
-    def _fetch_mcp_tools(self) -> List[Tool]:
-        """根据工具类型获取MCP工具信息"""
+    def _create_api_function(self, name: str, url: str, method: str) -> Callable:
+        """
+        Create a function that calls an API
+
+        Args:
+            name: Function name
+            url: API URL
+            method: HTTP method (GET or POST)
+
+        Returns:
+            API calling function
+        """
+
+        def api_function(**kwargs):
+            try:
+                if method.upper() == "GET":
+                    response = requests.get(url, params=kwargs)
+                elif method.upper() == "POST":
+                    response = requests.post(url, json=kwargs)
+                else:
+                    raise ValueError(f"Unsupported HTTP method: {method}")
+
+                response.raise_for_status()
+                return response.json()
+
+            except Exception as e:
+                logger.error("API call failed, name: %s, Error info: %s", name, str(e))
+                return {"error": str(e)}
+
+        # Set function name
+        api_function.__name__ = name
+
+        return api_function
+
+    def _fetch_api_tools(self) -> Toolset:
+        """
+        根据工具类型获取API工具信息
+        """
+        logger.debug("获取API工具信息: %s", self.name)
+        return Toolset(
+            tools=[
+                Tool(
+                    name=self.name,
+                    description=self.description,
+                    parameters=self.parameters,
+                    function=self._create_api_function(
+                        name=self.name, url=self.url, method=self.method
+                    ),
+                )
+            ],
+        )
+
+    _mcp_connections = {}
+
+    def _fetch_mcp_tools(self) -> MCPToolset:
+        """
+        Obtain the MCP tool information based on the tool type
+        """
+        logger.debug("获取MCP工具信息: %s", self.name)
+        # 检查是否已有缓存的连接
+
+        connection_key = f"{self.type}:{self.url or self.command}"
+        if connection_key in CustomTool._mcp_connections:
+            return CustomTool._mcp_connections[connection_key]
+
         try:
+            # 连接 MCP SSE 服务
             if self.type == ToolType.SSE and self.url:
                 server_info = SSEServerInfo(self.url)
+            # 连接 STDIO 服务
             elif self.type == ToolType.STDIO and self.command:
                 server_info = StdioServerInfo(self.command)
 
-            return MCPToolset(server_info=server_info).tools
+            toolset = MCPToolset(server_info=server_info)
+            # 缓存连接
+            CustomTool._mcp_connections[connection_key] = toolset
+            return toolset
 
         except Exception as e:
             logger.error(f"Error fetching MCP tools: {e}")
-            return []
+            raise e
 
 
 create_all_tables()

@@ -5,12 +5,12 @@ from enum import Enum
 
 # from functools import lru_cache
 from time import perf_counter
-from typing import List, Optional
+from typing import List, Optional, Union
 
 from fastapi import APIRouter, Depends, Query
 from fastapi.responses import StreamingResponse
 from haystack.dataclasses import StreamingChunk
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.orm import Session
 
 from chat2rag.api.schema import Error, Success
@@ -19,7 +19,6 @@ from chat2rag.core.database import Prompt, get_db
 from chat2rag.core.document.qdrant import QAQdrantDocumentStore
 from chat2rag.logger import get_logger
 from chat2rag.pipelines.rag import RAGPipeline
-from chat2rag.tools.tool_manager import tool_manager
 from chat2rag.utils.chat_cache import ChatCache
 from chat2rag.utils.monitoring import async_performance_logger
 from chat2rag.utils.stream import StreamHandler
@@ -32,21 +31,6 @@ chat_cache = ChatCache()
 executor = ThreadPoolExecutor(max_workers=5)
 
 
-class Config:
-    """配置常量集中管理"""
-
-    DEFAULT_MODELS = {
-        "intention": CONFIG.DEFAULT_INTENTION_MODEL,
-        "generator": CONFIG.DEFAULT_GENERATOR_MODEL,
-    }
-
-    GENERATION_KWARGS = {
-        "temperature": 0.1,
-        "presence_penalty": -0.2,
-        "max_tokens": 150,
-    }
-
-
 # 使用枚举
 class ProcessType(str, Enum):
     BATCH = "batch"
@@ -56,7 +40,7 @@ class ProcessType(str, Enum):
 class ChatQueryParams(BaseModel):
     """请求参数模型"""
 
-    collection_name: Optional[str] = Field(
+    collections: Optional[str] = Field(
         None, alias="collectionName", description="知识库名称"
     )
     query: str = Field(..., description="查询内容")
@@ -77,21 +61,21 @@ class ChatQueryParams(BaseModel):
     )
     prompt_name: str = Field("", alias="promptName", description="提示词名称选择")
     intention_model: str = Field(
-        default=Config.DEFAULT_MODELS["intention"],
+        default=CONFIG.DEFAULT_INTENTION_MODEL,
         alias="intentionModel",
         description="意图模型",
     )
     generator_model: str = Field(
-        default=Config.DEFAULT_MODELS["generator"],
+        default=CONFIG.DEFAULT_GENERATOR_MODEL,
         alias="generatorModel",
         description="生成模型",
     )
     generation_kwargs: str = Field(
-        default="{}",
-        alias="generationKwargs",
-        description="生成参数",
+        default="{}", alias="generationKwargs", description="生成参数"
     )
-    tool_list: List[str] = Field(default=[], alias="toolList", description="工具列表")
+    tools: str = Field(
+        None, alias="toolList", description="选用的工具，使用 , 分割，使用 all 为全部"
+    )
     vin: str = Field(default="", alias="vin", description="设备的vin码")
     lat: float = Field(default=26.062731, alias="lat", description="纬度")
     lng: float = Field(default=119.235434, alias="lng", description="经度")
@@ -100,24 +84,19 @@ class ChatQueryParams(BaseModel):
     class Config:
         populate_by_name = True
 
+    @field_validator("tools", mode="after")
+    def parse_tools(cls, v):
+        return v.split(",") if v else []
 
-# @lru_cache(maxsize=32)
-# def _create_rag_pipeline(*args, **kwargs) -> RAGPipeline:
-#     """
-#     Cache rag pipeline
-#     """
-#     logger.info(
-#         "Creating new rag pipeline",
-#     )
-#     logger.debug("Creating rag pipeline with args: %s and kargs: %s", args, kwargs)
-#     return RAGPipeline(*args, **kwargs)
+    @field_validator("collections", mode="after")
+    def parse_collections(cls, v):
+        return v.split(",") if v else []
 
 
-def get_prompt_template(
-    prompt_name: str,
-    db: Session,
-) -> Optional[str]:
-    """获取提示词模板"""
+def get_prompt_template(prompt_name: str, db: Session) -> Optional[str]:
+    """
+    Obtain the prompt template from the database
+    """
 
     if not prompt_name:
         return None
@@ -137,27 +116,24 @@ def get_prompt_template(
                 logger.error("Error retrieving prompt '%s': %s", prompt_name, str(e))
                 return None
         return prompt.prompt_text
+
     except Exception as e:
         logger.error("Error retrieving prompt '%s': %s", prompt_name, str(e))
         return None
 
 
 def parse_generation_kwargs(kwargs_str: str) -> dict:
-    """解析生成参数"""
+    """
+    解析生成参数
+    """
     if kwargs_str == "{}" or kwargs_str == "":
-        return Config.GENERATION_KWARGS
+        return CONFIG.GENERATION_KWARGS
     try:
         return eval(kwargs_str)
+
     except Exception as e:
         logger.error("Failed to parse generation_kwargs: %s", str(e))
-        return Config.GENERATION_KWARGS
-
-
-def get_tools(tool_list: List[str]) -> List:
-    """获取工具列表"""
-    if "all" in tool_list:
-        return tool_manager.get_tools()
-    return tool_manager.get_tools(tool_list)
+        return CONFIG.GENERATION_KWARGS
 
 
 @router.get("/query")
@@ -175,7 +151,7 @@ async def chat_rag(
     # 使用精准匹配模式，直接索引问题，然后匹配答案
     if params.precision_mode == 1:
         logger.info("Using precision mode for query: '%s'", params.query)
-        answer = await QAQdrantDocumentStore(params.collection_name).query_exact(
+        answer = await QAQdrantDocumentStore(params.collections).query_exact(
             params.query
         )
         if answer:
@@ -185,10 +161,6 @@ async def chat_rag(
             )
             return Success(data=[{"content": answer, "role": "assistant"}])
         logger.info("No exact match found for query: '%s'", params.query)
-
-    # 获取工具和历史消息
-    tools = get_tools(params.tool_list)
-    logger.debug("Selected %d tools for processing", len(tools))
 
     history_messages = []
     if params.chat_id:
@@ -203,15 +175,15 @@ async def chat_rag(
 
     # 创建并运行RAG管道
     pipeline = RAGPipeline(
-        qdrant_index=params.collection_name,
+        qdrant_index=params.collections,
         intention_model=params.intention_model,
         generator_model=params.generator_model,
     )
 
-    logger.debug("Starting RAG pipeline with query: '%s'", params.query)
+    logger.debug("启动RAG管道查询: '%s'", params.query)
     response = await pipeline.run(
         query=params.query,
-        tools=tools,
+        tools=params.tools,
         top_k=params.top_k,
         prefix_prompt=prefix_prompt,
         prompt_template=prompt_template,
@@ -255,9 +227,8 @@ async def chat_rag_stream(
     handler.start()
 
     # 获取参数
-    tools = get_tools(params.tool_list)
     is_batch = batch_or_stream == ProcessType.BATCH
-    prefix_prompt = f"你的设备码是{params.vin}，当前时间{time.strftime('%Y-%m-%d %H:%M:%S')}，当前坐标({params.lat},{params.lng})，所在城市{params.city}"
+    prefix_prompt = f"你的设备码是{params.vin}，当前时间{time.strftime('%Y-%m-%d %H:%M:%S')}，当前坐标({params.lat},{params.lng})，所在城市{params.city}\n"
     prompt_template = get_prompt_template(params.prompt_name, db)
     generation_kwargs = parse_generation_kwargs(params.generation_kwargs)
 
@@ -266,7 +237,7 @@ async def chat_rag_stream(
     if params.chat_id:
         history_messages = chat_cache.get_messages(params.chat_id, params.chat_rounds)
         logger.info(
-            "Processing query: '%s'; history messages length: %d; chat_id: %s",
+            "处理查询: '%s'; 历史消息长度: %d; chat_id: %s",
             params.query,
             len(history_messages),
             params.chat_id,
@@ -275,7 +246,7 @@ async def chat_rag_stream(
     # 处理精确模式查询的函数
     async def process_exact_query(answer):
         try:
-            logger.debug("Processing exact query match")
+            logger.debug("处理精确模式查询: %s", answer)
             for i in answer:
                 meta = {"model": "None", "finish_reason": "none"}
                 handler.callback(StreamingChunk(content=i, meta=meta))
@@ -304,19 +275,18 @@ async def chat_rag_stream(
     # 处理RAG管道的函数
     async def process_rag_pipeline():
         try:
-            logger.debug("Starting RAG pipeline...")
+            logger.debug("启动RAG管道...")
             pipeline = RAGPipeline(
-                qdrant_index=params.collection_name,
-                stream_callback=handler.callback,
+                qdrant_index=params.collections,
                 intention_model=params.intention_model,
                 generator_model=params.generator_model,
+                stream_callback=handler.callback,
             )
-
             result = await pipeline.run(
                 query=params.query,
+                tools=params.tools,
                 prefix_prompt=prefix_prompt,
                 prompt_template=prompt_template,
-                tools=tools,
                 top_k=params.top_k,
                 score_threshold=params.score_threshold,
                 messages=history_messages,
@@ -350,7 +320,7 @@ async def chat_rag_stream(
 
     # 使用精准匹配模式，直接索引问题，然后匹配答案
     if params.precision_mode == 1:
-        logger.info("Using precision mode for streaming query")
+        logger.info("使用精准模式进行流式查询")
         answer = await QAQdrantDocumentStore(params.collection_name).query_exact(
             params.query
         )

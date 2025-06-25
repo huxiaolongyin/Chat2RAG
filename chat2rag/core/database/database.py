@@ -1,5 +1,7 @@
+from typing import Generator
+
 from sqlalchemy import create_engine
-from sqlalchemy.orm import declarative_base, sessionmaker
+from sqlalchemy.orm import Session, declarative_base, sessionmaker
 
 from chat2rag.config import CONFIG
 
@@ -20,7 +22,7 @@ def create_all_tables():
     Base.metadata.create_all(engine)
 
 
-def get_db():
+def get_db() -> Generator[Session, None, None]:
     db = SessionLocal()
     try:
         yield db

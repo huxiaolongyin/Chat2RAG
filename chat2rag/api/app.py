@@ -23,7 +23,7 @@ async def lifespan(app: FastAPI):
         logger.info("Telemetry setup successfully")
 
     # 预热 RAG 管道
-    RAGPipeline("Document")
+    RAGPipeline(["Document"])
     yield
     # 关闭时执行
     # await FastAPICache.clear()

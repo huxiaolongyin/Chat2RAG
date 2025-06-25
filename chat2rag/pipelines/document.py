@@ -11,6 +11,7 @@ from haystack_integrations.components.retrievers.qdrant import QdrantEmbeddingRe
 from haystack_integrations.document_stores.qdrant import QdrantDocumentStore
 
 from chat2rag.config import CONFIG
+from chat2rag.enums import DocumentType
 from chat2rag.logger import get_logger
 from chat2rag.pipelines.base import BasePipeline
 
@@ -19,24 +20,21 @@ logger = get_logger(__name__)
 
 class DocumentSearchPipeline(BasePipeline):
     """
-    Create or run a document search pipeline. This pipeline is used to search for documents in a document store.
+    Create or run the document search pipeline. This pipeline is used to search for documents in the document storage.
+
     Args:
         qdrant_index (str): The name of the qdrant index to use.
     """
 
-    def __init__(
-        self,
-        qdrant_index: str = "Document",
-    ):
+    def __init__(self, qdrant_index: str = "Document"):
         self._qdrant_index = qdrant_index
-        self.pipeline = self._initialize_pipeline()
         super().__init__()
 
-    def _initialize_pipeline(self):
+    def _initialize_pipeline(self) -> Pipeline:
         """
-        Initialize the document search pipeline
+        Initialize the Document search pipeline
         """
-        logger.debug("Initialize document search pipeline...")
+        logger.debug("Initializing Document search pipeline...")
         try:
             pipeline = Pipeline()
             embedder = OpenAITextEmbedder(
@@ -56,24 +54,16 @@ class DocumentSearchPipeline(BasePipeline):
             pipeline.add_component("embedder", embedder)
             pipeline.add_component("retriever", retriever)
             pipeline.connect("embedder.embedding", "retriever.query_embedding")
-            logger.debug("Document search pipeline initialized successfully.")
+            logger.debug(
+                "The initialization of the Document search pipeline was successful."
+            )
             return pipeline
 
         except Exception as e:
-            logger.error("Failed to initialize document search pipeline: %s", e)
-            raise
-
-    def warm_up(self):
-        """
-        Warm up the document search pipeline by loading necessary models and resources
-        """
-        logger.debug("Warm up the document search pipeline...")
-        try:
-            self.pipeline.warm_up()
-            logger.debug("Document search warm up successfully")
-
-        except Exception as e:
-            logger.error("Failed to warm up document search pipeline: %s", e)
+            logger.error(
+                "Failed to initialize the Document search pipeline. Failure reason: %s",
+                e,
+            )
             raise
 
     async def run(
@@ -81,18 +71,22 @@ class DocumentSearchPipeline(BasePipeline):
         query: str,
         top_k: int = 5,
         score_threshold: float = CONFIG.SCORE_THRESHOLD,
-        doc_type: str = "qa_pair",
+        doc_type: DocumentType = "qa_pair",
     ) -> dict:
         """
-        Run the document search pipeline
+        Run the Document search pipeline
+
         Args:
-            query (str): The query to search for.
-            top_k (int): The number of documents to return.
+            query (str): The query to search for
+            top_k (int): The number of documents to be returned
+            score_threshold (float): The minimum similarity score for a document to be retrieved
+            doc_type (DocumentType): The type of documents to be retrieved.
+
         Returns:
-            dict: The search results.
+            dict: The search results
         """
         logger.info(
-            "Run the document search pipeline, query: <%s>, top_k: <%s>, score_threshold: <%.2f>, doc_type: <%s>",
+            "Running the Document search pipeline, query: <%s>, top_k: <%s>, score_threshold: <%.2f>, doc_type: <%s>",
             query,
             top_k,
             score_threshold,
@@ -116,20 +110,22 @@ class DocumentSearchPipeline(BasePipeline):
                 },
             )
             logger.info(
-                "Document search pipeline ran successfully in %.2f seconds with result: %d",
+                "Document search pipeline ran successfully, runtime: %.2f seconds, number of results: %d",
                 time.time() - start_time,
                 len(result),
             )
             return result
 
         except Exception as e:
-            logger.error("Failed to run document search pipeline: %s", e)
+            logger.error(
+                "Failed to run the Document search pipeline. Failure reason: %s", e
+            )
             raise
 
 
 class DocumentWriterPipeline(BasePipeline):
     """
-    Create or run a document writer pipeline. This pipeline is used to write documents to a document store.
+    Create or run the DocumentWriter pipeline. This pipeline is used to write documents to the document store.
     """
 
     def __init__(
@@ -142,9 +138,9 @@ class DocumentWriterPipeline(BasePipeline):
 
     def _initialize_pipeline(self):
         """
-        Initialize the document writer pipeline
+        Initialize the DocumentWriter pipeline
         """
-        logger.debug("Initializing document writer pipeline...")
+        logger.debug("Initializing DocumentWriter pipeline...")
         try:
             pipeline = Pipeline()
             embedder = OpenAIDocumentEmbedder(
@@ -164,39 +160,37 @@ class DocumentWriterPipeline(BasePipeline):
             pipeline.add_component("embedder", embedder)
             pipeline.add_component("writer", writer)
             pipeline.connect("embedder", "writer")
-            logger.debug("Document writer pipeline initialized successfully.")
+            logger.debug("DocumentWriter pipeline initialized successfully.")
             return pipeline
 
         except Exception as e:
-            logger.error("Failed to initialize document writer pipeline: %s", e)
-            raise
-
-    def warm_up(self):
-        """
-        Warm up the document writer pipeline by loading necessary models and resources
-        """
-        logger.debug("Warm up the document writer pipeline...")
-        try:
-            self.pipeline.warm_up()
-            logger.debug("Document writer warm up successfully")
-
-        except Exception as e:
-            logger.error("Failed to warm up document writer pipeline: %s", e)
+            logger.error(
+                "Failed to initialize the DocumentWriter pipeline. Failure reason: %s",
+                e,
+            )
             raise
 
     async def run(self, documents: List[Document]):
         """
-        Running the document writer pipeline
+        Run the DocumentWriter pipeline
         """
         logger.info(
-            f"Running document writer pipeline with documents: <{','.join([item.content for item in documents])}>"
+            f"Running the DocumentWriter pipeline, documents content: <{','.join([item.content for item in documents])}>"
         )
         try:
             result = await asyncio.to_thread(
                 self.pipeline.run, data={"embedder": {"documents": documents}}
             )
-            logger.info("Document writer pipeline ran successfully")
+            logger.info("DocumentWriter pipeline ran successfully.")
             return result
+
         except Exception as e:
-            logger.error("Failed to run document writer pipeline: %s", e)
+            logger.error(
+                "Failed to run the DocumentWriter pipeline. Failure reason: %s", e
+            )
             raise
+
+
+if __name__ == "__main__":
+    doc_search_pipeline = DocumentSearchPipeline("福建省广电集团")
+    print(asyncio.run(doc_search_pipeline.run("省广电五提工程")))

@@ -7,7 +7,7 @@ from fastapi import APIRouter, Body, Depends, Query
 from sqlalchemy.orm import Session
 
 from chat2rag.api.schema import Error, Success, ToolConfig
-from chat2rag.core.database import MCPTool, get_db
+from chat2rag.core.database import CustomTool, get_db
 from chat2rag.core.database.enums import ToolType
 from chat2rag.logger import logger
 from chat2rag.tools.tool_manager import tool_manager
@@ -54,16 +54,16 @@ async def list_tools(
     )
 
     # 获取所有工具
-    tool_list = db.query(MCPTool).filter(MCPTool.name.like(f"%{tool_desc}%"))
+    tool_list = db.query(CustomTool).filter(CustomTool.name.like(f"%{tool_desc}%"))
 
     # 获取总记录数
     total = tool_list.count()
 
     tool_list_offset = (
         tool_list.order_by(
-            getattr(MCPTool, sort_by.value).desc()
+            getattr(CustomTool, sort_by.value).desc()
             if sort_order == SortOrder.DESC
-            else getattr(MCPTool, sort_by.value).asc()
+            else getattr(CustomTool, sort_by.value).asc()
         )
         .limit(size)
         .offset((current - 1) * size)
@@ -108,7 +108,9 @@ async def add_tool(
         logger.info(f"添加新工具。工具名称: {funciton.name}")
 
         # 检查工具名称是否已存在
-        existing_tool = db.query(MCPTool).filter(MCPTool.name == funciton.name).first()
+        existing_tool = (
+            db.query(CustomTool).filter(CustomTool.name == funciton.name).first()
+        )
 
         if existing_tool:
             logger.warning(f"工具名称已存在: {funciton.name}")
@@ -118,7 +120,7 @@ async def add_tool(
         tool_data = funciton.model_dump()
 
         # 创建工具实例
-        tool = MCPTool(**tool_data)
+        tool = CustomTool(**tool_data)
 
         db.add(tool)
         db.commit()
@@ -156,7 +158,7 @@ async def update_tool(
         logger.info(f"更新工具: {tool_name}")
 
         # 查找要更新的工具
-        tool = db.query(MCPTool).filter(MCPTool.name == tool_name).first()
+        tool = db.query(CustomTool).filter(CustomTool.name == tool_name).first()
         if not tool:
             logger.warning(f"工具不存在: {tool_name}")
             return Error(msg=f"更新失败，工具 '{tool_name}' 不存在")
@@ -164,7 +166,9 @@ async def update_tool(
         # 若更新工具名称，需检查新名称是否已存在
         if "name" in tool_config and tool_config["name"] != tool_name:
             existing = (
-                db.query(MCPTool).filter(MCPTool.name == tool_config["name"]).first()
+                db.query(CustomTool)
+                .filter(CustomTool.name == tool_config["name"])
+                .first()
             )
             if existing:
                 logger.warning(f"工具名称已存在: {tool_config['name']}")
@@ -219,7 +223,7 @@ async def remove_tool(
         logger.info(f"删除工具: {tool_name}")
 
         # 查找要删除的工具
-        tool = db.query(MCPTool).filter(MCPTool.name == tool_name).first()
+        tool = db.query(CustomTool).filter(CustomTool.name == tool_name).first()
         if not tool:
             logger.warning(f"工具不存在: {tool_name}")
             return Error(msg=f"删除失败，工具 '{tool_name}' 不存在")
