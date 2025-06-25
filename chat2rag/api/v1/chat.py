@@ -321,7 +321,7 @@ async def chat_rag_stream(
     # 使用精准匹配模式，直接索引问题，然后匹配答案
     if params.precision_mode == 1:
         logger.info("使用精准模式进行流式查询")
-        answer = await QAQdrantDocumentStore(params.collection_name).query_exact(
+        answer = await QAQdrantDocumentStore(params.collections[0]).query_exact(
             params.query
         )
         if answer:

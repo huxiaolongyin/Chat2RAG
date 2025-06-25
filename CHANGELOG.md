@@ -20,6 +20,7 @@
 ## Fixed
 
 - 修复 qdrant-haystack 升级到 9.2.0，导致 qdrant.py 无法使用的问题
+- 修复 chat 接口修改导致的 collection 参数问题
 
 ### Changed
 
