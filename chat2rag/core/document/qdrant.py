@@ -48,30 +48,31 @@ class QAQdrantDocumentStore(QdrantDocumentStore):
             index=index,
             embedding_dim=embedding_dim,
         )
+        self._initialize_client()
 
     @property
     def create(self):
         """
         创建一个集合
         """
-        return self.client
+        return self._client
 
     @property
     def delete_collection(self):
         """
         删除一个集合
         """
-        return self.client.delete_collection(collection_name=self.index)
+        return self._client.delete_collection(collection_name=self.index)
 
     def get_collections(self):
         """
         Get all collections
         """
         logger.info("Get all collections...")
-        collections = self.client.get_collections().model_dump()["collections"]
+        collections = self._client.get_collections().model_dump()["collections"]
         result = []
         for collection in collections:
-            collection_info = self.client.get_collection(collection["name"])
+            collection_info = self._client.get_collection(collection["name"])
             result.append(
                 {
                     "collection_name": collection["name"],
@@ -89,7 +90,7 @@ class QAQdrantDocumentStore(QdrantDocumentStore):
         """
         获取所有集合名称
         """
-        collections = self.client.get_collections().model_dump()["collections"]
+        collections = self._client.get_collections().model_dump()["collections"]
         return [collection["name"] for collection in collections]
 
     async def write_documents(

@@ -16,6 +16,10 @@
 - 新增 对多个 MCP 服务的处理，增加单例模式进行MCP的连接
 - 支持 多个知识库的检索
 
+## Fixed
+
+- 修复 qdrant-haystack 升级到 9.2.0，导致 qdrant.py 无法使用的问题
+
 ### Changed
 
 - 将 frontend、rag_core、backend 整合到chat2rag中
