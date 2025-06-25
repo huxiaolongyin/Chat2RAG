@@ -48,6 +48,7 @@
 - [ ] 🟢P4 docker 镜像启动顺序影响 后端程序运行
 - [ ] 🟡P3 修复前端网页的警告：`The widget with key "model_select" was created with a default value but also had its value set via the Session State API.`
 - [ ] 🟢P4 将 opentelemetry 监控切换成另一个通用的监控
+- [ ] 🟡P3 改为命令行启动方式
 
 ## 功能
 - [x] 🟡P3 在数据库中进行 MCP 和 API Tool 的配置
