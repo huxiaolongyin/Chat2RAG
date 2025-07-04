@@ -1,5 +1,4 @@
 from datetime import datetime
-from enum import Enum
 from math import ceil
 from typing import Any, Dict, Optional
 
@@ -8,21 +7,11 @@ from sqlalchemy.orm import Session
 
 from chat2rag.api.schema import Error, Success, ToolConfig
 from chat2rag.core.database import CustomTool, get_db
-from chat2rag.core.database.enums import ToolType
+from chat2rag.enums import SortOrder, ToolSortField, ToolType
 from chat2rag.logger import logger
 from chat2rag.tools.tool_manager import tool_manager
 
 router = APIRouter()
-
-
-class SortOrder(str, Enum):
-    ASC = "asc"
-    DESC = "desc"
-
-
-class ToolSortField(str, Enum):
-    TOOL_NAME = "name"
-    TOOL_DESC = "description"
 
 
 @router.get("/list")
@@ -44,48 +33,71 @@ async def list_tools(
         description="排序方向(asc, desc)，默认 desc",
         alias="sortOrder",
     ),
-    db: Session = Depends(get_db),
 ):
     """
-    获取工具列表
+    Get the list of tools
     """
     logger.info(
-        f"获取工具列表。工具描述过滤: <{tool_desc}>; 当前页: {current}; 每页数量: {size}"
+        f"Get the list of tools. Tool Description Filtering: <{tool_desc}>; Current Page: {current}; Page Size: {size}"
     )
 
-    # 获取所有工具
-    tool_list = db.query(CustomTool).filter(CustomTool.name.like(f"%{tool_desc}%"))
+    # Get all tools
+    tools = tool_manager.fetch_tools(["all"])
 
-    # 获取总记录数
-    total = tool_list.count()
+    tool_list = [
+        {
+            "type": ToolType.STREAMABLE.value,
+            "function": {
+                "name": tool.name,
+                "description": tool.description,
+                "url": "",
+                "method": "",
+                "parameters": tool.parameters,
+            },
+        }
+        for tool in tools
+    ]
 
-    tool_list_offset = (
-        tool_list.order_by(
-            getattr(CustomTool, sort_by.value).desc()
-            if sort_order == SortOrder.DESC
-            else getattr(CustomTool, sort_by.value).asc()
+    if tool_desc:
+        tool_list = [
+            tool
+            for tool in tool_list
+            if tool_desc in tool.get("description", "").lower()
+        ]
+
+    # Obtain the total number of records
+    total = len(tool_list)
+
+    # Sorting logic
+    if sort_by and tool_list:
+        # 定义排序键映射
+        sort_key_mapping = {
+            ToolSortField.TOOL_NAME: "name",
+            ToolSortField.TOOL_DESC: "description",
+            # Add more fields if needed
+        }
+
+        sort_key = sort_key_mapping.get(sort_by, "name")
+        reverse = sort_order == SortOrder.DESC
+
+        # 执行排序
+        tool_list.sort(
+            key=lambda x: x.get(sort_key, "").lower(), reverse=reverse  # 忽略大小写排序
         )
-        .limit(size)
-        .offset((current - 1) * size)
-        .all()
-    )
-    tool_list = []
-    for tool in tool_list_offset:
-        if tool.type == ToolType.API:
-            tool_list.append(tool.to_dict())
-
-        else:
-            tool_list.extend(tool.to_dict())
 
     # 计算总页数
+    start_index = (current - 1) * size
+    end_index = start_index + size
     pages = ceil(total / size)
 
-    logger.info(f"成功获取工具列表。工具描述过滤: <{tool_desc}>; 总数: {total}")
+    logger.info(
+        f"Successfully obtained the list of tools. Tool Description Filtering: <{tool_desc}>; Total: {total}"
+    )
 
     # 返回分页数据
     return Success(
         data={
-            "tool_list": tool_list,
+            "tool_list": tool_list[start_index:end_index],
             "current": current,
             "size": size,
             "total": total,
@@ -100,26 +112,28 @@ async def add_tool(
     db: Session = Depends(get_db),
 ):
     """
-    添加新工具
+    Add new tools
     """
     try:
         funciton = tool_config.function
 
-        logger.info(f"添加新工具。工具名称: {funciton.name}")
+        logger.info(f"Adding a new tool. Tool Name: {funciton.name}")
 
-        # 检查工具名称是否已存在
+        # Check if the tool name already exists
         existing_tool = (
             db.query(CustomTool).filter(CustomTool.name == funciton.name).first()
         )
 
         if existing_tool:
-            logger.warning(f"工具名称已存在: {funciton.name}")
-            return Error(msg=f"添加失败，工具名称 '{funciton.name}' 已存在")
+            logger.warning(f"Tool name already exists: {funciton.name}")
+            return Error(
+                msg=f"Failed to add tool. Tool name '{funciton.name}' already exists"
+            )
 
-        # 从MCPToolConfig中提取必要信息
+        # Extract the necessary information from the MCP Tool Config
         tool_data = funciton.model_dump()
 
-        # 创建工具实例
+        # Create a tool instance
         tool = CustomTool(**tool_data)
 
         db.add(tool)
@@ -130,9 +144,9 @@ async def add_tool(
         return Success(msg="添加工具成功")
 
     except Exception as e:
-        # 回滚事务
+        # Rollback the transaction
         db.rollback()
-        error_msg = f"添加工具时发生错误: {str(e)}"
+        error_msg = f"Error occurred while adding tool: {str(e)}"
         logger.error(error_msg, exc_info=True)
         return Error(msg=error_msg)
 
@@ -144,26 +158,28 @@ async def update_tool(
     db: Session = Depends(get_db),
 ):
     """
-    更新已存在的工具配置
+    Update an existing tool's configuration
 
     Args:
-        tool_name: 要更新的工具名称
-        tool_config: 包含更新字段的字典
-        db: 数据库会话
+        tool_name: The name of the tool to update
+        tool_config: A dictionary containing the fields to update
+        db: The database session
 
     Returns:
-        更新成功或失败的响应
+        Success or Error response indicating the result of the update operation
     """
     try:
-        logger.info(f"更新工具: {tool_name}")
+        logger.info(f"Updating tool: {tool_name}")
 
-        # 查找要更新的工具
+        # Find the tool to update
         tool = db.query(CustomTool).filter(CustomTool.name == tool_name).first()
         if not tool:
-            logger.warning(f"工具不存在: {tool_name}")
-            return Error(msg=f"更新失败，工具 '{tool_name}' 不存在")
+            logger.warning(f"Tool does not exist: {tool_name}")
+            return Error(
+                msg=f"Failed to update tool. Tool '{tool_name}' does not exist"
+            )
 
-        # 若更新工具名称，需检查新名称是否已存在
+        # If updating the tool name, check if the new name already exists
         if "name" in tool_config and tool_config["name"] != tool_name:
             existing = (
                 db.query(CustomTool)
@@ -171,26 +187,30 @@ async def update_tool(
                 .first()
             )
             if existing:
-                logger.warning(f"工具名称已存在: {tool_config['name']}")
-                return Error(msg=f"更新失败，工具名称 '{tool_config['name']}' 已被使用")
+                logger.warning(f"Tool name already exists: {tool_config['name']}")
+                return Error(
+                    msg=f"Failed to update tool. Tool name '{tool_config['name']}' is already in use"
+                )
 
-        # 更新工具属性
+        # Update tool attributes
         updated_fields = []
         for key, value in tool_config.items():
-            if hasattr(tool, key) and key != "id":  # 防止更新ID
+            if hasattr(tool, key) and key != "id":  # Prevent the update of ID
                 setattr(tool, key, value)
                 updated_fields.append(key)
 
-        # 如果没有字段被更新，返回提示
+        # If no fields were updated, return a message
         if not updated_fields:
-            logger.info(f"没有字段需要更新: {tool_name}")
-            return Success(msg="没有字段需要更新")
+            logger.info(f"No fields need to be updated: {tool_name}")
+            return Success(msg="No fields need to be updated")
 
-        # 保存更新
-        tool.update_time = datetime.now()  # 更新时间戳
+        # Save the updated tool
+        tool.update_time = datetime.now()  # Timestamp for update time
         db.commit()
 
-        logger.info(f"成功更新工具: {tool.name}，更新字段: {', '.join(updated_fields)}")
+        logger.info(
+            f"Successfully updated the tool: {tool.name}, updated fields: {', '.join(updated_fields)}"
+        )
         return Success(
             msg="更新工具成功",
             data={"id": tool.id, "name": tool.name, "updated_fields": updated_fields},
@@ -199,7 +219,7 @@ async def update_tool(
     except Exception as e:
         # 回滚事务
         db.rollback()
-        error_msg = f"更新工具时发生错误: {str(e)}"
+        error_msg = f"An error occurred when updating the tool: {str(e)}"
         logger.error(error_msg, exc_info=True)
         return Error(msg=error_msg)
 
@@ -210,38 +230,43 @@ async def remove_tool(
     db: Session = Depends(get_db),
 ):
     """
-    删除已存在的工具
+    Delete the existing tools
 
     Args:
-        tool_name: 要删除的工具名称
-        db: 数据库会话
+        tool_name: The name of the tool to delete
+        db: The database session
 
     Returns:
-        删除成功或失败的响应
+        The response indicating success or failure of the deletion
     """
     try:
-        logger.info(f"删除工具: {tool_name}")
+        logger.info(f"Deleting tool: {tool_name}")
 
-        # 查找要删除的工具
+        # Find the tool to delete
         tool = db.query(CustomTool).filter(CustomTool.name == tool_name).first()
         if not tool:
-            logger.warning(f"工具不存在: {tool_name}")
-            return Error(msg=f"删除失败，工具 '{tool_name}' 不存在")
+            logger.warning(f"Tool does not exist: {tool_name}")
+            return Error(
+                msg=f"Failed to delete tool. Tool '{tool_name}' does not exist"
+            )
 
-        # 保存工具ID用于日志记录
+        # Save the tool ID for logging
         tool_id = tool.id
 
-        # 删除工具
+        # Delete the tool
         db.delete(tool)
         db.commit()
 
-        logger.info(f"成功删除工具。ID: {tool_id}, 名称: {tool_name}")
-        return Success(msg="删除工具成功", data={"id": tool_id, "name": tool_name})
+        logger.info(f"Successfully deleted the tool. ID: {tool_id}, Name: {tool_name}")
+        return Success(
+            msg="Successfully deleted the tool.",
+            data={"id": tool_id, "name": tool_name},
+        )
 
     except Exception as e:
         # 回滚事务
         db.rollback()
-        error_msg = f"删除工具时发生错误: {str(e)}"
+        error_msg = f"An error occurred when deleting the tool: {str(e)}"
         logger.error(error_msg, exc_info=True)
         return Error(msg=error_msg)
 
@@ -251,52 +276,62 @@ async def get_tool_detail(
     tool_name: str = Query(..., description="工具名称", alias="toolName")
 ):
     """
-    获取工具详情
+    Get the details of the tool
     """
-    logger.info(f"获取工具详情。工具名称: {tool_name}")
+    logger.info(f"Getting tool detail. Tool name: {tool_name}")
 
     # 获取工具配置
-    tool_config = tool_manager.get_custom_tool(tool_name)
+    tool = tool_manager.fetch_tools([tool_name])[0]
 
-    if tool_config:
-        logger.info(f"成功获取工具详情。工具名称: {tool_name}")
-        return Success(data=tool_config)
+    if tool:
+        tool_detail = {
+            "type": ToolType.STREAMABLE.value,
+            "function": {
+                "name": tool.name,
+                "description": tool.description,
+                "url": "",
+                "method": "",
+                "parameters": tool.parameters,
+            },
+        }
+        logger.info(f"Successfully retrieved the tool detail. Tool name: {tool_name}")
+        return Success(data=tool_detail)
 
-    logger.error(f"获取工具详情失败。工具名称: {tool_name}")
-    return Error(msg="找不到工具")
+    logger.error(f"Failed to retrieve the tool detail. Tool name: {tool_name}")
+    return Error(msg="Failed to retrieve the tool detail")
 
 
-@router.get("/test")
-async def test_tool(
-    tool_name: str = Query(..., description="工具名称", alias="toolName"),
-    kwargs: str = Query(..., description="执行参数"),
-):
-    """
-    测试工具能够正常执行
-    """
-    logger.info(f"测试工具。工具名称: {tool_name}; 执行参数: {kwargs}")
+# @router.get("/test")
+# async def test_tool(
+#     tool_name: str = Query(..., description="工具名称", alias="toolName"),
+#     kwargs: str = Query(..., description="执行参数"),
+# ):
+#     """
+#     测试工具能够正常执行
+#     """
+#     logger.info(f"测试工具。工具名称: {tool_name}; 执行参数: {kwargs}")
 
-    # 解析执行参数
-    try:
-        params = eval(kwargs)
-    except Exception as e:
-        logger.error(f"参数解析失败: {str(e)}")
-        return Error(msg=f"参数格式错误: {str(e)}")
+#     # 解析执行参数
+#     try:
+#         params = eval(kwargs)
+#     except Exception as e:
+#         logger.error(f"参数解析失败: {str(e)}")
+#         return Error(msg=f"参数格式错误: {str(e)}")
 
-    # 获取工具对象
-    tool = tool_manager.get_tool_by_name(tool_name)
+#     # 获取工具对象
+#     tool = tool_manager.get_tool_by_name(tool_name)
 
-    if not tool:
-        logger.error(f"工具不存在: {tool_name}")
-        return Error(msg=f"找不到工具: {tool_name}")
+#     if not tool:
+#         logger.error(f"工具不存在: {tool_name}")
+#         return Error(msg=f"找不到工具: {tool_name}")
 
-    # 执行工具函数
-    try:
-        result = tool.function(**params)
-        logger.info(f"成功测试工具。工具名称: {tool_name}; 执行参数: {kwargs}")
-        return Success(data=result)
-    except Exception as e:
-        logger.error(
-            f"工具执行失败。工具名称: {tool_name}; 执行参数: {kwargs}; 错误: {str(e)}"
-        )
-        return Error(msg=str(e))
+#     # 执行工具函数
+#     try:
+#         result = tool.function(**params)
+#         logger.info(f"成功测试工具。工具名称: {tool_name}; 执行参数: {kwargs}")
+#         return Success(data=result)
+#     except Exception as e:
+#         logger.error(
+#             f"工具执行失败。工具名称: {tool_name}; 执行参数: {kwargs}; 错误: {str(e)}"
+#         )
+#         return Error(msg=str(e))
