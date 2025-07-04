@@ -10,6 +10,7 @@ from chat2rag.core.database import CustomTool, get_db
 from chat2rag.enums import SortOrder, ToolSortField, ToolType
 from chat2rag.logger import logger
 from chat2rag.tools.tool_manager import tool_manager
+from chat2rag.utils.short_name import ai_create_shortname
 
 router = APIRouter()
 
@@ -169,14 +170,15 @@ async def add_tool(
         # Obtain the list of tool names from MCP and set the custom information
         if tool.type != ToolType.API:
             try:
-                tool.customization = {
-                    t.name: {
-                        "name": t.name,
+                customization = {}
+                for t in tool._fetch_mcp_tools().tools:
+                    short_name = await ai_create_shortname(t.description)
+                    customization[t.name] = {
+                        "name": short_name,
                         "description": t.description,
                         "properties": t.parameters,
                     }
-                    for t in tool._fetch_mcp_tools().tools
-                }
+                tool.customization = customization
             except Exception as e:
                 logger.warning(f"Error setting customization: {e}")
                 tool.customization = {}

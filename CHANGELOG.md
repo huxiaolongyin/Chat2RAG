@@ -11,7 +11,8 @@
 - 新增 MCP中streamable模式的支持
 - 新增 使用 SerperDevWebSearch进行网页搜索的功能
 - 优化 Agent Pipeline，支持 ToolCall 和 ToolResult 流式输出
-- 新增 MCP工具名的映射
+- 新增 MCP工具名的映射，使用AI对工具描述进行取名
+
 
 ### Fixed
 
