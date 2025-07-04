@@ -1,11 +1,11 @@
 from fastapi import FastAPI
 
 from chat2rag.api.routes import router
-
-# from chat2rag.api.v1 import ws_router
 from chat2rag.config import CONFIG
 from chat2rag.logger import logger
-from chat2rag.pipelines.rag import RAGPipeline
+from chat2rag.tools.tool_manager import ToolManager
+
+# from chat2rag.api.v1 import ws_router
 
 
 # @asynccontextmanager
@@ -22,8 +22,9 @@ async def lifespan(app: FastAPI):
         setup_telemetry()
         logger.info("Telemetry setup successfully")
 
-    # 预热 RAG 管道
-    RAGPipeline(["Document"])
+    # 加载MCP连接
+    ToolManager()
+
     yield
     # 关闭时执行
     # await FastAPICache.clear()
