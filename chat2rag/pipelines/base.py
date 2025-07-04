@@ -1,15 +1,17 @@
 from abc import ABC, abstractmethod
-
-from haystack import Pipeline
+from typing import Generic, Type, TypeVar
 
 from chat2rag.logger import get_logger
 
 logger = get_logger(__name__)
 
+# Define type variables
+T = TypeVar("T")
 
-class BasePipeline(ABC):
+
+class BasePipeline(Generic[T], ABC):
     def __init__(self):
-        self.pipeline: Pipeline = self._initialize_pipeline()
+        self.pipeline: Type[T] = self._initialize_pipeline()
         self.warm_up()
 
     def __str__(self):

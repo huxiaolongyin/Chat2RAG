@@ -10,6 +10,10 @@
 - 新增 Agent管道示例
 - 新增 MCP中streamable模式的支持
 
+### Changed
+- 修改 Base Pipeline，加入泛型变量
+
+
 ## [V0.2.0] - 2025-06-25
 
 ### Added
