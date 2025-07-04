@@ -9,10 +9,15 @@
 - 新增 Agent管道，融合MCP、RAG、ToolInvoke
 - 新增 Agent管道示例
 - 新增 MCP中streamable模式的支持
+- 新增 使用 SerperDevWebSearch进行网页搜索的功能
 
 ### Changed
-- 修改 Base Pipeline，加入泛型变量
+- 修改 Base Pipeline，加入泛型变量，支持更多类型的 Pipeline
 
+### Removed
+- 移除 内置的天气服务，使用高德 MCP 代替
+- 移除 内置的微博检索工具
+- 移除 yml管理工具集
 
 ## [V0.2.0] - 2025-06-25
 
@@ -40,7 +45,6 @@
 - 将管道的 warmup() 改到 base 中
 - 更新 haystack 和相关依赖
 - 优化冗余的配置文件，统一到 config.py 中
-
 
 ### Removed
 

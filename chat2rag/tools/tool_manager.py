@@ -1,18 +1,32 @@
 from contextlib import contextmanager
 from typing import Generator, List
 
-from haystack.tools import Toolset
+from haystack.tools import Tool
 from sqlalchemy.orm import Session
 
 from chat2rag.core.database import CustomTool, SessionLocal
 from chat2rag.core.database.enums import Status, ToolType
 from chat2rag.logger import get_logger
+from chat2rag.tools.bazi import get_bazi_info
+from chat2rag.tools.web_search import web_search
 
 logger = get_logger(__name__)
 
 
 class ToolManager:
-    """进行API、MCP的工具管理"""
+    """
+    Tool manager for API and MCP tools
+    """
+
+    _instance = None
+
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super(ToolManager, cls).__new__(cls)
+        return cls._instance
+
+    def __init__(self):
+        self.all_tools = self._fetch_all_tool()
 
     @contextmanager
     def get_db_session(self) -> Generator[Session, None, None]:
@@ -22,59 +36,59 @@ class ToolManager:
         finally:
             db.close()
 
-    def fetch_tools(self, select_tools: List[str]) -> Toolset:
+    def _fetch_all_tool(self) -> List[Tool]:
         """
-        获取所有可用工具
-
-        Args:
-            select_tools: 选用的工具列表，["all"]表示获取所有工具，["tool1", "tool2"]表示获取指定的工具
+        Fetch all tools from database
         """
-        if not select_tools:
-            raise ValueError("没有指定任何工具")
 
-        logger.debug("获取选择的工具: %s", select_tools)
-
-        all_tools = None
+        all_tools = []
 
         with self.get_db_session() as db:
-            # 构建基础查询
+            # Build basic queries
             base_query = db.query(CustomTool).filter(
                 CustomTool.status == Status.ENABLED
             )
+            # Obtain different types of tools respectively
+            api_tools = base_query.filter(CustomTool.type == ToolType.API).all()
+            mcp_tools = base_query.filter(CustomTool.type != ToolType.API).all()
 
-            # 根据工具列表过滤
-            if "all" in select_tools or "ALL" in select_tools:
-                filter_tools = base_query
-            else:
-                filter_tools = base_query.filter(CustomTool.name.in_(select_tools))
-
-            # 分别获取不同类型的工具
-            api_tools = filter_tools.filter(CustomTool.type == ToolType.API).all()
-            mcp_tools = filter_tools.filter(CustomTool.type != ToolType.API).all()
-
-            # 处理API工具
+            # Processing API tools
             for api_tool in api_tools:
                 fetched_tools = api_tool._fetch_api_tools()
-                if all_tools is None:
-                    all_tools = fetched_tools
-                else:
-                    all_tools += fetched_tools
+                all_tools.extend(fetched_tools.tools)
 
-            # 处理MCP工具
+            # Processing MCP tools
             for mcp_tool in mcp_tools:
-                fetched_tools = mcp_tool._fetch_mcp_tools()
-                if all_tools is None:
-                    all_tools = fetched_tools
-                else:
-                    all_tools += fetched_tools
+                try:
+                    fetched_tools = mcp_tool._fetch_mcp_tools()
+                    all_tools.extend(fetched_tools.tools)
 
-            if all_tools is None:
-                raise ValueError("没有找到可用的工具")
+                except Exception as e:
+                    logger.warning("Get the tool %s failed: %s", mcp_tool.name, e)
 
-            return all_tools
+        if not all_tools:
+            raise ValueError("No available tools were found")
+
+        return all_tools
+
+    def fetch_tools(self, select_tools: List[str]) -> List[Tool]:
+        """
+        Fetch tools from database
+
+        Args:
+            select_tools: The list of selected tools, ["all"] indicates obtaining all tools, and ["tool1", "tool2"] indicates obtaining the specified tools
+        """
+        if not select_tools:
+            raise ValueError("No tools were specified")
+
+        all_tool = self.all_tools + [web_search, get_bazi_info]
+
+        logger.debug("A tool for obtaining choices: %s", select_tools)
+
+        if "all" in select_tools or "ALL" in select_tools:
+            return all_tool
+
+        return [tool for tool in all_tool if tool.name in select_tools]
 
 
 tool_manager = ToolManager()
-
-if __name__ == "__main__":
-    print(tool_manager.fetch_tools(["all"]))

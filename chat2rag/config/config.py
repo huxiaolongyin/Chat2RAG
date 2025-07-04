@@ -87,23 +87,26 @@ class Config:
         # 包未安装，可能处于开发模式
         VERSION = "unknown"
 
-    # 项目目录
+    # Project Catalogue
     ROOT_DIR = Path(__file__).parent.parent.parent
     DATA_DIR = ROOT_DIR / "data"
     SQLITE_DIR = DATA_DIR / "sqlite"
 
     # Open AI LLM
-    ONE_API_HOST = load_str_env("ONE_API_HOST") or "localhost"
-    ONE_API_PORT = load_int_env("ONE_API_PORT") or 3001
-    OPENAI_BASE_URL = f"http://{ONE_API_HOST}:{ONE_API_PORT}/v1"
+
+    OPENAI_BASE_URL = load_str_env("OPENAI_BASE_URL", required=True)
     OPENAI_API_KEY = load_str_env("OPENAI_API_KEY", required=True)
-    DEFAULT_INTENTION_MODEL = load_str_env("DEFAULT_INTENTION_MODEL") or "Qwen2.5-14B"
-    DEFAULT_GENERATOR_MODEL = load_str_env("DEFAULT_GENERATOR_MODEL") or "Qwen2.5-32B"
-    GENERATION_KWARGS = {
-        "temperature": 0.1,
-        "presence_penalty": -0.2,
-        "max_tokens": 150,
-    }
+    DEFAULT_MODEL = (
+        load_str_env("DEFAULT_GENERATOR_MODEL") or "Qwen/Qwen2.5-72B-Instruct"
+    )
+
+    # ONEAPI出现不能使用 AGENT 调用，且很久不更新，暂时不使用
+    # ONE_API_HOST = load_str_env("ONE_API_HOST") or "localhost"
+    # ONE_API_PORT = load_int_env("ONE_API_PORT") or 3001
+    # DEFAULT_INTENTION_MODEL = load_str_env("DEFAULT_INTENTION_MODEL") or "Qwen2.5-14B"
+    # DEFAULT_GENERATOR_MODEL = load_str_env("DEFAULT_GENERATOR_MODEL") or "Qwen2.5-32B"
+
+    GENERATION_KWARGS = {"temperature": 0.1, "presence_penalty": -0.2}
 
     # Embedding Service
     EMBEDDING_OPENAI_URL = load_str_env("EMBEDDING_OPENAI_URL")
@@ -127,13 +130,14 @@ class Config:
     # Retriever
     TOP_K = load_int_env("TOP_K") or 5
     SCORE_THRESHOLD = load_float_env("SCORE_THRESHOLD") or 0.65
-    # 精准检索的阈值
+
+    # The threshold for precise retrieval
     PRECISION_THRESHOLD = load_float_env("PRECISION_THRESHOLD") or 0.88
 
     # Function
     FUNCTION_PROMPT_TEMPLATE = load_prompt("function_prompt.txt")
     FUNCION_ENABLED = load_bool_env("FUNCION_ENABLED") or False
-    GAODE_API_KEY = load_str_env("GAODE_API_KEY", required=True)
+    # GAODE_API_KEY = load_str_env("GAODE_API_KEY", required=True)
 
     # WEB
     WEB_ROUTE_PREFIX = load_str_env("WEB_ROUTE_PREFIX") or "/api"
@@ -141,6 +145,14 @@ class Config:
 
     # TELEMETRY
     TELEMETRY_ENABLED = load_bool_env("TELEMETRY_ENABLED")
+
+    # MODEL
+    MODEL_LIST = [
+        {"name": "Qwen2.5-14B", "id": "Qwen/Qwen2.5-14B-Instruct"},
+        {"name": "Qwen2.5-32B", "id": "Qwen/Qwen2.5-32B-Instruct"},
+        {"name": "Qwen2.5-72B", "id": "Qwen/Qwen2.5-72B-Instruct"},
+        {"name": "deepseek-v3", "id": "Pro/deepseek-ai/DeepSeek-V3"},
+    ]
 
 
 CONFIG = Config()
