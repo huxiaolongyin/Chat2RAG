@@ -2,21 +2,15 @@ from datetime import datetime
 from typing import Any
 
 from fastapi.responses import JSONResponse
-from humps import camelize
 
 from chat2rag.config import CONFIG
-
-
-def camelize_dict(obj):
-    if isinstance(obj, dict):
-        return {camelize(k): camelize_dict(v) for k, v in obj.items()}
-    if isinstance(obj, list):
-        return [camelize_dict(i) for i in list(obj)]
-    return obj
+from chat2rag.utils.camelize import camelize_dict
 
 
 class Base(JSONResponse):
-    """基础响应模型"""
+    """
+    Basic response model
+    """
 
     def __init__(
         self,
@@ -37,11 +31,29 @@ class Base(JSONResponse):
         super().__init__(content=camelize_dict(content), status_code=status_code)
 
 
-class Success(Base): ...
+class Success(Base):
+    """
+    Base success response model
+    """
+
+    ...
 
 
 class Error(Base):
-    """基础错误响应模型"""
+    """
+    Basic error response model
+    """
 
-    def __init__(self, msg: str = "服务器内部错误", data: Any = None, **kwargs: Any):
-        super().__init__(code="4000", status_code=400, msg=msg, data=data, **kwargs)
+    def __init__(
+        self,
+        msg: str = "服务器内部错误",
+        data: Any = None,
+        **kwargs: Any,
+    ):
+        super().__init__(
+            code="4000",
+            status_code=400,
+            msg=msg,
+            data=data,
+            **kwargs,
+        )
