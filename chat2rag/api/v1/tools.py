@@ -33,6 +33,7 @@ async def list_tools(
         description="排序方向(asc, desc)，默认 desc",
         alias="sortOrder",
     ),
+    db: Session = Depends(get_db),
 ):
     """
     Get the list of tools
@@ -42,21 +43,50 @@ async def list_tools(
     )
 
     # Get all tools
-    tools = tool_manager.fetch_tools(["all"])
+    api_tools = db.query(CustomTool).filter(CustomTool.type == ToolType.API).all()
+    mcp_tools = db.query(CustomTool).filter(CustomTool.type != ToolType.API).all()
 
-    tool_list = [
-        {
-            "type": ToolType.STREAMABLE.value,
-            "function": {
-                "name": tool.name,
-                "description": tool.description,
-                "url": "",
-                "method": "",
-                "parameters": tool.parameters,
-            },
-        }
-        for tool in tools
-    ]
+    tool_list = []
+    for tool in api_tools:
+        tool_list.append(
+            {
+                "type": tool.type,
+                "function": {
+                    "name": tool.name,
+                    "display_name": tool.display_name,
+                    "description": tool.description,
+                    "url": tool.url,
+                    "method": tool.method.value,
+                    "parameters": tool.parameters,
+                    "command": tool.command,
+                    "status": tool.status.value,
+                },
+            }
+        )
+
+    for tool in mcp_tools:
+        try:
+            tool_list.extend(
+                [
+                    {
+                        "type": tool.type.value,
+                        "mcp_name": tool.name,
+                        "function": {
+                            "name": key,
+                            "display_name": values.get("name"),
+                            "description": values.get("description"),
+                            "url": tool.url,
+                            "method": tool.method.value,
+                            "parameters": values.get("properties"),
+                            "command": tool.command,
+                            "status": tool.status.value,
+                        },
+                    }
+                    for key, values in tool.customization.items()
+                ]
+            )
+        except Exception as e:
+            logger.error(f"Error occurred while processing MCP tools: {e}")
 
     if tool_desc:
         tool_list = [
@@ -135,6 +165,21 @@ async def add_tool(
 
         # Create a tool instance
         tool = CustomTool(**tool_data)
+
+        # Obtain the list of tool names from MCP and set the custom information
+        if tool.type != ToolType.API:
+            try:
+                tool.customization = {
+                    t.name: {
+                        "name": t.name,
+                        "description": t.description,
+                        "properties": t.parameters,
+                    }
+                    for t in tool._fetch_mcp_tools().tools
+                }
+            except Exception as e:
+                logger.warning(f"Error setting customization: {e}")
+                tool.customization = {}
 
         db.add(tool)
         db.commit()

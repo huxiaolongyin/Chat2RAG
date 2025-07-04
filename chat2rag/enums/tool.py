@@ -1,14 +1,14 @@
 from enum import Enum
 
 
-class ToolType(Enum):
+class ToolType(str, Enum):
     API: str = "api"
     STDIO: str = "stdio"
     SSE: str = "sse"
     STREAMABLE: str = "streamable"
 
 
-class ToolMethod(Enum):
+class ToolMethod(str, Enum):
     NONE: str = ""
     GET: str = "GET"
     POST: str = "POST"

@@ -72,12 +72,16 @@ class CustomTool(Base):
     id = Column(Integer, primary_key=True)
     type = Column(Enum(ToolType))
     name = Column(String)
+    display_name = Column(String, nullable=True)
     description = Column(String, nullable=True)
     url = Column(String, nullable=True)
     method = Column(Enum(ToolMethod), nullable=True)
     parameters = Column(JSON, nullable=True)
     command = Column(String, nullable=True)
     status = Column(Enum(Status), default=Status.ENABLED)
+    customization = Column(
+        JSON, nullable=True, comment="存储工具的自定义信息，如中文名称、标签等"
+    )
     create_time = Column(DateTime(timezone=True), default=datetime.now())
     update_time = Column(
         DateTime(timezone=True), default=datetime.now(), onupdate=datetime.now()
