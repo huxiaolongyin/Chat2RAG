@@ -1,50 +1,51 @@
 import asyncio
-import time
+import json
 from concurrent.futures import ThreadPoolExecutor
-from enum import Enum
-
-# from functools import lru_cache
+from datetime import datetime
+from functools import lru_cache
 from time import perf_counter
-from typing import List, Optional, Union
+from typing import List, Optional, Tuple
 
 from fastapi import APIRouter, Depends, Query
 from fastapi.responses import StreamingResponse
-from haystack.dataclasses import StreamingChunk
+from haystack.dataclasses import ChatMessage, StreamingChunk
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.orm import Session
 
-from chat2rag.api.schema import Error, Success
+from chat2rag.api.schema import Success
 from chat2rag.config import CONFIG
-from chat2rag.core.database import Prompt, get_db
+from chat2rag.core.database import get_db
 from chat2rag.core.document.qdrant import QAQdrantDocumentStore
+from chat2rag.enums import ProcessType
 from chat2rag.logger import get_logger
-from chat2rag.pipelines.rag import RAGPipeline
-from chat2rag.utils.chat_cache import ChatCache
+from chat2rag.pipelines.agent import AgentPipeline
+from chat2rag.utils.chat_history import ChatHistory
 from chat2rag.utils.monitoring import async_performance_logger
 from chat2rag.utils.stream import StreamHandler
 
+# from pyinstrument import Profiler
+# profiler = Profiler()
+
 logger = get_logger(__name__)
 router = APIRouter()
-chat_cache = ChatCache()
+chat_history = ChatHistory()
 
-# 为了避免每次请求都创建新的executor导致资源浪费，使用全局executor
+# To avoid creating a new executor for each request, which leads to resource waste, use a global executor
 executor = ThreadPoolExecutor(max_workers=5)
 
 
-# 使用枚举
-class ProcessType(str, Enum):
-    BATCH = "batch"
-    STREAM = "stream"
-
-
 class ChatQueryParams(BaseModel):
-    """请求参数模型"""
+    """
+    Request parameter model for chat
+    """
 
     collections: Optional[str] = Field(
         None, alias="collectionName", description="知识库名称"
     )
     query: str = Field(..., description="查询内容")
-    top_k: int = Field(default=5, ge=0, le=30, alias="topK", description="返回数量")
+    top_k: int = Field(
+        default=CONFIG.TOP_K, ge=0, le=30, alias="topK", description="返回数量"
+    )
     score_threshold: float = Field(
         default=CONFIG.SCORE_THRESHOLD,
         ge=0.0,
@@ -60,22 +61,14 @@ class ChatQueryParams(BaseModel):
         default=1, ge=0, le=30, alias="chatRounds", description="聊天轮数"
     )
     prompt_name: str = Field("", alias="promptName", description="提示词名称选择")
-    intention_model: str = Field(
-        default=CONFIG.DEFAULT_INTENTION_MODEL,
-        alias="intentionModel",
-        description="意图模型",
-    )
-    generator_model: str = Field(
-        default=CONFIG.DEFAULT_GENERATOR_MODEL,
-        alias="generatorModel",
-        description="生成模型",
+
+    model: str = Field(
+        default=CONFIG.DEFAULT_MODEL, alias="model", description="生成模型"
     )
     generation_kwargs: str = Field(
         default="{}", alias="generationKwargs", description="生成参数"
     )
-    tools: str = Field(
-        None, alias="toolList", description="选用的工具，使用 , 分割，使用 all 为全部"
-    )
+    tools: str = Field(None, description="选用的工具，使用 , 分割，使用 all 为全部")
     vin: str = Field(default="", alias="vin", description="设备的vin码")
     lat: float = Field(default=26.062731, alias="lat", description="纬度")
     lng: float = Field(default=119.235434, alias="lng", description="经度")
@@ -85,70 +78,223 @@ class ChatQueryParams(BaseModel):
         populate_by_name = True
 
     @field_validator("tools", mode="after")
-    def parse_tools(cls, v):
+    def parse_tools(cls, v: str) -> List[str]:
         return v.split(",") if v else []
 
     @field_validator("collections", mode="after")
-    def parse_collections(cls, v):
+    def parse_collections(cls, v: str) -> List[str]:
         return v.split(",") if v else []
 
+    @field_validator("generation_kwargs", mode="after")
+    def parse_generation_kwargs(cls, v: str):
+        return json.loads(v)
 
-def get_prompt_template(prompt_name: str, db: Session) -> Optional[str]:
-    """
-    Obtain the prompt template from the database
-    """
 
-    if not prompt_name:
-        return None
+@lru_cache(maxsize=32)
+def _create_agent_pipeline(
+    collections: Tuple[str, ...], model: str, tools: Tuple[str, ...]
+) -> AgentPipeline:
+    return AgentPipeline(list(collections), model, list(tools))
+
+
+def create_pipeline(
+    collections: List[str], model: str, tools: List[str]
+) -> AgentPipeline:
+    """
+    lru_cache cant cache list, so we use this function to create a pipeline
+    """
+    return _create_agent_pipeline(tuple(collections), model, tuple(tools))
+
+
+def _get_streaming_headers() -> dict:
+    """
+    Obtain the streaming response header
+    """
+    return {
+        "Cache-Control": "no-cache",
+        "Connection": "keep-alive",
+        "Transfer-Encoding": "chunked",
+    }
+
+
+async def _handle_exact_query(
+    params: ChatQueryParams, handler: StreamHandler, start_time: float
+):
+    """
+    Handle precise queries
+    """
+    logger.info("Perform stream queries using the precise mode")
 
     try:
-        prompt = db.query(Prompt).filter(Prompt.prompt_name == prompt_name).first()
-        if not prompt:
-            logger.warning("Prompt with name '%s' not found", prompt_name)
-            try:
-                prompt = (
-                    db.query(Prompt)
-                    .filter(Prompt.prompt_name in ["默认", "default"])
-                    .first()
-                )
-                return prompt.prompt_text
-            except Exception as e:
-                logger.error("Error retrieving prompt '%s': %s", prompt_name, str(e))
-                return None
-        return prompt.prompt_text
+        answer = ""
+        for collection in params.collections:
+            res = await QAQdrantDocumentStore(collection).query_exact(params.query)
+            if res:
+                answer = res
+                break
 
+        if not answer:
+            logger.info(
+                "No exact match found for query: '%s', falling back to RAG",
+                params.query,
+            )
+            return None
+
+        logger.info("Found exact match for query: '%s'", params.query)
+        asyncio.create_task(_stream_exact_answer(answer, params, handler, start_time))
+
+        return StreamingResponse(
+            handler.get_stream(True),
+            media_type="text/event-stream",
+            headers=_get_streaming_headers(),
+        )
     except Exception as e:
-        logger.error("Error retrieving prompt '%s': %s", prompt_name, str(e))
+        logger.error("Error in exact query: %s", str(e))
         return None
 
 
-def parse_generation_kwargs(kwargs_str: str) -> dict:
+async def _stream_exact_answer(
+    answer: str, params: ChatQueryParams, handler: StreamHandler, start_time: float
+):
     """
-    解析生成参数
+    Stream the exact answer
     """
-    if kwargs_str == "{}" or kwargs_str == "":
-        return CONFIG.GENERATION_KWARGS
     try:
-        return eval(kwargs_str)
+        logger.debug("Processing exact query: %s", answer)
+
+        chunk_size = 50
+        for i in range(0, len(answer), chunk_size):
+            chunk = answer[i : i + chunk_size]
+            meta = {"model": "exact_match", "finish_reason": "none"}
+            handler.callback(StreamingChunk(content=chunk, meta=meta))
+            await asyncio.sleep(0.001)
+
+        # Send the end signal
+        handler.callback(
+            StreamingChunk(
+                content="", meta={"model": "exact_match", "finish_reason": "stop"}
+            )
+        )
+
+        # Update chat history
+        if params.chat_id:
+            chat_history.add_message(params.chat_id, params.query, "user")
+            chat_history.add_message(params.chat_id, answer, "assistant")
+
+        logger.info(
+            "Exact query processed successfully, took %.2fs",
+            perf_counter() - start_time,
+        )
 
     except Exception as e:
-        logger.error("Failed to parse generation_kwargs: %s", str(e))
-        return CONFIG.GENERATION_KWARGS
+        logger.error("Error in exact query processing: %s", str(e))
+        handler.callback(
+            StreamingChunk(
+                content=f"精确查询处理错误: {str(e)}",
+                meta={"model": "error", "finish_reason": "error"},
+            )
+        )
+    finally:
+        handler.finish()
+
+
+def _get_latest_user_round(messages: List[ChatMessage]) -> List[ChatMessage]:
+    """
+    Get the latest round of conversations starting from the last role of user
+    """
+    if not messages:
+        return []
+
+    # Search for the position of the last user message from back to front
+    last_user_index = -1
+    for i in range(len(messages) - 1, -1, -1):
+        if messages[i].role == "user":
+            last_user_index = i
+            break
+
+    # If a role of user message is found, return all messages from that position onwards
+    if last_user_index != -1:
+        return messages[last_user_index:]
+
+    return []
+
+
+async def _process_agent_pipeline(
+    params: ChatQueryParams,
+    handler: StreamHandler,
+    history_messages: list,
+    start_time: float,
+):
+    """
+    Handle the pipeline processing of the agent.
+    """
+    try:
+        # Start the profiler
+        # profiler.start()
+        logger.debug("start Agent pipeline...")
+
+        for model in CONFIG.MODEL_LIST:
+            if model["name"] == params.model:
+                params.model = model["id"]
+                break
+
+        pipeline = create_pipeline(
+            collections=params.collections,
+            model=params.model,
+            tools=params.tools,
+        )
+        result = pipeline.run(
+            query=params.query,
+            top_k=params.top_k,
+            score_threshold=params.score_threshold,
+            doc_type="qa_pair",
+            messages=history_messages,
+            vin=params.vin,
+            city=params.city,
+            lng=params.lng,
+            lat=params.lat,
+            time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            streaming_callback=handler.callback,
+        )
+
+        # Update chat history
+        messages: list = result.get("agent").get("messages")
+        if params.chat_id and messages:
+            new_messages = _get_latest_user_round(messages)
+            chat_history.add_message(params.chat_id, messages=new_messages)
+
+        logger.info(
+            "Agent pipeline processed successfully, took %.2fs",
+            perf_counter() - start_time,
+        )
+        # profiler.stop()
+        # print(profiler.output_text(unicode=True, color=True))
+
+    except Exception as e:
+        logger.error("Error in pipeline: %s", str(e))
+        # Send an error message to the stream
+        handler.callback(
+            StreamingChunk(
+                content=f"处理请求时发生错误: {str(e)}",
+                meta={"model": "error", "finish_reason": "error"},
+            )
+        )
+    finally:
+        # Make sure the stream is closed correctly
+        handler.finish()
 
 
 @router.get("/query")
 @async_performance_logger
-async def chat_rag(
-    params: ChatQueryParams = Depends(),
-    db: Session = Depends(get_db),
-):
+async def chat_rag(params: ChatQueryParams = Depends(), db: Session = Depends(get_db)):
     logger.info("Processing query request, query: '%s'", params.query)
 
-    # 获取提示词模板
-    prefix_prompt = f"你的设备码是{params.vin}，当前时间{time.strftime('%Y-%m-%d %H:%M:%S')}，当前坐标({params.lat},{params.lng})，所在城市{params.city}"
-    prompt_template = get_prompt_template(params.prompt_name, db)
+    # Get the prompt word template
+    history_messages = chat_history.get_history_messages(
+        params.prompt_name, params.chat_id, db, params.chat_rounds
+    )
 
-    # 使用精准匹配模式，直接索引问题，然后匹配答案
+    # Use the exact match mode to directly index the questions and then match the answers
     if params.precision_mode == 1:
         logger.info("Using precision mode for query: '%s'", params.query)
         answer = await QAQdrantDocumentStore(params.collections).query_exact(
@@ -162,53 +308,40 @@ async def chat_rag(
             return Success(data=[{"content": answer, "role": "assistant"}])
         logger.info("No exact match found for query: '%s'", params.query)
 
-    history_messages = []
-    if params.chat_id:
-        history_messages = chat_cache.get_messages(params.chat_id, params.chat_rounds)
-        logger.debug(
-            "Retrieved %d history messages for chat_id: %s",
-            len(history_messages),
-            params.chat_id,
-        )
-
-    generation_kwargs = parse_generation_kwargs(params.generation_kwargs)
-
-    # 创建并运行RAG管道
-    pipeline = RAGPipeline(
-        qdrant_index=params.collections,
-        intention_model=params.intention_model,
-        generator_model=params.generator_model,
+    # Create and run the pipeline
+    pipeline = create_pipeline(
+        collections=params.collections, model=params.model, tools=params.tools
     )
 
-    logger.debug("启动RAG管道查询: '%s'", params.query)
-    response = await pipeline.run(
+    logger.debug("Start pipeline query: '%s'", params.query)
+    response = pipeline.run(
         query=params.query,
-        tools=params.tools,
         top_k=params.top_k,
-        prefix_prompt=prefix_prompt,
-        prompt_template=prompt_template,
         score_threshold=params.score_threshold,
+        doc_type="qa_pair",
         messages=history_messages,
-        generation_kwargs=generation_kwargs,
+        vin=params.vin,
+        city=params.city,
+        time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
     )
 
-    # 处理返回结果
-    chat_list = response.get("generator").get("replies")
+    # Process the returned result
+    messages = response.get("agent").get("messages")
+    new_messages = _get_latest_user_round(messages)
     data = []
-    for chat_message in chat_list:
+    for message in new_messages[1:]:
         data.append(
             {
-                "content": chat_message.text,
-                "role": chat_message.role,
-                "name": chat_message.name,
-                "meta": chat_message.meta,
+                "content": message.text,
+                "role": message.role,
+                "name": message.name,
+                "meta": message.meta,
             }
         )
 
-    # 更新聊天历史
-    if params.chat_id and chat_list:
-        chat_cache.add_message(params.chat_id, params.query, "user")
-        chat_cache.add_message(params.chat_id, chat_list[0].text, "assistant")
+    # Update chat history
+    if params.chat_id and new_messages:
+        chat_history.add_message(params.chat_id, messages=new_messages)
 
     logger.info("Query processed successfully")
     return Success(data=data)
@@ -220,129 +353,26 @@ async def chat_rag_stream(
     batch_or_stream: ProcessType = Query(ProcessType.BATCH, alias="batchOrStream"),
     db: Session = Depends(get_db),
 ):
-    start = perf_counter()
+    start_time = perf_counter()
 
-    # 初始化流处理器
+    # Initialize the stream processor
     handler = StreamHandler()
     handler.start()
 
-    # 获取参数
+    # Obtain parameters
     is_batch = batch_or_stream == ProcessType.BATCH
-    prefix_prompt = f"你的设备码是{params.vin}，当前时间{time.strftime('%Y-%m-%d %H:%M:%S')}，当前坐标({params.lat},{params.lng})，所在城市{params.city}\n"
-    prompt_template = get_prompt_template(params.prompt_name, db)
-    generation_kwargs = parse_generation_kwargs(params.generation_kwargs)
+    history_messages = chat_history.get_history_messages(
+        params.prompt_name, params.chat_id, db, params.chat_rounds
+    )
 
-    # 获取历史消息
-    history_messages = []
-    if params.chat_id:
-        history_messages = chat_cache.get_messages(params.chat_id, params.chat_rounds)
-        logger.info(
-            "处理查询: '%s'; 历史消息长度: %d; chat_id: %s",
-            params.query,
-            len(history_messages),
-            params.chat_id,
-        )
-
-    # 处理精确模式查询的函数
-    async def process_exact_query(answer):
-        try:
-            logger.debug("处理精确模式查询: %s", answer)
-            for i in answer:
-                meta = {"model": "None", "finish_reason": "none"}
-                handler.callback(StreamingChunk(content=i, meta=meta))
-                # 重要：添加短暂等待，确保数据流被发送
-                await asyncio.sleep(0.01)
-
-            handler.callback(
-                StreamingChunk(
-                    content="", meta={"model": "None", "finish_reason": "stop"}
-                )
-            )
-
-            # 更新聊天历史
-            if params.chat_id:
-                chat_cache.add_message(params.chat_id, params.query, "user")
-                chat_cache.add_message(params.chat_id, answer, "assistant")
-
-            logger.info(
-                "Exact query processed successfully, took %.2fs", perf_counter() - start
-            )
-        except Exception as e:
-            logger.error("Error in exact query processing: %s", str(e))
-        finally:
-            handler.finish()
-
-    # 处理RAG管道的函数
-    async def process_rag_pipeline():
-        try:
-            logger.debug("启动RAG管道...")
-            pipeline = RAGPipeline(
-                qdrant_index=params.collections,
-                intention_model=params.intention_model,
-                generator_model=params.generator_model,
-                stream_callback=handler.callback,
-            )
-            result = await pipeline.run(
-                query=params.query,
-                tools=params.tools,
-                prefix_prompt=prefix_prompt,
-                prompt_template=prompt_template,
-                top_k=params.top_k,
-                score_threshold=params.score_threshold,
-                messages=history_messages,
-                generation_kwargs=generation_kwargs,
-            )
-
-            # 更新聊天历史
-            if (
-                params.chat_id
-                and "generator" in result
-                and "replies" in result["generator"]
-                and result["generator"]["replies"]
-            ):
-                chat_cache.add_message(params.chat_id, params.query, "user")
-                chat_cache.add_message(
-                    params.chat_id, result["generator"]["replies"][0].text, "assistant"
-                )
-
-        except Exception as e:
-            logger.error("Error in RAG pipeline: %s", str(e))
-            # 发送错误信息到流
-            handler.callback(
-                StreamingChunk(
-                    content=f"处理请求时发生错误: {str(e)}",
-                    meta={"model": "error", "finish_reason": "error"},
-                )
-            )
-        finally:
-            # 确保流被正确关闭
-            handler.finish()
-
-    # 使用精准匹配模式，直接索引问题，然后匹配答案
+    # Exact mode query
     if params.precision_mode == 1:
-        logger.info("使用精准模式进行流式查询")
-        answer = await QAQdrantDocumentStore(params.collections[0]).query_exact(
-            params.query
-        )
-        if answer:
-            logger.info("Found exact match for query: '%s'", params.query)
-            # 创建一个不依赖于当前事件循环的任务
-            asyncio.create_task(process_exact_query(answer))
+        exact_answer = await _handle_exact_query(params, handler, start_time)
+        if exact_answer:
+            return exact_answer
 
-            return StreamingResponse(
-                handler.get_stream(is_batch),
-                media_type="text/event-stream",
-                headers={
-                    "Cache-Control": "no-cache",
-                    "Connection": "keep-alive",
-                    "Transfer-Encoding": "chunked",
-                },
-            )
-        logger.info(
-            "No exact match found for query: '%s', falling back to RAG", params.query
-        )
-
-    # 关键修改：使用独立线程运行事件循环
+    # TODO: Need to optimize the performance of the following code
+    # Key modification: Run the event loop using an independent thread
     def run_async_in_thread(coro):
         asyncio.set_event_loop(asyncio.new_event_loop())
         loop = asyncio.get_event_loop()
@@ -351,16 +381,15 @@ async def chat_rag_stream(
         finally:
             loop.close()
 
-    # 提交任务到线程池
-    executor.submit(run_async_in_thread, process_rag_pipeline())
+    # Submit the task to the thread pool
+    executor.submit(
+        run_async_in_thread,
+        _process_agent_pipeline(params, handler, history_messages, start_time),
+    )
 
-    # 返回流式响应
+    # Return flow response
     return StreamingResponse(
         handler.get_stream(is_batch),
         media_type="text/event-stream",
-        headers={
-            "Cache-Control": "no-cache",
-            "Connection": "keep-alive",
-            "Transfer-Encoding": "chunked",
-        },
+        headers=_get_streaming_headers(),
     )

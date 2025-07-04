@@ -10,6 +10,7 @@
 - 新增 Agent管道示例
 - 新增 MCP中streamable模式的支持
 - 新增 使用 SerperDevWebSearch进行网页搜索的功能
+- 优化 Agent Pipeline，支持 ToolCall 和 ToolResult 流式输出
 
 ### Fixed
 
@@ -19,6 +20,8 @@
 - 增强工具管理， 并修改 tool 接口
 - 修改 Function Pipeline(将弃用)，添加 Funciton 示例
 - 修改 RAG Pipeline(将弃用)，添加 RAG 示例
+- 修改 api/v1/chat 接口，使用Agent 管道进行输出内容
+- 优化 短记忆 chat_history 内容，将 ChatMessage 集成到一个函数内
 
 ### Removed
 - 移除 内置的天气服务，使用高德 MCP 代替

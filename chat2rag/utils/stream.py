@@ -7,7 +7,7 @@ from queue import Queue
 from time import perf_counter
 from typing import List, Optional
 
-from haystack.dataclasses import StreamingChunk
+from haystack.dataclasses import StreamingChunk, ToolCall
 
 from chat2rag.logger import get_logger
 
@@ -50,13 +50,16 @@ class StreamHandler:
         self,
         content: str,
         meta: dict = None,
+        tool: str = None,
+        arguments: dict = {},
+        tool_result: dict = {},
         is_start: int = 0,
         message_id: str = None,
     ) -> dict:
         """创建消息格式"""
         if meta is None:
             meta = {"model": "None", "finish_reason": "none"}
-        if meta["finish_reason"] == "stop":
+        if meta.get("finish_reason") == "stop":
             status = 2
         elif is_start:
             status = 0
@@ -66,8 +69,11 @@ class StreamHandler:
         return {
             "object": "message",
             "content": content,
-            "model": meta["model"],
+            "model": meta.get("model"),
             "status": status,
+            "tool": tool,
+            "arguments": arguments,
+            "toolResult": tool_result,
             "documentCount": self.doc_length,
             "createTime": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             "messageId": message_id,
@@ -111,6 +117,27 @@ class StreamHandler:
                     logger.info(f"RAG pipeline query response time: {elapsed:.3f}s")
                     first_response = False
 
+                tool_call: ToolCall = chunk.meta.get("tool_call")
+                if tool_call:
+                    data = self._create_message(
+                        "",
+                        chunk.meta,
+                        message_id=message_id,
+                        tool=tool_call.tool_name,
+                        arguments=tool_call.arguments,
+                    )
+                    yield f"data: {json.dumps(data, ensure_ascii=False)}\n\n"
+
+                tool_call_result: str = chunk.meta.get("tool_result")
+                if tool_call_result:
+                    data = self._create_message(
+                        "",
+                        chunk.meta,
+                        message_id=message_id,
+                        tool_result=tool_call_result,
+                    )
+                    yield f"data: {json.dumps(data, ensure_ascii=False)}\n\n"
+
                 data = self._create_message(
                     chunk.content, chunk.meta, message_id=message_id
                 )
@@ -119,7 +146,7 @@ class StreamHandler:
             # 批量处理模式
             current_batch = []
             while True:
-                chunk = self.queue.get()
+                chunk: StreamingChunk = self.queue.get()
 
                 if isinstance(chunk, dict) and chunk.get("type") == "doc_info":
                     self.doc_length = chunk["count"]
@@ -148,6 +175,27 @@ class StreamHandler:
                     )
                     yield f"data: {json.dumps(data, ensure_ascii=False)}\n\n"
                     break
+
+                tool_call: ToolCall = chunk.meta.get("tool_call")
+                if tool_call:
+                    data = self._create_message(
+                        "",
+                        chunk.meta,
+                        message_id=message_id,
+                        tool=tool_call.tool_name,
+                        arguments=tool_call.arguments,
+                    )
+                    yield f"data: {json.dumps(data, ensure_ascii=False)}\n\n"
+
+                tool_call_result: str = chunk.meta.get("tool_result")
+                if tool_call_result:
+                    data = self._create_message(
+                        "",
+                        chunk.meta,
+                        message_id=message_id,
+                        tool_result=json.loads(tool_call_result),
+                    )
+                    yield f"data: {json.dumps(data, ensure_ascii=False)}\n\n"
 
                 # 检查当前chunk的内容是否包含需要分割的符号
                 content = chunk.content
