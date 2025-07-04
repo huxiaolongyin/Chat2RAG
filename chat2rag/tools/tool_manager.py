@@ -81,7 +81,7 @@ class ToolManager:
         if not select_tools:
             raise ValueError("No tools were specified")
 
-        all_tool = self.all_tools + [web_search, get_bazi_info]
+        all_tool = self.all_tools + [web_search]
 
         logger.debug("A tool for obtaining choices: %s", select_tools)
 
