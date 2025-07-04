@@ -4,6 +4,7 @@ import requests
 import streamlit as st
 from config import CONFIG
 from controller.knowledge_controller import knowledge_controller
+from controller.tool_controller import tool_controller
 from utils.initialize import init_welcome_page, initialize_page
 from utils.sidebar import render_sidebar
 
@@ -18,6 +19,9 @@ def get_stream_response(query: str) -> requests.Response:
     """
     获取流式响应
     """
+    tools: list = [tool_controller.tools.get(t) for t in st.session_state.tool_select]
+    if st.session_state.web_search_mode_state:
+        tools = tools + ["web_search"]
     return requests.get(
         f"http://{CONFIG.BACKEND_HOST}:{CONFIG.BACKEND_PORT}/api/v1/chat/query-stream",
         params={
@@ -26,11 +30,14 @@ def get_stream_response(query: str) -> requests.Response:
             "batchOrStream": "stream",
             "chatId": st.session_state.message_id,
             "chatRounds": 5,
-            "toolList": "all",
+            "tools": ",".join(tools),
             "precisionMode": 1 if st.session_state.precision_mode else 0,
-            "generatorModel": st.session_state.model_select,
+            "model": st.session_state.model_select,
             "promptName": st.session_state.prompt_select,
-            "vin": st.session_state.vin,
+            "city": "福州",
+            "vin": "HTYW443102A741171",
+            "lat": 26.062731,
+            "lng": 119.235434,
         },
         stream=True,
     )
@@ -41,12 +48,48 @@ def process_stream_response(response: requests.Response, placeholder):
     处理流式响应
     """
     full_response = ""
+    current_tool = None
+    current_tool_arguments = None
+
+    # 添加聊天占位
+    st.session_state.messages.append(
+        {
+            "role": "assistant",
+            "content": "",
+            "type": "message",  # 添加类型标记
+        }
+    )
     for chunk in response.iter_lines():
         if chunk:
+
             decoded_chunk = json.loads(chunk.decode("utf-8").replace("data: ", ""))
-            if decoded_chunk.get("content"):
-                full_response += decoded_chunk["content"]
+            content = decoded_chunk.get("content")
+            tool = decoded_chunk.get("tool")
+            arguments = decoded_chunk.get("arguments")
+            tool_result = decoded_chunk.get("toolResult")
+
+            if content:
+                full_response += content
                 placeholder.markdown(full_response)
+
+            if tool:
+                current_tool = tool
+                current_tool_arguments = arguments
+
+            if tool_result:
+                with st.expander(f"🛠️ 工具调用: {current_tool}", expanded=False):
+                    tool_md = f"```json\nArguments: {current_tool_arguments}\nToolResult: {tool_result}\n```\n"
+                    st.markdown(tool_md)
+
+                    # 将参考文档添加到历史消息中
+                    st.session_state.messages.append(
+                        {
+                            "role": "assistant",
+                            "content": tool_md,
+                            "type": "tool",  # 添加类型标记
+                            "tool": current_tool,
+                        }
+                    )
     return full_response
 
 
@@ -58,7 +101,12 @@ def display_chat_history():
         # 根据消息类型使用不同的显示方式
         if message.get("type") == "reference":
             with st.chat_message("assistant"):
-                with st.expander("参考文档"):
+                with st.expander("📒 参考文档"):
+                    st.markdown(message["content"])
+
+        elif message.get("type") == "tool":
+            with st.chat_message("assistant"):
+                with st.expander(f"🛠️ 工具调用: {message.get('tool')}"):
                     st.markdown(message["content"])
         else:
             with st.chat_message(message["role"]):
@@ -77,7 +125,7 @@ def display_references(documents: list):
                 f"文档（相关度: {doc['score']*100:.2f}%）：{doc['content']}\n\n"
             )
         # 显示当前参考文档
-        with st.expander("参考文档"):
+        with st.expander("📒 参考文档"):
             st.write(references_md)
 
         # 将参考文档添加到历史消息中
@@ -106,11 +154,16 @@ def handle_user_input(query: str):
             response = get_stream_response(query)
             full_response = process_stream_response(response, message_placeholder)
 
+            for i in range(len(st.session_state.messages) - 1, -1, -1):  # 从后向前遍历
+                if st.session_state.messages[i].get("type") == "message":
+                    st.session_state.messages[i]["content"] = full_response
+                    break
+
             # 保存助手回复
             message_placeholder.markdown(full_response)
-            st.session_state.messages.append(
-                {"role": "assistant", "content": full_response}
-            )
+            for message in st.session_state.messages:
+                if message.get("type") == "message":
+                    message_placeholder.markdown(message["content"])
 
             # 获取引用文档
             documents = knowledge_controller.query_document(

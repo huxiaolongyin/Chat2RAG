@@ -14,7 +14,7 @@ class ModelController:
         )
         if response.status_code == 200:
             models = response.json()["data"]
-            return [item["id"] for item in models]
+            return [item["name"] for item in models]
         else:
             return []
 

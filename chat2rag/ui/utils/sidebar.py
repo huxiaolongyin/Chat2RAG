@@ -1,16 +1,20 @@
 import streamlit as st
 
 
+def model_change():
+    st.session_state.model_select_index = st.session_state.model_list.index(
+        st.session_state.model_select
+    )
+
+
 def collection_change():
     st.session_state.collection_select_index = st.session_state.collections_list.index(
         st.session_state.collection_select
     )
 
 
-def model_change():
-    st.session_state.model_select_index = st.session_state.model_list.index(
-        st.session_state.model_select
-    )
+def tool_change():
+    st.session_state.tool_select_state = st.session_state.tool_select
 
 
 def prompt_change():
@@ -24,16 +28,12 @@ def update_precision_mode():
     st.session_state.precision_mode_state = st.session_state.precision_mode
 
 
+def update_web_search_mode():
+    st.session_state.web_search_mode_state = st.session_state.web_search_mode
+
+
 def render_sidebar():
     with st.sidebar:
-        st.text_input("请输入vin码", key="vin", placeholder="请输入vin码")
-        st.selectbox(
-            "请选择知识库",
-            index=st.session_state.collection_select_index,
-            key="collection_select",
-            on_change=collection_change,
-            options=st.session_state.collections_list,
-        )
         st.selectbox(
             "请选择模型",
             index=st.session_state.model_select_index,
@@ -42,12 +42,35 @@ def render_sidebar():
             options=st.session_state.model_list,
         )
         st.selectbox(
+            "请选择知识库",
+            index=st.session_state.collection_select_index,
+            key="collection_select",
+            on_change=collection_change,
+            options=st.session_state.collections_list,
+        )
+        st.multiselect(
+            "请选择工具",
+            default=st.session_state.tool_select_state,
+            key="tool_select",
+            on_change=tool_change,
+            options=st.session_state.tools_list,
+            placeholder="请选择工具",
+        )
+        st.selectbox(
             "请选择提示词",
             index=st.session_state.prompt_select_index,
             key="prompt_select",
             on_change=prompt_change,
             options=st.session_state.prompt_name_list,
         )
+        _, col2, _ = st.columns([1, 5, 1])
+        with col2:
+            st.toggle(
+                label="网络搜索",
+                key="web_search_mode",
+                value=st.session_state.web_search_mode_state,
+                on_change=update_web_search_mode,
+            )
         _, col2, _ = st.columns([1, 5, 1])
         with col2:
             st.toggle(

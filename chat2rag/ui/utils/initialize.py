@@ -5,6 +5,7 @@ import streamlit as st
 from controller.knowledge_controller import knowledge_controller
 from controller.model_controller import model_controller
 from controller.prompt_controller import prompt_controller
+from controller.tool_controller import tool_controller
 from streamlit_cookie import EncryptedCookieManager
 from utils.version import version_list
 
@@ -59,25 +60,33 @@ def initialize_page():
     """
     初始化知识库列表
     """
+    # 模型
+    if "model_list" not in st.session_state:
+        st.session_state.model_list = model_controller.get_model_list()
+
+    if "model_select_index" not in st.session_state:
+        try:
+            model_index = st.session_state.model_list.index("Qwen2.5-14B")
+        except:
+            print("Qwen2.5-14B 不在模型列表中")
+            model_index = 0
+        st.session_state.model_select_index = model_index
+        st.session_state.model_select = st.session_state.model_list[model_index]
+
+    # 知识库
     if "collections_list" not in st.session_state:
         st.session_state.collections_list = knowledge_controller.get_collection_list()
 
-    # 初始化知识库选择
     if "collection_select_index" not in st.session_state:
         st.session_state.collection_select_index = 0
         st.session_state.collection_select = st.session_state.collections_list[0]
 
-    # 模型
-    if "model_list" not in st.session_state:
-        st.session_state.model_list = model_controller.get_model_list()
-    if "model_select_index" not in st.session_state:
-        try:
-            model_index = st.session_state.model_list.index("Qwen2.5-32B")
-        except:
-            print("Qwen2.5-32B 不在模型列表中")
-            model_index = 0
-        st.session_state.model_select_index = model_index
-        st.session_state.model_select = st.session_state.model_list[model_index]
+    # 工具
+    if "tools_list" not in st.session_state:
+        st.session_state.tools_list = list(tool_controller.tools.keys())
+
+    if "tool_select_state" not in st.session_state:
+        st.session_state.tool_select_state = ["骑行通勤规划助手"]
 
     # 提示词
     if "prompt_list" not in st.session_state:
@@ -91,7 +100,7 @@ def initialize_page():
             print("默认 不在 prompt 列表中")
             prompt_index = 0
         st.session_state.prompt_select_index = prompt_index
-        st.session_state.prompt_select = st.session_state.prompt_name_list[prompt_index]
+        # st.session_state.prompt_select = st.session_state.prompt_name_list[prompt_index]
 
     # 如果 "messages" 不存在于会话状态中，则初始化它，用于加载历史消息
     if "messages" not in st.session_state:
@@ -100,8 +109,13 @@ def initialize_page():
         ]
         st.session_state.message_id = random.randint(100000, 9000000)
 
+    # 精准模式
     if "precision_mode_state" not in st.session_state:
         st.session_state.precision_mode_state = False
+
+    # 网络搜索
+    if "web_search_mode_state" not in st.session_state:
+        st.session_state.web_search_mode_state = False
 
     # 页码
     if "current" not in st.session_state:
