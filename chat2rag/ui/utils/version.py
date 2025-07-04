@@ -3,7 +3,55 @@ import streamlit as st
 
 def version_list():
     st.subheader("版本更新")
-    with st.expander("V0.1.2rc2 (2025-03-04)", expanded=True):
+    with st.expander("V0.2.1 (2025-07-04)", expanded=True):
+        content = """
+    ### 🚀 New Features
+    - 新增 Agent管道，融合MCP、RAG、ToolInvoke
+    - 新增 Agent管道示例
+    - 新增 MCP中streamable模式的支持
+    - 新增 使用 SerperDevWebSearch进行网页搜索的功能
+    - 优化 Agent Pipeline，支持 ToolCall 和 ToolResult 流式输出
+    - 新增 MCP工具名的映射，使用AI对工具描述进行取名
+    - 新增 streamlit ui 上增加工具选择、网络搜索、优化模型选择
+    ### 🐛 Bug Fixed
+    - 移除 get_bazi_info 工具，直接`+`似乎有问题
+    ### 🎄 Changed
+    - 修改 Base Pipeline，加入泛型变量，支持更多类型的 Pipeline
+    - 增强工具管理， 并修改 tool 接口
+    - 修改 Function Pipeline(将弃用)，添加 Funciton 示例
+    - 修改 RAG Pipeline(将弃用)，添加 RAG 示例
+    - 修改 api/v1/chat 接口，使用Agent 管道进行输出内容
+    - 优化 短记忆 chat_history 内容，将 ChatMessage 集成到一个函数内
+    ### 🪓 Removed
+    - 移除 内置的天气服务，使用高德 MCP 代替
+    - 移除 内置的微博检索工具
+    - 移除 yml管理工具集
+"""
+        st.markdown(content)
+    with st.expander("V0.2.0 (2025-06-25)", expanded=False):
+        content = """
+    ### 🚀 New Features
+    - 新增 ASR 的服务(暂未全部接入)
+    - 新增 TTS 的服务(暂未全部接入)
+    - 在 prompt 中添加基础信息：时间、vin、地点
+    - 新增 汉特云内部mcp服务
+    - 新增 tool v2 接口，进行 MCP 和 api tool 的增删改查.
+    - 新增 对多个 MCP 服务的处理，增加单例模式进行MCP的连接
+    - 支持 多个知识库的检索
+    - 新增 makefile 文件启动 后端和前端
+    ### 🐛 Bug Fixed
+    - 修复 qdrant-haystack 升级到 9.2.0，导致 qdrant.py 无法使用的问题
+    - 修复 chat 接口修改导致的 collection 参数问题
+    ### 🎄 Changed
+    - 将 frontend、rag_core、backend 整合到chat2rag中
+    - 将天气查询改为高德 MCP
+    - 更新 document 从 str -> DocumentType 类型
+    - 将管道的 warmup() 改到 base 中
+    - 更新 haystack 和相关依赖
+    - 优化冗余的配置文件，统一到 config.py 中
+"""
+        st.markdown(content)
+    with st.expander("V0.1.2rc2 (2025-03-04)", expanded=False):
         content = """
     ### 🚀 New Features
     - 接口中添加 ASCII 标题
