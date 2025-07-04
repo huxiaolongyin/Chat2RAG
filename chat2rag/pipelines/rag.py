@@ -36,24 +36,19 @@ class RAGPipeline(BasePipeline):
         return DocumentSearchPipeline(index)
 
     @staticmethod
-    def _create_function_pipeline(
-        intention_model: str, tools: List[str]
-    ) -> FunctionPipeline:
+    def _create_function_pipeline(model: str, tools: List[str]) -> FunctionPipeline:
         """
         Create a new Function pipeline (and cache it).
         # TODO: Add mcp connection management
         """
-        logger.info(f"Create a new Function pipeline: {intention_model}")
+        logger.info(f"Create a new Function pipeline: {model}")
 
-        return FunctionPipeline(
-            tools=tool_manager.fetch_tools(tools), intention_model=intention_model
-        )
+        return FunctionPipeline(tools=tool_manager.fetch_tools(tools), model=model)
 
     def __init__(
         self,
         qdrant_index: Optional[List[str]] = None,
-        intention_model: str = CONFIG.DEFAULT_INTENTION_MODEL,
-        generator_model: str = CONFIG.DEFAULT_GENERATOR_MODEL,
+        model: str = CONFIG.DEFAULT_MODEL,
         stream_callback: Callable = print_streaming_chunk,
     ):
         """
@@ -61,8 +56,7 @@ class RAGPipeline(BasePipeline):
 
         Args:
             qdrant_index: The index name used for document retrieval
-            intention_model: The model used for intention recognition
-            generator_model: The model used for generating responses
+            model: The model used for generating responses
             stream_callback: The callback function used for streaming responses
         """
 
@@ -72,8 +66,7 @@ class RAGPipeline(BasePipeline):
                 self._create_doc_pipeline(index) for index in qdrant_index
             ]
         self.qdrant_index = qdrant_index
-        self.intention_model = intention_model
-        self.generator_model = generator_model
+        self.model = model
         self._stream_callback = stream_callback
 
         super().__init__()
@@ -90,7 +83,7 @@ class RAGPipeline(BasePipeline):
             )
 
             generator = OpenAIChatGenerator(
-                model=self.generator_model,
+                model=self.model,
                 api_key=Secret.from_env_var("OPENAI_API_KEY"),
                 api_base_url=CONFIG.OPENAI_BASE_URL,
                 streaming_callback=self._stream_callback,
@@ -175,9 +168,7 @@ class RAGPipeline(BasePipeline):
         if tools:
             has_func_tasks = True
             try:
-                func_pipeline = self._create_function_pipeline(
-                    self.intention_model, tools
-                )
+                func_pipeline = self._create_function_pipeline(self.model, tools)
                 tasks.append(func_pipeline.run(query, prefix_prompt, messages))
                 logger.debug(f"Added function pipeline task with tools: {tools}")
             except Exception as e:
@@ -277,13 +268,3 @@ class RAGPipeline(BasePipeline):
         )
 
         return result
-
-
-if __name__ == "__main__":
-    rag_pipeline = RAGPipeline(
-        qdrant_index=["test"],
-        intention_model=CONFIG.DEFAULT_INTENTION_MODEL,
-        generator_model=CONFIG.DEFAULT_GENERATOR_MODEL,
-        stream_callback=print_streaming_chunk,
-    )
-    asyncio.run(rag_pipeline.run(query="今天福州天气怎么样", tools=["mcp-gaode"]))

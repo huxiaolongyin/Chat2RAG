@@ -17,7 +17,8 @@
 ### Changed
 - 修改 Base Pipeline，加入泛型变量，支持更多类型的 Pipeline
 - 增强工具管理， 并修改 tool 接口
-- 修改 Function Pipeline，添加 Funciton 示例
+- 修改 Function Pipeline(将弃用)，添加 Funciton 示例
+- 修改 RAG Pipeline(将弃用)，添加 RAG 示例
 
 ### Removed
 - 移除 内置的天气服务，使用高德 MCP 代替
