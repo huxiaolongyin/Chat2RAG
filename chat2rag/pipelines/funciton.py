@@ -18,12 +18,8 @@ logger = get_logger(__name__)
 
 
 class FunctionPipeline(BasePipeline):
-    def __init__(
-        self,
-        tools: Toolset | MCPToolset,
-        intention_model: str = CONFIG.DEFAULT_INTENTION_MODEL,
-    ):
-        self.intention_model = intention_model
+    def __init__(self, tools: Toolset | MCPToolset, model: str = CONFIG.DEFAULT_MODEL):
+        self.model = model
         self.tools = tools
         super().__init__()
 
@@ -38,7 +34,7 @@ class FunctionPipeline(BasePipeline):
             pipeline.add_component(
                 "intention",
                 OpenAIChatGenerator(
-                    model=self.intention_model,
+                    model=self.model,
                     api_key=Secret.from_env_var("OPENAI_API_KEY"),
                     api_base_url=CONFIG.OPENAI_BASE_URL,
                     tools=self.tools,
@@ -96,31 +92,3 @@ class FunctionPipeline(BasePipeline):
                 "Failed to run the Function pipeline. Reasons for failure: %s", e
             )
             raise
-
-
-if __name__ == "__main__":
-    # from haystack_integrations.tools.mcp import SSEServerInfo
-
-    # server_info = SSEServerInfo(
-    #     url="https://mcp.amap.com/sse?key=2502b472c2922df3c36c201bfc711018"
-    # )
-    # htw_server_info = SSEServerInfo(url="http://127.0.0.1:8333/sse")
-    # tool_a = MCPToolset(server_info=htw_server_info)
-    # tool_b = MCPToolset(server_info=server_info)
-    # all_tool = tool_a + tool_b
-
-    from chat2rag.tools.tool_manager import tool_manager
-
-    all_tool = tool_manager.fetch_tools(["mcp-gaode", "mcp-htw"])
-    # print(all_tool)
-    # print(tool_a + tool_b)
-    function_pipeline = FunctionPipeline(tools=all_tool)
-    print(asyncio.run(function_pipeline.run("今天福州天气怎么样")))
-    # print(
-    #     asyncio.run(
-    #         function_pipeline.run(
-    #             "带我去卫生间",
-    #             prefix_prompt="设备码：HTYW993906A994684",
-    #         )
-    #     )
-    # )
