@@ -3,6 +3,9 @@
 这个项目的所有值得注意的变化都将记录在这个文件中。
 
 这个格式基于 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)，还有这个原则遵循 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+## [V0.2.1] - 2025-07-04
+### Added
+- 新增 MCP中streamable模式的支持
 
 ## [V0.2.0] - 2025-06-25
 

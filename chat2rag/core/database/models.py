@@ -3,19 +3,24 @@ from typing import Any, Callable, Dict, List, Optional
 
 import requests
 from haystack.tools import Tool, Toolset
-from haystack_integrations.tools.mcp import MCPToolset, SSEServerInfo, StdioServerInfo
+from haystack_integrations.tools.mcp import (
+    MCPToolset,
+    SSEServerInfo,
+    StdioServerInfo,
+    StreamableHttpServerInfo,
+)
 from sqlalchemy import JSON, Column, DateTime, Enum, Float, Integer, String
 
+from chat2rag.enums import Status, ToolMethod, ToolType
 from chat2rag.logger import get_logger
 
 from .database import Base, create_all_tables
-from .enums import Status, ToolMethod, ToolType
 
 logger = get_logger(__name__)
 
 
-class RAGPipelineMetrics(Base):
-    __tablename__ = "rag_pipeline_metrics"
+class PipelineMetrics(Base):
+    __tablename__ = "pipeline_metrics"
 
     time = Column(DateTime(timezone=True), primary_key=True)
     chat_id = Column(String)
@@ -27,7 +32,7 @@ class RAGPipelineMetrics(Base):
     total_ms = Column(Float)
     document_count = Column(Integer)
     question_tokens = Column(Integer)
-    status = Column(String)
+    status = Column(Enum(Status), default=Status.ENABLED)
 
 
 class Prompt(Base):
@@ -79,7 +84,9 @@ class CustomTool(Base):
     )
 
     def to_dict(self) -> List[Dict] | Dict[str, Any]:
-        """将工具转换为统一的字典格式，如果是API则输出dict，如果是SSE或STDIO则输出list"""
+        """
+        Convert the tool to a unified dictionary format. If it is an API, output a dict; if it is SSE or STDIO or Streamable, output a list
+        """
         if self.type == ToolType.API:
             return {
                 "id": self.id,
@@ -121,21 +128,29 @@ class CustomTool(Base):
             return result
 
     def _get_enum_value(self, enum_obj: Optional[Enum]) -> str:
-        """安全地获取枚举值"""
+        """
+        Safely obtain enumeration values
+        """
         return enum_obj.value if enum_obj else ""
 
     def _get_status_value(self) -> str:
-        """获取状态值，如果是ENABLED返回空字符串匹配API响应格式"""
+        """
+        Obtain the status value. If it is ENABLED, return an empty string to match the API response format
+        """
         if self.status == Status.ENABLED:
             return ""
         return self._get_enum_value(self.status)
 
     def _format_datetime(self, dt: Optional[datetime]) -> str:
-        """格式化日期时间"""
+        """
+        Format date and time
+        """
         return dt.strftime("%Y-%m-%d %H:%M:%S") if dt else ""
 
     def _format_parameters(self) -> Dict[str, Any]:
-        """格式化参数"""
+        """
+        Format parameters
+        """
         if not self.parameters:
             return {"properties": {}, "required": [], "type": "object"}
 
@@ -180,9 +195,9 @@ class CustomTool(Base):
 
     def _fetch_api_tools(self) -> Toolset:
         """
-        根据工具类型获取API工具信息
+        Obtain API tool information based on the tool type
         """
-        logger.debug("获取API工具信息: %s", self.name)
+        logger.debug("Obtain information about API tools: %s", self.name)
         return Toolset(
             tools=[
                 Tool(
@@ -196,30 +211,26 @@ class CustomTool(Base):
             ],
         )
 
-    _mcp_connections = {}
-
     def _fetch_mcp_tools(self) -> MCPToolset:
         """
         Obtain the MCP tool information based on the tool type
         """
-        logger.debug("获取MCP工具信息: %s", self.name)
-        # 检查是否已有缓存的连接
-
-        connection_key = f"{self.type}:{self.url or self.command}"
-        if connection_key in CustomTool._mcp_connections:
-            return CustomTool._mcp_connections[connection_key]
+        logger.debug("Obtain information about MCP tools: %s", self.name)
 
         try:
-            # 连接 MCP SSE 服务
+            # Connect the MCP SSE service
             if self.type == ToolType.SSE and self.url:
                 server_info = SSEServerInfo(self.url)
-            # 连接 STDIO 服务
+
+            # Connect to the STDIO service
             elif self.type == ToolType.STDIO and self.command:
                 server_info = StdioServerInfo(self.command)
 
+            # Connect the Streamable service
+            elif self.type == ToolType.STREAMABLE and self.url:
+                server_info = StreamableHttpServerInfo(self.url)
+
             toolset = MCPToolset(server_info=server_info)
-            # 缓存连接
-            CustomTool._mcp_connections[connection_key] = toolset
             return toolset
 
         except Exception as e:

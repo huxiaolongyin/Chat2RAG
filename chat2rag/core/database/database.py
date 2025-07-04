@@ -7,10 +7,10 @@ from chat2rag.config import CONFIG
 
 engine = create_engine(
     CONFIG.DATABASE_URL,
-    pool_size=5,  # 连接池保持的连接数
-    max_overflow=10,  # 超过pool_size后最多可以创建的连接数
-    pool_timeout=30,  # 获取连接的超时时间
-    pool_recycle=3600,  # 连接重置时间，防止连接被数据库断开
+    pool_size=5,  # The number of connections maintained by the connection pool
+    max_overflow=10,  # The maximum number of connections that can be created beyond the pool size
+    pool_timeout=30,  # The timeout for acquiring a connection from the pool
+    pool_recycle=3600,  # The time at which a connection is reset, preventing the connection from being disconnected by the database
 )
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
