@@ -4,6 +4,10 @@
 
 这个格式基于 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)，还有这个原则遵循 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [unreleased]
+### Added
+- 新增 Qwen3 14B 和 Qwen3 32B的模型
+
 ## [V0.2.1] - 2025-07-04
 ### Added
 - 新增 Agent管道，融合MCP、RAG、ToolInvoke

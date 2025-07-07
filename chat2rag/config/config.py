@@ -106,7 +106,11 @@ class Config:
     # DEFAULT_INTENTION_MODEL = load_str_env("DEFAULT_INTENTION_MODEL") or "Qwen2.5-14B"
     # DEFAULT_GENERATOR_MODEL = load_str_env("DEFAULT_GENERATOR_MODEL") or "Qwen2.5-32B"
 
-    GENERATION_KWARGS = {"temperature": 0.1, "presence_penalty": -0.2}
+    GENERATION_KWARGS = {
+        "temperature": 0.1,
+        "presence_penalty": -0.2,
+        "extra_body": {"enable_thinking": False},
+    }
 
     # Embedding Service
     EMBEDDING_OPENAI_URL = load_str_env("EMBEDDING_OPENAI_URL")
@@ -148,10 +152,12 @@ class Config:
 
     # MODEL
     MODEL_LIST = [
+        {"name": "Deepseek-v3", "id": "Pro/deepseek-ai/DeepSeek-V3"},
         {"name": "Qwen2.5-14B", "id": "Qwen/Qwen2.5-14B-Instruct"},
         {"name": "Qwen2.5-32B", "id": "Qwen/Qwen2.5-32B-Instruct"},
         {"name": "Qwen2.5-72B", "id": "Qwen/Qwen2.5-72B-Instruct"},
-        {"name": "deepseek-v3", "id": "Pro/deepseek-ai/DeepSeek-V3"},
+        {"name": "Qwen3-32B", "id": "Qwen/Qwen3-32B"},
+        {"name": "Qwen3-14B", "id": "Qwen/Qwen3-14B"},
     ]
 
 
