@@ -1,3 +1,4 @@
+import copy
 from datetime import datetime
 from math import ceil
 from typing import Any, Dict, Optional
@@ -346,6 +347,76 @@ async def get_tool_detail(
 
     logger.error(f"Failed to retrieve the tool detail. Tool name: {tool_name}")
     return Error(msg="Failed to retrieve the tool detail")
+
+
+@router.get("/refresh")
+async def refresh_tools(
+    id: int = Query(),
+    db: Session = Depends(get_db),
+):
+    """
+    刷新 MCP 服务的工具集
+    """
+    logger.info(f"Refreshing tools. Tool ID: {id}")
+    tool = db.query(CustomTool).filter(CustomTool.id == id).first()
+
+    if not tool:
+        return Error(msg="Tool not found")
+
+    if tool.type == ToolType.API.value:
+        return Error(msg="API tool does not support refresh")
+
+    customization = copy.deepcopy(tool.customization) or {}
+    try:
+        # 获取新工具列表
+        new_tools = tool._fetch_mcp_tools().tools
+        new_tool_names = {t.name for t in new_tools}
+
+        # 1. 删除：移除不再存在的旧工具
+        obsolete_tools = [
+            name for name in customization.keys() if name not in new_tool_names
+        ]
+        for name in obsolete_tools:
+            customization.pop(name)
+
+        # 2 & 3. 新增和更新：处理新工具列表
+        for t in new_tools:
+            # 如果是新工具或需要获取中文短名的情况
+            if (
+                t.name not in customization
+                or customization[t.name].get("name") == t.name
+            ):
+                # 获取中文短名
+                short_name = await ai_create_shortname(t.description)
+                customization[t.name] = {
+                    "name": short_name,
+                    "description": t.description,
+                    "properties": t.parameters,
+                }
+            else:
+                # 仅更新描述和参数，保留现有的自定义名称
+                customization[t.name].update(
+                    {
+                        "description": t.description,
+                        "properties": t.parameters,
+                    }
+                )
+
+        tool.customization = customization
+        print(tool.customization)
+        # Save the updated tool
+        tool.update_time = datetime.now()  # Timestamp for update time
+        # db.merge(tool)
+        db.commit()
+        db.refresh(tool)
+        logger.info(f"Tool customization after update: {tool.customization}")
+
+    except Exception as e:
+        logger.warning(f"Error setting customization: {e}")
+        db.rollback()
+
+    logger.info(f"Successfully refreshed the tools.")
+    return Success(msg="Successfully refreshed the tools.")
 
 
 # @router.get("/test")

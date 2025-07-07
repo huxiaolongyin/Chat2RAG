@@ -129,6 +129,14 @@ class StreamHandler:
                     yield f"data: {json.dumps(data, ensure_ascii=False)}\n\n"
 
                 tool_call_result: str = chunk.meta.get("tool_result")
+                try:
+                    if tool_call_result:
+                        tool_call_result = json.loads(str(tool_call_result))
+                        tool_call_result.get("content")[0] = json.loads(
+                            tool_call_result["content"][0]["text"]
+                        )
+                except Exception:
+                    tool_call_result = tool_call_result
                 if tool_call_result:
                     data = self._create_message(
                         "",

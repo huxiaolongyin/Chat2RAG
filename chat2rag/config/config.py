@@ -107,9 +107,12 @@ class Config:
     # DEFAULT_GENERATOR_MODEL = load_str_env("DEFAULT_GENERATOR_MODEL") or "Qwen2.5-32B"
 
     GENERATION_KWARGS = {
-        "temperature": 0.1,
-        "presence_penalty": -0.2,
-        "extra_body": {"enable_thinking": False},
+        "temperature": 0.15,
+        "presence_penalty": -0.5,  # 改为0以平衡重复与多样性
+        "frequency_penalty": -0.5,  # 添加轻微频率惩罚以减少重复
+        "top_p": 0.95,  # 添加top_p参数限制token选择范围
+        "seed": 1234,
+        "extra_body": {"enable_thinking": False, "thinking_budget": 100},
     }
 
     # Embedding Service
@@ -152,6 +155,7 @@ class Config:
 
     # MODEL
     MODEL_LIST = [
+        # {"name": "Qwen-Plus", "id": "qwen-plus"},
         {"name": "Deepseek-v3", "id": "Pro/deepseek-ai/DeepSeek-V3"},
         {"name": "Qwen2.5-14B", "id": "Qwen/Qwen2.5-14B-Instruct"},
         {"name": "Qwen2.5-32B", "id": "Qwen/Qwen2.5-32B-Instruct"},

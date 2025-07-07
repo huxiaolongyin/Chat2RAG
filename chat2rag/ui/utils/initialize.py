@@ -1,5 +1,4 @@
 import random
-import time
 
 import streamlit as st
 from controller.knowledge_controller import knowledge_controller
@@ -66,9 +65,9 @@ def initialize_page():
 
     if "model_select_index" not in st.session_state:
         try:
-            model_index = st.session_state.model_list.index("Qwen2.5-14B")
+            model_index = st.session_state.model_list.index("Qwen2.5-72B")
         except:
-            print("Qwen2.5-14B 不在模型列表中")
+            print("Qwen2.5-72B 不在模型列表中")
             model_index = 0
         st.session_state.model_select_index = model_index
         st.session_state.model_select = st.session_state.model_list[model_index]
@@ -86,7 +85,10 @@ def initialize_page():
         st.session_state.tools_list = list(tool_controller.tools.keys())
 
     if "tool_select_state" not in st.session_state:
-        st.session_state.tool_select_state = []
+        st.session_state.tool_select_state = [
+            "汉特云点位导航助手",
+            "城市天气查询工具",
+        ]
 
     # 提示词
     if "prompt_list" not in st.session_state:
