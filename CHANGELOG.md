@@ -8,6 +8,9 @@
 ### Added
 - 新增 Qwen3 14B 和 Qwen3 32B的模型
 
+### Changed
+- 修改 webUI 默认工具，设置为空
+
 ## [V0.2.1] - 2025-07-04
 ### Added
 - 新增 Agent管道，融合MCP、RAG、ToolInvoke

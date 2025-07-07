@@ -86,7 +86,7 @@ def initialize_page():
         st.session_state.tools_list = list(tool_controller.tools.keys())
 
     if "tool_select_state" not in st.session_state:
-        st.session_state.tool_select_state = ["骑行通勤规划助手"]
+        st.session_state.tool_select_state = []
 
     # 提示词
     if "prompt_list" not in st.session_state:
