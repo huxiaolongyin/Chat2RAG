@@ -25,7 +25,7 @@ def get_stream_response(query: str) -> requests.Response:
     return requests.get(
         f"http://{CONFIG.BACKEND_HOST}:{CONFIG.BACKEND_PORT}/api/v1/chat/query-stream",
         params={
-            "collectionName": st.session_state.collection_select,
+            "collections": st.session_state.collection_select,
             "query": query,
             "batchOrStream": "stream",
             "chatId": st.session_state.message_id,
@@ -34,10 +34,7 @@ def get_stream_response(query: str) -> requests.Response:
             "precisionMode": 1 if st.session_state.precision_mode else 0,
             "model": st.session_state.model_select,
             "promptName": st.session_state.prompt_select,
-            "city": "福州",
-            "vin": "HTYW443102A741171",
-            "lat": 26.062731,
-            "lng": 119.235434,
+            "extraParams": """{"vin": "HTYW684948A352077","lat": 26.062731,"lng": 119.235434,"city": "福州"}""",
         },
         stream=True,
     )

@@ -86,7 +86,7 @@ class ChatQueryParams(BaseModel):
         alias="model",
         description="生成模型(默认使用系统配置的模型)",
     )
-    generation_kwargs: str = Field(
+    generation_kwargs: str | dict = Field(
         default=CONFIG.GENERATION_KWARGS,
         alias="generationKwargs",
         description="生成参数(默认使用系统配置的生成参数)",
@@ -95,7 +95,7 @@ class ChatQueryParams(BaseModel):
         None,
         description="选用的工具，使用 , 分割，使用 all 为全部",
     )
-    extra_params: str = Field(
+    extra_params: Optional[str] = Field(
         None,
         alias="extraParams",
         description="传入到 jinja 模板提示词中的额外参数",
@@ -131,8 +131,8 @@ class ChatQueryParams(BaseModel):
     @field_validator("extra_params", mode="after")
     def parse_extra_params(cls, v: str):
         try:
-            if isinstance(v, dict):
-                return v
+            if not v:
+                return dict()
             return json.loads(v)
         except json.JSONDecodeError:
             raise ValueError("Invalid JSON string for extra_params")
