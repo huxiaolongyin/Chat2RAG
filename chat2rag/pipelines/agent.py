@@ -1,4 +1,4 @@
-from typing import Callable, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 from haystack import Pipeline
 from haystack.components.agents import Agent
@@ -104,11 +104,7 @@ class AgentPipeline(BasePipeline[Pipeline]):
         score_threshold: float,
         doc_type: str,
         messages: List[ChatMessage],
-        vin: str,
-        city: str,
-        lng: float,
-        lat: float,
-        time: str,
+        extra_params: Dict[str, Any] = {},
         streaming_callback: Optional[Callable] = None,
     ):
         """
@@ -128,16 +124,9 @@ class AgentPipeline(BasePipeline[Pipeline]):
                 },
                 "builder": {
                     "template": messages,
-                    "template_variables": {
-                        "query": query,
-                        "vin": vin,
-                        "city": city,
-                        "time": time,
-                        "lng": lng,
-                        "lat": lat,
-                    },
+                    "template_variables": {"query": query} | extra_params,
                 },
                 "agent": {"streaming_callback": streaming_callback},
             },
-            include_outputs_from=["doc_joiner"],
+            # include_outputs_from=["doc_joiner"],
         )

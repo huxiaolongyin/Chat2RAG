@@ -11,6 +11,7 @@
 
 ### Changed
 - 修改 webUI 默认工具，设置为空
+- 修改 chat 接口，移除参数vin、city、time等，由 extra_params 替代
 
 ## [V0.2.1] - 2025-07-04
 ### Added

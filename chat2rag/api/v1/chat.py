@@ -40,39 +40,66 @@ class ChatQueryParams(BaseModel):
     """
 
     collections: Optional[str] = Field(
-        None, alias="collectionName", description="知识库名称"
+        None,
+        description="知识库名称，支持传入多个，用`,`划分",
     )
     query: str = Field(..., description="查询内容")
     top_k: int = Field(
-        default=CONFIG.TOP_K, ge=0, le=30, alias="topK", description="返回数量"
+        default=CONFIG.TOP_K,
+        ge=0,
+        le=30,
+        alias="topK",
+        description="文档检索的返回数量(0-30，默认5)",
     )
     score_threshold: float = Field(
         default=CONFIG.SCORE_THRESHOLD,
         ge=0.0,
         le=1.0,
         alias="scoreThreshold",
-        description="文档匹配分数阈值",
+        description="文档匹配分数阈值(0-1.0，默认0.65)",
     )
     precision_mode: int = Field(
-        default=0, alias="precisionMode", description="是否使用精确模式"
+        default=0,
+        alias="precisionMode",
+        description="是否使用精确模式(0-不使用，1-使用，默认0)",
     )
-    chat_id: Optional[str] = Field(None, alias="chatId", description="聊天的标识")
+    chat_id: Optional[str] = Field(
+        None,
+        alias="chatId",
+        description="聊天会话的标识符，用于处理多轮聊天会话",
+    )
     chat_rounds: int = Field(
-        default=1, ge=0, le=30, alias="chatRounds", description="聊天轮数"
+        default=1,
+        ge=0,
+        le=30,
+        alias="chatRounds",
+        description="支持多轮对话的轮数(0-30，默认1)",
     )
-    prompt_name: str = Field("", alias="promptName", description="提示词名称选择")
+    prompt_name: str = Field(
+        "",
+        alias="promptName",
+        description="提示词名称选择(默认使用系统配置的提示词)",
+    )
 
     model: str = Field(
-        default=CONFIG.DEFAULT_MODEL, alias="model", description="生成模型"
+        default=CONFIG.DEFAULT_MODEL,
+        alias="model",
+        description="生成模型(默认使用系统配置的模型)",
     )
     generation_kwargs: str = Field(
-        default="{}", alias="generationKwargs", description="生成参数"
+        default=CONFIG.GENERATION_KWARGS,
+        alias="generationKwargs",
+        description="生成参数(默认使用系统配置的生成参数)",
     )
-    tools: str = Field(None, description="选用的工具，使用 , 分割，使用 all 为全部")
-    vin: str = Field(default="", alias="vin", description="设备的vin码")
-    lat: float = Field(default=26.062731, alias="lat", description="纬度")
-    lng: float = Field(default=119.235434, alias="lng", description="经度")
-    city: str = Field(default="福州", alias="city", description="所在城市")
+    tools: str = Field(
+        None,
+        description="选用的工具，使用 , 分割，使用 all 为全部",
+    )
+    extra_params: str = Field(
+        None,
+        alias="extraParams",
+        description="传入到 jinja 模板提示词中的额外参数",
+    )
 
     class Config:
         populate_by_name = True
@@ -85,9 +112,30 @@ class ChatQueryParams(BaseModel):
     def parse_collections(cls, v: str) -> List[str]:
         return v.split(",") if v else []
 
+    @field_validator("model", mode="after")
+    def parse_model(cls, v: str) -> str:
+        for model in CONFIG.MODEL_LIST:
+            if model["name"] == v:
+                return model["id"]
+        return v
+
     @field_validator("generation_kwargs", mode="after")
     def parse_generation_kwargs(cls, v: str):
-        return json.loads(v)
+        try:
+            if isinstance(v, dict):
+                return v
+            return json.loads(v)
+        except json.JSONDecodeError:
+            raise ValueError("Invalid JSON string for generation_kwargs")
+
+    @field_validator("extra_params", mode="after")
+    def parse_extra_params(cls, v: str):
+        try:
+            if isinstance(v, dict):
+                return v
+            return json.loads(v)
+        except json.JSONDecodeError:
+            raise ValueError("Invalid JSON string for extra_params")
 
 
 @lru_cache(maxsize=32)
@@ -233,11 +281,6 @@ async def _process_agent_pipeline(
         # profiler.start()
         logger.debug("start Agent pipeline...")
 
-        for model in CONFIG.MODEL_LIST:
-            if model["name"] == params.model:
-                params.model = model["id"]
-                break
-
         pipeline = create_pipeline(
             collections=params.collections,
             model=params.model,
@@ -249,11 +292,8 @@ async def _process_agent_pipeline(
             score_threshold=params.score_threshold,
             doc_type="qa_pair",
             messages=history_messages,
-            vin=params.vin,
-            city=params.city,
-            lng=params.lng,
-            lat=params.lat,
-            time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            extra_params=params.extra_params
+            | {"time": datetime.now().strftime("%Y-%m-%d %H:%M:%S")},
             streaming_callback=handler.callback,
         )
 
@@ -320,9 +360,8 @@ async def chat_rag(params: ChatQueryParams = Depends(), db: Session = Depends(ge
         score_threshold=params.score_threshold,
         doc_type="qa_pair",
         messages=history_messages,
-        vin=params.vin,
-        city=params.city,
-        time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        extra_params=params.extra_params
+        | {"time": datetime.now().strftime("%Y-%m-%d %H:%M:%S")},
     )
 
     # Process the returned result
