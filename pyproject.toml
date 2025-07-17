@@ -39,6 +39,8 @@ dependencies = [
     
     # 数据库
     "psycopg2-binary>=2.9.10",
+    "sqlalchemy==2.0.41",
+    "alembic==1.16.2",
     
     # Web服务
     "fastapi==0.115.6",
@@ -58,6 +60,8 @@ dependencies = [
     
     # TTS 服务
     # "kokoro==0.7.16",
+
+    # 数据库迁移
 ]
 
 [project.optional-dependencies]
