@@ -9,6 +9,7 @@
 - 新增 Qwen3 14B 和 Qwen3 32B的模型
 - 使用 json 尝试格式化输出 Tool Result
 - 为数据库迁移集成Alembic，并在应用启动时初始化迁移
+- 重构流处理以提高性能和工具调用支持
 
 ### Changed
 - 修改 webUI 默认工具，设置为空
