@@ -4,7 +4,7 @@ from cachetools import TTLCache
 from haystack.dataclasses import ChatMessage, ChatRole, ToolCall
 from sqlalchemy.orm import Session
 
-from chat2rag.core.database import Prompt
+from chat2rag.database.models import Prompt
 from chat2rag.logger import get_logger
 
 logger = get_logger(__name__)

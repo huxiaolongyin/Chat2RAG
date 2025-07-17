@@ -14,8 +14,8 @@ from sqlalchemy.orm import Session
 
 from chat2rag.api.schema import Success
 from chat2rag.config import CONFIG
-from chat2rag.core.database import get_db
 from chat2rag.core.document.qdrant import QAQdrantDocumentStore
+from chat2rag.database.connection import get_db
 from chat2rag.enums import ProcessType
 from chat2rag.logger import get_logger
 from chat2rag.pipelines.agent import AgentPipeline

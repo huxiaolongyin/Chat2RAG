@@ -8,10 +8,12 @@
 ### Added
 - 新增 Qwen3 14B 和 Qwen3 32B的模型
 - 使用 json 尝试格式化输出 Tool Result
+- 新增 alembic 数据库迁移工具自动迁移
 
 ### Changed
 - 修改 webUI 默认工具，设置为空
 - 修改 chat 接口，移除参数vin、city、time等，由 extra_params 替代
+- 重构数据模型和数据库连接，从 chat2rag/core/database 移动到chat2rag/database 下
 
 ## [V0.2.1] - 2025-07-04
 ### Added

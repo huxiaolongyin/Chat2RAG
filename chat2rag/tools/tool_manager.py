@@ -4,7 +4,8 @@ from typing import Generator, List
 from haystack.tools import Tool
 from sqlalchemy.orm import Session
 
-from chat2rag.core.database import CustomTool, SessionLocal
+from chat2rag.database.connection import SessionLocal
+from chat2rag.database.models import CustomTool
 from chat2rag.enums import Status, ToolType
 from chat2rag.logger import get_logger
 from chat2rag.tools.bazi import get_bazi_info

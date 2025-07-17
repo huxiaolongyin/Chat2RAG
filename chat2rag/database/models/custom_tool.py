@@ -9,64 +9,17 @@ from haystack_integrations.tools.mcp import (
     StdioServerInfo,
     StreamableHttpServerInfo,
 )
-from sqlalchemy import JSON, Column, DateTime, Enum, Float, Integer, String
+from sqlalchemy import JSON, Column, DateTime, Enum, Integer, String
 
+from chat2rag.database.connection import Base
+from chat2rag.database.models.base import BaseModel
 from chat2rag.enums import Status, ToolMethod, ToolType
 from chat2rag.logger import get_logger
-
-from .database import Base, create_all_tables
 
 logger = get_logger(__name__)
 
 
-class PipelineMetrics(Base):
-    __tablename__ = "pipeline_metrics"
-
-    time = Column(DateTime(timezone=True), primary_key=True)
-    chat_id = Column(String)
-    question = Column(String, nullable=False)
-    answer = Column(String)
-    document_ms = Column(Float)
-    function_ms = Column(Float)
-    rag_response_ms = Column(Float)
-    total_ms = Column(Float)
-    document_count = Column(Integer)
-    question_tokens = Column(Integer)
-    status = Column(Enum(Status), default=Status.ENABLED)
-
-
-class Prompt(Base):
-    __tablename__ = "prompts"
-
-    id = Column(Integer, primary_key=True)
-    prompt_name = Column(String)
-    prompt_intro = Column(String)
-    prompt_text = Column(String)
-    create_time = Column(DateTime(timezone=True), default=datetime.now())
-    update_time = Column(
-        DateTime(timezone=True), default=datetime.now(), onupdate=datetime.now()
-    )
-
-    def to_dict(self):
-        return {
-            "id": self.id,
-            "prompt_name": self.prompt_name,
-            "prompt_intro": self.prompt_intro,
-            "prompt_text": self.prompt_text,
-            "create_time": (
-                self.create_time.strftime("%Y-%m-%d %H:%M:%S")
-                if self.create_time
-                else None
-            ),
-            "update_time": (
-                self.update_time.strftime("%Y-%m-%d %H:%M:%S")
-                if self.update_time
-                else None
-            ),
-        }
-
-
-class CustomTool(Base):
+class CustomTool(Base, BaseModel):
     __tablename__ = "tools"
 
     id = Column(Integer, primary_key=True)
@@ -240,6 +193,3 @@ class CustomTool(Base):
         except Exception as e:
             logger.error(f"Error fetching MCP tools: {e}")
             raise e
-
-
-create_all_tables()

@@ -7,11 +7,14 @@ from fastapi import APIRouter, Body, Depends, Query
 from sqlalchemy.orm import Session
 
 from chat2rag.api.schema import Error, Success, ToolConfig
-from chat2rag.core.database import CustomTool, get_db
+from chat2rag.database.connection import get_db
+from chat2rag.database.models import CustomTool
 from chat2rag.enums import SortOrder, ToolSortField, ToolType
-from chat2rag.logger import logger
+from chat2rag.logger import get_logger
 from chat2rag.tools.tool_manager import tool_manager
 from chat2rag.utils.short_name import ai_create_shortname
+
+logger = get_logger(__name__)
 
 router = APIRouter()
 
