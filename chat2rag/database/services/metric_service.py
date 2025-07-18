@@ -34,6 +34,7 @@ class MetricCreate(BaseModel):
     precision_mode: Optional[bool] = False
     extra_params: Optional[Dict[str, Any]] = None
     meta_data: Optional[Dict[str, Any]] = None
+    create_time: Optional[datetime] = None
 
     class Config:
         from_attributes = True
