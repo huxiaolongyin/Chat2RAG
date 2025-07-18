@@ -121,6 +121,9 @@ class StreamHandler:
         arguments: dict = {},
         tool_result: dict = {},
         is_start: int = 0,
+        emotion: str = "",
+        action: str = "",
+        link: str = "",
     ) -> dict:
         """创建消息格式"""
         if meta is None:
@@ -144,6 +147,10 @@ class StreamHandler:
             "tool": tool,
             "arguments": arguments,
             "toolResult": tool_result,
+            "type": "预留工具类型",
+            "emotion": emotion,
+            "action": action,
+            "link": link,
             "documentCount": self.doc_length,
             "createTime": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             "messageId": self.message_id,
@@ -249,6 +256,13 @@ class StreamHandler:
                 # 单条流式处理模式
                 if first_response:
                     first_response = self.__handle_first_response()
+                    yield self.__yield_data(
+                        chunk.content,
+                        chunk.meta,
+                        emotion="happy",
+                        action="raise left hand",
+                    )
+                    continue
                 if chunk.content or chunk.meta.get("finish_reason") == "stop":
                     yield self.__yield_data(chunk.content, chunk.meta)
             else:
@@ -270,6 +284,13 @@ class StreamHandler:
                         batch_content = "".join([c.content for c in current_batch])
                         if first_response:
                             first_response = self.__handle_first_response()
+                            yield self.__yield_data(
+                                chunk.content,
+                                chunk.meta,
+                                emotion="happy",
+                                action="raise left hand",
+                            )
+                            continue
                         yield self.__yield_data(batch_content, chunk.meta)
 
                         # 重置批次
