@@ -1,0 +1,34 @@
+import requests
+from config import CONFIG
+
+
+class MetricController:
+    def __init__(self):
+        self.metric_base_url = (
+            f"http://{CONFIG.BACKEND_HOST}:{CONFIG.BACKEND_PORT}/api/v1/metrics/list"
+        )
+
+    def get_metric_list(
+        self,
+        current: int = 1,
+        size: int = 10,
+        start_time: str = "2023-01-01",
+        end_time: str = "2026-01-01",
+    ):
+        """获取指标列表"""
+        response = requests.get(
+            self.metric_base_url,
+            params={
+                "current": current,
+                "size": size,
+                "startTime": start_time,
+                "endTime": end_time,
+            },
+        )
+        if response.status_code == 200:
+            return response.json()["data"]
+        else:
+            return []
+
+
+metric_controller = MetricController()
