@@ -14,7 +14,7 @@ router = APIRouter()
 
 
 @router.get("/list")
-def _(
+async def _(
     current: int = Query(default=1, ge=1),
     size: int = Query(default=10, ge=1, le=100),
     prompt_name: str = Query(
@@ -77,7 +77,7 @@ def _(
 
 
 @router.post("/add")
-def _(
+async def _(
     prompt: PromptCreate,
     db: Session = Depends(get_db),
 ):
@@ -104,7 +104,7 @@ def _(
 
 
 @router.put("/update")
-def _(
+async def _(
     prompt_id: int = Query(alias="promptId"),
     prompt: PromptCreate = Body(...),
     db: Session = Depends(get_db),
@@ -124,7 +124,7 @@ def _(
 
 
 @router.delete("/remove")
-def _(
+async def _(
     prompt_id: int = Query(..., alias="promptId"),
     db: Session = Depends(get_db),
 ):
