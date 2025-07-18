@@ -397,6 +397,9 @@ async def chat_rag_stream(
     # Initialize the stream processor
     handler = StreamHandler()
     handler.start()
+    handler.set_chat_info(chat_id=params.chat_id, chat_rounds=params.chat_rounds)
+    handler.set_query_info(question=params.query, prompt=params.prompt_name)
+    handler.set_collection_info(collections=params.collections)
 
     # Obtain parameters
     is_batch = batch_or_stream == ProcessType.BATCH
