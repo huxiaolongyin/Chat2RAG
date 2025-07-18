@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 from pydantic import BaseModel
 from sqlalchemy import asc, desc, func, text
@@ -87,7 +87,7 @@ class MetricService(BaseService[Metric, MetricCreate, MetricUpdate]):
         model: Optional[str] = None,
         page: int = 1,
         page_size: int = 20,
-    ) -> Paginator:
+    ) -> Tuple[List[Metric], int]:
         """获取时间范围内的指标记录（分页）"""
         filters = [self.between_dates("create_time", start_time, end_time)]
 

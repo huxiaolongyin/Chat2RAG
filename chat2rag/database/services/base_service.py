@@ -35,7 +35,7 @@ class Paginator:
     def to_dict(self) -> Dict[str, Any]:
         """转换为字典"""
         return {
-            "items": self.items,
+            "items": [item.to_dict() for item in self.items],
             "total": self.total,
             "page": self.page,
             "page_size": self.page_size,
@@ -162,10 +162,8 @@ class BaseService(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         page_size: int = 20,
         filters: List[Any] = None,
         order_by: List[Any] = None,
-    ) -> Paginator:
+    ) -> Tuple[List[Type[ModelType]], int]:
         """获取分页记录"""
-        if page < 1:
-            page = 1
 
         query = db.query(self.model)
 
@@ -183,7 +181,7 @@ class BaseService(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         skip = (page - 1) * page_size
         items = query.offset(skip).limit(page_size).all()
 
-        return Paginator(items=items, total=total, page=page, page_size=page_size)
+        return items, total
 
     def update(
         self,
