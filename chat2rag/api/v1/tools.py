@@ -406,7 +406,6 @@ async def refresh_tools(
                 )
 
         tool.customization = customization
-        print(tool.customization)
         # Save the updated tool
         tool.update_time = datetime.now()  # Timestamp for update time
         # db.merge(tool)
