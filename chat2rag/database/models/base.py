@@ -1,4 +1,3 @@
-# from datetime import datetime
 import datetime
 
 from sqlalchemy import Column, DateTime
@@ -22,4 +21,12 @@ class BaseModel(object):
 
     def to_dict(self):
         """将模型转换为字典"""
-        return {c.name: getattr(self, c.name) for c in self.__table__.columns}
+        result = {}
+        for c in self.__table__.columns:
+            value = getattr(self, c.name)
+            # 处理datetime类型，转换为格式化的字符串
+            if isinstance(value, datetime.datetime):
+                result[c.name] = value.strftime("%Y-%m-%d %H:%M:%S")
+            else:
+                result[c.name] = value
+        return result

@@ -16,6 +16,9 @@
 - 修改 chat 接口，移除参数vin、city、time等，由 extra_params 替代
 - 重构数据模型和数据库连接，从 chat2rag/core/database 移动到chat2rag/database 下
 
+## Fixed
+- 增强BaseModel的to_dict方法，支持datetime类型转换
+
 ## [V0.2.1] - 2025-07-04
 ### Added
 - 新增 Agent管道，融合MCP、RAG、ToolInvoke
