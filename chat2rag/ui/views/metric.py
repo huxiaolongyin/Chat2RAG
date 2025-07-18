@@ -182,31 +182,6 @@ def render_metrics_stats(metrics):
             st.plotly_chart(fig, use_container_width=True)
 
 
-def metric_detail(metric):
-    """指标详情对话框"""
-    st.subheader("对话详情")
-
-    col1, col2 = st.columns(2)
-    with col1:
-        st.markdown(f"**创建时间:** {metric['createTime']}")
-    with col2:
-        st.markdown(f"**模型:** {metric['model']}")
-
-    st.markdown("##### 问题")
-    st.text_area("", value=metric["question"], height=100, disabled=True)
-
-    st.markdown("##### 回答")
-    st.text_area("", value=metric["answer"], height=200, disabled=True)
-
-    col1, col2 = st.columns(2)
-    with col1:
-        st.markdown(
-            f"**首次响应时间:** {format_response_time(metric['firstResponseMs'])}"
-        )
-    with col2:
-        st.markdown(f"**总响应时间:** {format_response_time(metric['totalMs'])}")
-
-
 def metric_page():
     """指标页面主体"""
     # 渲染过滤器
@@ -224,21 +199,6 @@ def metric_page():
     # 如果有数据，渲染统计图表
     if metrics and len(metrics) > 0:
         render_metrics_stats(metrics)
-
-        # 添加查看详情功能
-        st.subheader("查看详情")
-        selected_index = st.selectbox(
-            "选择一条记录查看详情",
-            options=range(len(metrics)),
-            format_func=lambda i: f"{metrics[i]['createTime']} - {metrics[i]['question'][:30]}...",
-        )
-
-        if st.button("查看详情", use_container_width=True):
-            st.session_state.selected_metric = metrics[selected_index]
-
-            # 使用 st.popover 显示详情
-            with st.popover("对话详情"):
-                metric_detail(st.session_state.selected_metric)
 
 
 def main():
