@@ -21,6 +21,7 @@
 
 ## Fixed
 - 增强BaseModel的to_dict方法，支持datetime类型转换
+- 将 PostgreSQL 容器的时区设置为中国时区，解决时区问题
 
 ## [V0.2.1] - 2025-07-04
 ### Added

@@ -64,6 +64,9 @@ services:
       - POSTGRESQL_DATABASE=${POSTGRESQL_DATABASE}
       - POSTGRESQL_SHARED_BUFFERS=1GB # 设置数据库共享内存缓冲区大小，建议设置为服务器内存的25%，更大的值可以提高读取性能
       - POSTGRESQL_MAX_CONNECTIONS=50 # 控制数据库最大并发连接数，需要根据服务器资源和应用需求设置
+      - TZ=Asia/Shanghai # 设置容器时区为中国时区
+      - POSTGRESQL_TIMEZONE=Asia/Shanghai # 设置PostgreSQL时区
+      - POSTGRESQL_INITDB_ARGS=--data-checksums --encoding=UTF8 --locale=C --timezone=Asia/Shanghai # 初始化参数
     env_file:
       - ../.env
     healthcheck:
