@@ -8,7 +8,7 @@ from typing import List, Optional, Tuple
 
 from fastapi import APIRouter, Depends, Query
 from fastapi.responses import StreamingResponse
-from haystack.dataclasses import ChatMessage, StreamingChunk
+from haystack.dataclasses import ChatMessage, ChatRole, StreamingChunk
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.orm import Session
 
@@ -226,8 +226,8 @@ async def _stream_exact_answer(
 
         # Update chat history
         if params.chat_id:
-            chat_history.add_message(params.chat_id, params.query, "user")
-            chat_history.add_message(params.chat_id, answer, "assistant")
+            chat_history.add_message(params.chat_id, ChatRole.USER, params.query)
+            chat_history.add_message(params.chat_id, ChatRole.ASSISTANT, answer)
 
         logger.info(
             "Exact query processed successfully, took %.2fs",
