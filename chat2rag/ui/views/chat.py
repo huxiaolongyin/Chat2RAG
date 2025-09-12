@@ -1,10 +1,13 @@
 import json
+import threading
+import time
 
 import requests
 import streamlit as st
 from config import CONFIG
 from controller.knowledge_controller import knowledge_controller
 from controller.tool_controller import tool_controller
+from pynput.keyboard import Controller
 from utils.initialize import init_welcome_page, initialize_page
 from utils.sidebar import render_sidebar
 
@@ -22,20 +25,27 @@ def get_stream_response(query: str) -> requests.Response:
     tools: list = [tool_controller.tools.get(t) for t in st.session_state.tool_select]
     if st.session_state.web_search_mode_state:
         tools = tools + ["web_search"]
-    return requests.get(
-        f"http://{CONFIG.BACKEND_HOST}:{CONFIG.BACKEND_PORT}/api/v1/chat/query-stream",
-        params={
-            "collections": st.session_state.collection_select,
-            "query": query,
-            "batchOrStream": "stream",
-            "chatId": st.session_state.message_id,
-            "chatRounds": 5,
-            "tools": ",".join(tools),
-            "precisionMode": 1 if st.session_state.precision_mode else 0,
-            "model": st.session_state.model_select,
-            "promptName": st.session_state.prompt_select,
-            "extraParams": """{"vin": "HTYW684948A352077","lat": 26.062731,"lng": 119.235434,"city": "福州"}""",
+    json_content = {
+        "model": st.session_state.model_select,
+        "promptName": st.session_state.prompt_select,
+        "collections": [st.session_state.collection_select],
+        "batchOrStream": "stream",
+        "precisionMode": 1 if st.session_state.precision_mode else 0,
+        "tools": tools,
+        "processes": ["点菜流程"],
+        "content": {"text": query},
+        "chatId": str(st.session_state.message_id),
+        "chatRounds": 5,
+        "extraParams": {
+            "vin": "HTYW684948A352077",
+            "lat": 26.062731,
+            "lng": 119.235434,
+            "city": "福州",
         },
+    }
+    return requests.post(
+        f"http://{CONFIG.BACKEND_HOST}:{CONFIG.BACKEND_PORT}/api/v2/chat",
+        json=json_content,
         stream=True,
     )
 
@@ -64,6 +74,8 @@ def process_stream_response(response: requests.Response, placeholder):
             tool = decoded_chunk.get("tool")
             arguments = decoded_chunk.get("arguments")
             tool_result = decoded_chunk.get("toolResult")
+            emotion = decoded_chunk.get("emotion")
+            action = decoded_chunk.get("action")
 
             if content:
                 full_response += content
@@ -87,6 +99,51 @@ def process_stream_response(response: requests.Response, placeholder):
                             "tool": current_tool,
                         }
                     )
+            if CONFIG.MOCK_CLICK:
+                if emotion:
+                    emotion_map_key = {
+                        "default": "1",
+                        "happy": "2",
+                        "sad": "3",
+                        "surprised": "4",
+                    }
+                    # 获取对应的按键
+                    emotion_key_to_press = emotion_map_key.get("happy")
+                    if emotion_key_to_press:
+
+                        # 创建键盘控制器
+                        keyboard = Controller()
+
+                        def press_emotion_key():
+                            # 等待一小段时间确保模拟器窗口活跃
+                            time.sleep(0.2)
+                            keyboard.press(emotion_key_to_press)
+                            time.sleep(0.1)
+                            keyboard.release(emotion_key_to_press)
+                            print(f"模拟按键 '{emotion_key_to_press}' 完成")
+
+                        threading.Thread(target=press_emotion_key, daemon=True).start()
+
+                if action:
+                    hand_map_key = {"default": "z", "left": "x", "right": "c"}
+                    # 获取对应的按键
+                    key_to_press = hand_map_key.get("left")
+                    if key_to_press:
+
+                        # 创建键盘控制器
+                        keyboard = Controller()
+
+                        # 模拟按键 - 在单独线程中执行以避免阻
+                        def press_hand_key():
+                            # 等待一小段时间确保模拟器窗口活跃
+                            time.sleep(0.3)
+                            keyboard.press(key_to_press)
+                            time.sleep(0.1)
+                            keyboard.release(key_to_press)
+                            print(f"模拟按键 '{key_to_press}' 完成")
+
+                        threading.Thread(target=press_hand_key, daemon=True).start()
+
     return full_response
 
 
