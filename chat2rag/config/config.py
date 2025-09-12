@@ -35,6 +35,15 @@ def load_int_env(name: str, required: bool = False) -> int:
         raise Exception(f"Env {name} is not set")
 
 
+def load_list_env(name: str, required: bool = False) -> list:
+    """ """
+    if os.environ.get(name):
+        return os.environ.get(name).split(",")
+
+    if required:
+        raise Exception(f"Env {name} is not set")
+
+
 def load_float_env(name: str, required: bool = False) -> float:
     """
     Load environment variable as float
@@ -93,18 +102,10 @@ class Config:
     SQLITE_DIR = DATA_DIR / "sqlite"
 
     # Open AI LLM
-
     OPENAI_BASE_URL = load_str_env("OPENAI_BASE_URL", required=True)
     OPENAI_API_KEY = load_str_env("OPENAI_API_KEY", required=True)
-    DEFAULT_MODEL = (
-        load_str_env("DEFAULT_GENERATOR_MODEL") or "Qwen/Qwen2.5-72B-Instruct"
-    )
-
-    # ONEAPI出现不能使用 AGENT 调用，且很久不更新，暂时不使用
-    # ONE_API_HOST = load_str_env("ONE_API_HOST") or "localhost"
-    # ONE_API_PORT = load_int_env("ONE_API_PORT") or 3001
-    # DEFAULT_INTENTION_MODEL = load_str_env("DEFAULT_INTENTION_MODEL") or "Qwen2.5-14B"
-    # DEFAULT_GENERATOR_MODEL = load_str_env("DEFAULT_GENERATOR_MODEL") or "Qwen2.5-32B"
+    MODEL = load_str_env("MODEL") or "Qwen/Qwen2.5-72B-Instruct"
+    DEFAULT_MODEL = MODEL  # 兼容旧版
 
     GENERATION_KWARGS = {
         "temperature": 0.15,
@@ -114,6 +115,9 @@ class Config:
         "seed": 1234,
         "extra_body": {"enable_thinking": False, "thinking_budget": 100},
     }
+
+    # PROMPT_NAME
+    PROMPT_NAME = load_str_env("PROMPT_NAME") or "默认"
 
     # Embedding Service
     EMBEDDING_OPENAI_URL = load_str_env("EMBEDDING_OPENAI_URL")
@@ -134,9 +138,10 @@ class Config:
     # RAG
     RAG_PROMPT_TEMPLATE = load_prompt("rag_default_prompt.txt")
 
-    # Retriever
+    # Document Retriever
     TOP_K = load_int_env("TOP_K") or 5
     SCORE_THRESHOLD = load_float_env("SCORE_THRESHOLD") or 0.65
+    PRECISION_MODE = load_bool_env("PRECISION_MODE") or 0
 
     # The threshold for precise retrieval
     PRECISION_THRESHOLD = load_float_env("PRECISION_THRESHOLD") or 0.88
@@ -145,6 +150,14 @@ class Config:
     FUNCTION_PROMPT_TEMPLATE = load_prompt("function_prompt.txt")
     FUNCION_ENABLED = load_bool_env("FUNCION_ENABLED") or False
     # GAODE_API_KEY = load_str_env("GAODE_API_KEY", required=True)
+
+    # API RETURN FORM
+    BATCH_OR_STREAM = load_str_env("BATCH_OR_STREAM") or "batch"
+
+    # Chat session management
+    CHAT_ROUNDS = load_int_env("CHAT_ROUNDS") or 5
+    MODALITIES = load_list_env("MODALITIES") or ["text"]
+    TOOLS = load_list_env("TOOLS") or []
 
     # WEB
     WEB_ROUTE_PREFIX = load_str_env("WEB_ROUTE_PREFIX") or "/api"

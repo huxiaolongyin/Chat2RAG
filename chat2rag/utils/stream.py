@@ -1,6 +1,7 @@
 import copy
 import datetime
 import json
+import re
 import uuid
 from queue import Queue
 from time import perf_counter
@@ -113,6 +114,25 @@ class StreamHandler:
         except Exception as e:
             logger.error(f"Failed to save metrics: {str(e)}")
 
+    def _parse_behavior_tags(self, text: str):
+        """
+        Extract behavioral labels from the text and return the cleaned text
+        TODO: 处理流式返回
+        """
+        emojis = re.findall(r"\[EMOJI:(.*?)\]", text)
+        actions = re.findall(r"\[ACTION:(.*?)\]", text)
+        links = re.findall(r"\[LINK:(.*?)\|(.*?)\]", text)
+
+        # 移除所有标记，保留纯文本
+        clean_text = re.sub(r"\[(EMOJI|ACTION|LINK):.*?\]", "", text).strip()
+
+        return {
+            "emojis": [e.strip() for e in emojis],
+            "actions": [a.strip() for a in actions],
+            "links": [{"text": t, "url": u} for t, u in links],
+            "clean_text": clean_text,
+        }
+
     def _create_message(
         self,
         content: str,
@@ -121,9 +141,10 @@ class StreamHandler:
         arguments: dict = {},
         tool_result: dict = {},
         is_start: int = 0,
-        emotion: str = "",
-        action: str = "",
-        link: str = "",
+        # emotion: str = "",
+        # action: str = "",
+        # link: str = "",
+        input: list = [],
     ) -> dict:
         """创建消息格式"""
         if meta is None:
@@ -135,22 +156,40 @@ class StreamHandler:
         else:
             status = 1
 
+        # 解析行为标签
+        behavior_data = (
+            self._parse_behavior_tags(content)
+            if content
+            else {"clean_text": "", "emojis": [], "actions": [], "links": []}
+        )
+        clean_content = behavior_data["clean_text"]
+
         # 累积回答内容
         if content:
-            self.metrics["answer"] += content
+            self.metrics["answer"] += clean_content
 
+        if tool and tool_result:
+            tool_content = {
+                "toolName": tool,
+                "toolType": "action",
+                "arguments": arguments,
+                "toolResult": tool_result,
+            }
+
+        else:
+            tool_content = {}
         return {
             "object": "message",
-            "content": content,
+            "input": input,
+            "content": clean_content,
             "model": self.model,
             "status": status,
-            "tool": tool,
-            "arguments": arguments,
-            "toolResult": tool_result,
-            "type": "预留工具类型",
-            "emotion": emotion,
-            "action": action,
-            "link": link,
+            "behavior": {
+                "emojis": behavior_data["emojis"],
+                "actions": behavior_data["actions"],
+            },
+            "tool": tool_content,
+            "links": behavior_data["links"],
             "documentCount": self.doc_length,
             "createTime": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             "messageId": self.message_id,
@@ -211,7 +250,7 @@ class StreamHandler:
             "", chunk.meta, tool=tool_name, arguments=arguments, tool_result=tool_result
         )
 
-    def get_stream(self, is_batch: bool = False):
+    def get_stream(self, is_batch: bool = False, input: list = []):
         first_response = True  # 添加标志位跟踪第一条响应
         current_batch = []
 
@@ -224,7 +263,7 @@ class StreamHandler:
                 continue
 
             if chunk == "[START]":
-                yield self.__yield_data("", is_start=1)
+                yield self.__yield_data("", is_start=1, input=input)
                 continue
 
             if chunk == "[END]":
@@ -256,12 +295,7 @@ class StreamHandler:
                 # 单条流式处理模式
                 if first_response:
                     first_response = self.__handle_first_response()
-                    yield self.__yield_data(
-                        chunk.content,
-                        chunk.meta,
-                        emotion="happy",
-                        action="raise left hand",
-                    )
+                    yield self.__yield_data(chunk.content, chunk.meta)
                     continue
                 if chunk.content or chunk.meta.get("finish_reason") == "stop":
                     yield self.__yield_data(chunk.content, chunk.meta)
@@ -284,13 +318,11 @@ class StreamHandler:
                         batch_content = "".join([c.content for c in current_batch])
                         if first_response:
                             first_response = self.__handle_first_response()
-                            yield self.__yield_data(
-                                chunk.content,
-                                chunk.meta,
-                                emotion="happy",
-                                action="raise left hand",
-                            )
-                            continue
+                            # yield self.__yield_data(
+                            #     chunk.content,
+                            #     chunk.meta,
+                            # )
+                            # continue
                         yield self.__yield_data(batch_content, chunk.meta)
 
                         # 重置批次
