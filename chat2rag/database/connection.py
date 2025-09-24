@@ -56,6 +56,8 @@ def db_session() -> Generator[Session, None, None]:
 
 def init_db():
     """初始化数据库"""
-    from chat2rag.database.models.metric import Metrics
+    from chat2rag.database.models.flow_data import FlowData
+    from chat2rag.database.models.metric import Metric
+    from chat2rag.database.models.prompt import Prompt
 
     Base.metadata.create_all(engine)
