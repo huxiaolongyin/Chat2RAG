@@ -8,23 +8,49 @@ from chat2rag.database.models import Prompt
 from chat2rag.logger import get_logger
 
 logger = get_logger(__name__)
-DEFAULT_QUERY_TEMPLATE = """
-问题：{{ query }}；
+action_list = [
+    "点头",
+    "摇头",
+    "挥手",
+    "招手",
+    "耸肩",
+    "鼓掌",
+    "站立",
+    "坐下",
+    "前进",
+    "后退",
+]
+emoji_list = [
+    "微笑",
+    "开心",
+    "难过",
+    "愤怒",
+    "困惑",
+    "思考",
+    "惊讶",
+    "疲惫",
+    "害羞",
+    "鼓励",
+]
+DEFAULT_QUERY_TEMPLATE = f"""
+问题：{{{{ query }}}}；
 
 参考文档：
-{% if documents  %}
-    {% for doc in documents %}
-content: {{ doc.content }} score: {{ doc.score }}
-    {% endfor %}
-{% else %}
+{{% if documents  %}}
+    {{% for doc in documents %}}
+content: {{{{ doc.content }}}} score: {{{{ doc.score }}}}
+    {{% endfor %}}
+{{% else %}}
     None
-{% endif %}
+{{% endif %}}
 
 请根据以上内容回答用户问题。
 你可以使用以下特殊标记来表示非文本内容：
-- 动作：[ACTION:动作名称]，示例: [ACTION:点头]，可选动作：点头、摇头、挥手、招手、耸肩、鼓掌、站立、坐下、前进、后退
-- 表情：[EMOJI:emoji名称]，示例: [EMOJI:微笑]、[EMOJI:思考]，可选表情：微笑、开心、难过、愤怒、困惑、思考、惊讶、疲惫、害羞、鼓励
-- 链接：`[LINK:显示文字|URL]`，示例：[LINK:点击查看报告|https://example.com]，确保 URL 完整且以 http:// 或 https:// 开头
+- 动作：[ACTION:动作名称]，示例: [ACTION:{action_list[0]}]，可选动作：{'、'.join(action_list)}
+- 表情：[EMOJI:emoji名称]，示例: [EMOJI:{emoji_list[0]}]，可选表情：{'、'.join(emoji_list)}
+- 图片: `[IMAGE:图片地址]`，以 png、jpg、jpeg、gif 结尾的链接，示例：[IMAGE:https://pic.nximg.cn/file/20200430/24969966_224422361084_2.jpg]
+- 链接：`[LINK:URL]`，示例：[LINK:https://example.com]，确保 URL 完整且以 http:// 或 https:// 开头
+
 
 上述标记请在文本回复前提前合理地使用，以增强交互表现力。仅输出与问题相关的标记和回答内容，避免冗余解释。
 回答：

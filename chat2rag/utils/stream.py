@@ -121,15 +121,17 @@ class StreamHandler:
         """
         emojis = re.findall(r"\[EMOJI:(.*?)\]", text)
         actions = re.findall(r"\[ACTION:(.*?)\]", text)
-        links = re.findall(r"\[LINK:(.*?)\|(.*?)\]", text)
+        links = re.findall(r"\[LINK:(.*?)\]", text)
+        images = re.findall(r"\[IMAGE:(.*?)\]", text)
 
         # 移除所有标记，保留纯文本
-        clean_text = re.sub(r"\[(EMOJI|ACTION|LINK):.*?\]", "", text).strip()
+        clean_text = re.sub(r"\[(EMOJI|ACTION|LINK|IMAGE):.*?\]", "", text).strip()
 
         return {
-            "emojis": [e.strip() for e in emojis],
-            "actions": [a.strip() for a in actions],
-            "links": [{"text": t, "url": u} for t, u in links],
+            "emoji": next(iter(emojis), ""),
+            "action": next(iter(actions), ""),
+            "link": next(iter(links), ""),
+            "image": next(iter(images), ""),
             "clean_text": clean_text,
         }
 
@@ -141,10 +143,7 @@ class StreamHandler:
         arguments: dict = {},
         tool_result: dict = {},
         is_start: int = 0,
-        # emotion: str = "",
-        # action: str = "",
-        # link: str = "",
-        input: list = [],
+        input: dict = {},
     ) -> dict:
         """创建消息格式"""
         if meta is None:
@@ -160,11 +159,11 @@ class StreamHandler:
         behavior_data = (
             self._parse_behavior_tags(content)
             if content
-            else {"clean_text": "", "emojis": [], "actions": [], "links": []}
+            else {"clean_text": "", "emoji": "", "action": "", "link": "", "image": ""}
         )
         clean_content = behavior_data["clean_text"]
 
-        # 累积回答内容
+        # 累积回答内容 TODO 优化
         if content:
             self.metrics["answer"] += clean_content
 
@@ -181,15 +180,18 @@ class StreamHandler:
         return {
             "object": "message",
             "input": input,
-            "content": clean_content,
+            "content": {
+                "text": behavior_data["clean_text"],
+                "image": behavior_data["image"],
+            },
             "model": self.model,
             "status": status,
             "behavior": {
-                "emojis": behavior_data["emojis"],
-                "actions": behavior_data["actions"],
+                "emoji": behavior_data["emoji"],
+                "action": behavior_data["action"],
             },
             "tool": tool_content,
-            "links": behavior_data["links"],
+            "link": behavior_data["link"],
             "documentCount": self.doc_length,
             "createTime": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             "messageId": self.message_id,
@@ -211,7 +213,7 @@ class StreamHandler:
         """处理首次响应，记录时间指标"""
         elapsed = perf_counter() - self.stream_start
         self.metrics["first_response_ms"] = round(elapsed * 1000, 2)
-        logger.info(f"RAG pipeline query response time: {elapsed:.3f}s")
+        logger.info(f"The first reply time of the Agent pipeline. Cost: {elapsed:.3f}s")
         return False
 
     def __yield_data(self, content="", meta=None, **kwargs):
@@ -318,11 +320,6 @@ class StreamHandler:
                         batch_content = "".join([c.content for c in current_batch])
                         if first_response:
                             first_response = self.__handle_first_response()
-                            # yield self.__yield_data(
-                            #     chunk.content,
-                            #     chunk.meta,
-                            # )
-                            # continue
                         yield self.__yield_data(batch_content, chunk.meta)
 
                         # 重置批次
