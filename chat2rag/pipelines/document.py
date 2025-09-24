@@ -34,7 +34,6 @@ class DocumentSearchPipeline(BasePipeline):
         """
         Initialize the Document search pipeline
         """
-        logger.debug("Initializing Document search pipeline...")
         try:
             pipeline = Pipeline()
             embedder = OpenAITextEmbedder(
@@ -109,10 +108,11 @@ class DocumentSearchPipeline(BasePipeline):
                     },
                 },
             )
+            documents = result.get("retriever", {}).get("documents", [])
             logger.info(
-                "Document search pipeline ran successfully, runtime: %.2f seconds, number of results: %d",
+                "Document search pipeline ran successfully. Cost: %.2f seconds, doc_counts: %d",
                 time.time() - start_time,
-                len(result),
+                len(documents),
             )
             return result
 
@@ -175,7 +175,7 @@ class DocumentWriterPipeline(BasePipeline):
         Run the DocumentWriter pipeline
         """
         logger.info(
-            f"Running the DocumentWriter pipeline, documents content: <{','.join([item.content for item in documents])}>"
+            f"Running the DocumentWriter pipeline, documents count: <{len(documents)}>"
         )
         try:
             result = await asyncio.to_thread(

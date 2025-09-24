@@ -39,7 +39,6 @@ class AgentPipeline(BasePipeline[Pipeline]):
         super().__init__()
 
     def _initialize_pipeline(self) -> Pipeline:
-        logger.debug("Initializing Agent search pipeline...")
 
         try:
             pipeline = Pipeline()

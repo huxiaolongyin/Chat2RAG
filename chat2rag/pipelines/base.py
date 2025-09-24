@@ -31,7 +31,6 @@ class BasePipeline(Generic[T], ABC):
         """
         Warm up the RAG pipeline by loading necessary models and resources
         """
-        logger.debug(f"Warming up the {self.__class__.__name__}...")
         try:
             self.pipeline.warm_up()
             logger.debug(

@@ -8,7 +8,6 @@ from chat2rag.database.connection import SessionLocal
 from chat2rag.database.models import CustomTool
 from chat2rag.enums import Status, ToolType
 from chat2rag.logger import get_logger
-from chat2rag.tools.bazi import get_bazi_info
 from chat2rag.tools.web_search import web_search
 
 logger = get_logger(__name__)
