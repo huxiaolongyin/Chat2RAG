@@ -177,5 +177,8 @@ class Config:
         {"name": "Qwen3-14B", "id": "Qwen/Qwen3-14B"},
     ]
 
+    # old_version
+    GAODE_API_KEY = load_str_env("GAODE_API_KEY")
+
 
 CONFIG = Config()
