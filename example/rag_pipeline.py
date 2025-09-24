@@ -3,7 +3,7 @@ import asyncio
 from haystack.components.generators.utils import print_streaming_chunk
 
 from chat2rag.config import CONFIG
-from chat2rag.pipelines.rag import RAGPipeline
+from chat2rag.pipelines.rag_pipeline import RAGPipeline
 
 rag_pipeline = RAGPipeline(
     qdrant_index=["test"],
