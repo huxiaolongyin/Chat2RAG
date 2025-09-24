@@ -4,6 +4,7 @@ from fastapi.staticfiles import StaticFiles
 
 from chat2rag.api.routes import router
 from chat2rag.config import CONFIG
+from chat2rag.core.executor import executor
 from chat2rag.database.init_db import run_migrations
 from chat2rag.logger import logger
 from chat2rag.tools.tool_manager import ToolManager
@@ -15,6 +16,7 @@ from chat2rag.tools.tool_manager import ToolManager
 async def lifespan(app: FastAPI):
     # 启动时执行
     # FastAPICache.init(InMemoryBackend(), prefix="fastapi-cache")
+
     logger.info("正在应用数据库迁移...")
     migration_success = run_migrations()
 
@@ -39,6 +41,7 @@ async def lifespan(app: FastAPI):
     yield
     # 关闭时执行
     # await FastAPICache.clear()
+    executor.shutdown()
     logger.info("Stopping Chat2RAG application")
 
 
