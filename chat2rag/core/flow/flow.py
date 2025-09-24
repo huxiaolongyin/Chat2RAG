@@ -5,59 +5,70 @@ from cachetools import TTLCache
 from openai import OpenAI
 
 from chat2rag.config import CONFIG
+from chat2rag.database.connection import db_session
+from chat2rag.database.models import FlowData
+from chat2rag.database.services.flow_service import FlowDataService
 
 client = OpenAI(
     api_key=CONFIG.OPENAI_API_KEY,
     base_url=CONFIG.OPENAI_BASE_URL,
 )
+
+# 初始化服务
+flow_service = FlowDataService(FlowData)
+
 # 流程定义
-PROCESSES = [
-    {
-        "name": "点菜流程",
-        "desc": "当用户需要点菜时，进行询问用户想吃什么、何时送达，并确认订单",
-        "states": ["init", "ask_time", "confirm", "complete", "quit"],
-        "config": {
-            "init": {
-                "response": "欢迎光临麦当劳。",
-                "emoji": "微笑",
-                "action": "挥手",
-                "conditions": [{"trigger": "auto", "next_state": "ask_food"}],
-            },
-            "ask_food": {
-                "response": "你想吃点什么呢？",
-                "conditions": [{"trigger": "获取到菜品", "next_state": "ask_time"}],
-            },
-            "ask_time": {
-                "response": "好的，你想什么时候送到？",
-                "conditions": [{"trigger": "获取到时间", "next_state": "confirm"}],
-            },
-            "confirm": {
-                "response": "确认下单吗？",
-                "conditions": [
-                    {"trigger": "确认是", "next_state": "complete"},
-                    {"trigger": "确认否", "next_state": "init"},
-                ],
-            },
-            "complete": {
-                "response": "好的，订单已创建，马上为你准备！",
-                "conditions": [{"trigger": "auto", "next_state": "quit"}],
-            },
-            "quit": {"response": "如果您还需要什么，请随时跟我说！"},
-        },
-    }
-]
+with db_session() as db:
+    FLOWS = flow_service.get_flows_structure(db)
+    print(FLOWS)
+
+# FLOWS = [
+#     {
+#         "name": "点菜流程",
+#         "desc": "当用户需要点菜时，进行询问用户想吃什么、何时送达，并确认订单",
+#         "states": ["init", "ask_time", "confirm", "complete", "quit"],
+#         "config": {
+#             "init": {
+#                 "response": "欢迎光临麦当劳。",
+#                 "emoji": "微笑",
+#                 "action": "挥手",
+#                 "conditions": [{"trigger": "auto", "next_state": "ask_food"}],
+#             },
+#             "ask_food": {
+#                 "response": "你想吃点什么呢？",
+#                 "conditions": [{"trigger": "获取到菜品", "next_state": "ask_time"}],
+#             },
+#             "ask_time": {
+#                 "response": "好的，你想什么时候送到？",
+#                 "conditions": [{"trigger": "获取到时间", "next_state": "confirm"}],
+#             },
+#             "confirm": {
+#                 "response": "确认下单吗？",
+#                 "conditions": [
+#                     {"trigger": "确认是", "next_state": "complete"},
+#                     {"trigger": "确认否", "next_state": "init"},
+#                 ],
+#             },
+#             "complete": {
+#                 "response": "好的，订单已创建，马上为你准备！",
+#                 "conditions": [{"trigger": "auto", "next_state": "quit"}],
+#             },
+#             "quit": {"response": "如果您还需要什么，请随时跟我说！"},
+#         },
+#     }
+# ]
 
 # 使用 TTLCache 缓存用户状态，3分钟超时
 user_states = TTLCache(maxsize=100, ttl=180)
 
 
-def detect_process(query):
+def detect_flow(query):
     """调用 LLM 判断用户是否想进入某个流程"""
 
-    processes_string = ""
-    # [f"name: {p['name']}, desc: {p['desc']}" for p in PROCESSES]
-    for i, process in enumerate(PROCESSES):
-        processes_string += f"{i+1}. {process['name']}。描述:{process['desc']}\n"
+    flows_string = ""
+    # [f"name: {p['name']}, desc: {p['desc']}" for p in FLOWS]
+    for i, flow in enumerate(FLOWS):
+        flows_string += f"{i+1}. {flow['name']}。描述:{flow['desc']}\n"
     response = client.chat.completions.create(
         model="Qwen/Qwen2.5-32B-Instruct",
         messages=[
@@ -65,7 +76,7 @@ def detect_process(query):
                 "role": "system",
                 "content": f"""
 根据用户问题及流程名称、描述，判断用户是否符合以下流程。
-可选流程：{processes_string}
+可选流程：{flows_string}
 若符合则输出名称；否则返回 None。
 """,
             },
@@ -76,7 +87,7 @@ def detect_process(query):
         extra_body={"enable_thinking": False},
     )
     proc = response.choices[0].message.content.strip()
-    return proc if proc in [p["name"] for p in PROCESSES] else None
+    return proc if proc in [p["name"] for p in FLOWS] else None
 
 
 def detect_state(query: str, current_state: str, state_config: list) -> str:
@@ -114,8 +125,8 @@ def detect_state(query: str, current_state: str, state_config: list) -> str:
         return None
 
 
-def get_process_by_name(name):
-    for p in PROCESSES:
+def get_flow_by_name(name):
+    for p in FLOWS:
         if p["name"] == name:
             return p
     return None
@@ -184,27 +195,27 @@ def handle_user_input(user_id: str, query: str):
 
     # 1. 无流程状态 → 初始化流程
     if not state_info:
-        proc_name = detect_process(query)
+        proc_name = detect_flow(query)
         if not proc_name:
             return None
 
-        process = get_process_by_name(proc_name)
+        flow = get_flow_by_name(proc_name)
         current_state = "init"
         next_state = current_state
         user_states[user_id] = {
-            "process": process,
+            "flow": flow,
             "state": current_state,
         }
-        for res in __handle_reponse(state_config=process["config"], user_id=user_id):
+        for res in __handle_reponse(state_config=flow["config"], user_id=user_id):
             yield res
 
         return
 
     # 2. 有流程状态 → 判断是否发生状态转移
     state_info = user_states.get(user_id)
-    process = state_info["process"]
+    flow = state_info["flow"]
     current_state = state_info["state"]
-    state_config = process["config"][current_state]
+    state_config = flow["config"][current_state]
 
     # 判断是否变更
     next_state = detect_state(query, current_state, state_config)
@@ -213,7 +224,7 @@ def handle_user_input(user_id: str, query: str):
     if not next_state or next_state == current_state:
         return None
     else:
-        for res in __handle_reponse(state_config=process["config"], user_id=user_id):
+        for res in __handle_reponse(state_config=flow["config"], user_id=user_id):
             yield res
         state_info = user_states.get(user_id)
 
