@@ -24,6 +24,7 @@
 - [ ] 🟡P3 新增各个对象的Service服务，将ORM操作集成到Service上
 - [ ] 🟡P3 新增 Prompt 的版本管理，记录历史Prompt
 - [ ] 🟡P3 流式`stream.py`解析响应内容时，处理TAG内容
+- [ ] 🟡P3 widget with key `model_select` 有问题，暂时无法处理
 
 ## 性能优化
 

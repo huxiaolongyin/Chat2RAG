@@ -3,8 +3,6 @@ import json
 import requests
 import streamlit as st
 from controller.knowledge_controller import knowledge_controller
-
-# from controller.tool_controller import tool_controller
 from utils.initialize import init_welcome_page, initialize_page
 from utils.sidebar import render_sidebar
 
