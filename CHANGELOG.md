@@ -21,6 +21,7 @@
 - 修改 dockerfile 构建文件
 - 调整异步执行器到全局，支持在独立线程中运行异步协程
 - ChatUI 调整为 V1 的 chat 接口，地址接口调整为本地8000
+- 将 ChatUI 中的 st.button 旧参数 `use_container_width=True` 替换为 `width='stretch'`
 
 ## Fixed
 - 修正 example/RAGPipeline 导入路径，确保正确引用

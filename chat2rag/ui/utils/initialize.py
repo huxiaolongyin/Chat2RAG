@@ -48,7 +48,7 @@ def init_welcome_page():
             version_list()
             _, col, _ = st.columns([2, 1, 2])
             with col:
-                if st.button("我知道了", use_container_width=True):
+                if st.button("我知道了", width="stretch"):
                     cookies["show_welcome"] = "False"
                     cookies.save()
                     st.rerun()

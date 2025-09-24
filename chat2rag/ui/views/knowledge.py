@@ -84,7 +84,7 @@ def del_knowledge_dialog(data):
     """
     st.write([item["content"] for item in data])
     data_id = [item["id"] for item in data]
-    if st.button("确认删除", use_container_width=True, type="primary"):
+    if st.button("确认删除", width="stretch", type="primary"):
         knowledge_controller.delete_documents(
             st.session_state["collection_select"], data_id
         )
@@ -97,7 +97,7 @@ def del_knowledge_dialog(data):
 #     知识库删除确认窗口
 #     """
 #     st.write(f"知识库：{name}")
-#     if st.button("确认删除", use_container_width=True, type="primary"):
+#     if st.button("确认删除", width='stretch', type="primary"):
 #         knowledge_controller.del_collection(name)
 #         st.rerun()
 
@@ -136,7 +136,7 @@ def render_knowledge_table():
             "content": st.column_config.TextColumn("内容", width="large"),
         },
         hide_index=True,
-        use_container_width=True,
+        width="stretch",
     )
 
 
@@ -152,7 +152,7 @@ def render_upload_section():
         "下载模板",
         data=create_knowledge_template(),
         file_name="知识库模板.xlsx",
-        use_container_width=True,
+        width="stretch",
         type="primary",
     )
 
@@ -184,7 +184,7 @@ def render_upload_section():
                 "答案": answers,
             }
         )
-        st.dataframe(process_df, hide_index=True, use_container_width=True)
+        st.dataframe(process_df, hide_index=True, width="stretch")
         st.markdown(f"知识总数：{len(process_df)}")
 
         progress_bar = st.progress(0)
@@ -241,7 +241,7 @@ def render_upload_section():
                 "确认上传",
                 on_click=upload_with_progress,
                 key="submit_knowledge",
-                use_container_width=True,
+                width="stretch",
                 type="primary",
             )
 
@@ -265,7 +265,7 @@ def render_search_bar():
         st.write("")
         st.button(
             "🔍 搜索",  # 添加图标提升视觉效果
-            use_container_width=True,
+            width="stretch",
             on_click=get_documents_list,
             type="primary",  # 使用主要按钮样式
         )
@@ -296,7 +296,7 @@ def main():
     delete_data = [item for item in knowledge_table if item["select"]]
     st.button(
         "删除选中知识",
-        use_container_width=True,
+        width="stretch",
         on_click=del_knowledge_dialog,
         args=(delete_data,),
     )
@@ -306,7 +306,7 @@ def main():
             "导出知识库",
             data=export_documents(),
             file_name=f"{st.session_state['collection_select']}.xlsx",
-            use_container_width=True,
+            width="stretch",
             type="primary",
         )
     render_upload_section()

@@ -67,7 +67,7 @@ def render_metrics_filters():
         st.session_state.metric_page_size = page_size
 
     # 刷新按钮
-    if st.button("查询", use_container_width=True, type="primary"):
+    if st.button("查询", width="stretch", type="primary"):
         st.session_state.metrics_data = load_metrics_data()
         st.rerun()
 
@@ -132,7 +132,7 @@ def render_metrics_table(metrics):
                 width="large",
             ),
         },
-        use_container_width=True,
+        width="stretch",
         hide_index=True,
     )
 
@@ -168,7 +168,7 @@ def render_metrics_stats(metrics):
                 labels={"createTime": "时间", "firstResponseMs": "响应时间(ms)"},
                 markers=True,  # 添加这个参数显示数据点
             )
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width="stretch")
 
     with tab3:
         # 创建模型使用分布饼图
@@ -179,7 +179,7 @@ def render_metrics_stats(metrics):
             fig = px.pie(
                 model_counts, values="count", names="model", title="模型使用分布"
             )
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width="stretch")
 
 
 def metric_page():

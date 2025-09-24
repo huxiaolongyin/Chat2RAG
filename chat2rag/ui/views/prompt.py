@@ -11,7 +11,7 @@ def prompt_manage(id):
         prompt_name = st.text_input("提示词名称", "")
         prompt_intro = st.text_input("简介", "")
         prompt_text = st.text_area("提示词", height=280)
-        if st.button("创建", use_container_width=True, key="prompt_create"):
+        if st.button("创建", width="stretch", key="prompt_create"):
             prompt_controller.create_prompt(prompt_name, prompt_intro, prompt_text)
             st.session_state.prompt_list = prompt_controller.get_prompt_list()
             st.rerun()
@@ -24,14 +24,14 @@ def prompt_manage(id):
         prompt_name = st.text_input("助手名称", prompt["promptName"])
         prompt_intro = st.text_input("描述", value=prompt["promptIntro"])
         prompt_text = st.text_area("提示词", value=prompt["promptText"], height=280)
-        if st.button("更新", use_container_width=True, key="prompt_update"):
+        if st.button("更新", width="stretch", key="prompt_update"):
             prompt_controller.update_prompt(id, prompt_name, prompt_intro, prompt_text)
             st.session_state.prompt_list = prompt_controller.get_prompt_list()
             st.rerun()
         if prompt_name != "默认":
             if st.button(
                 "删除",
-                use_container_width=True,
+                width="stretch",
                 type="primary",
                 key="assistant_delete",
             ):
@@ -50,14 +50,14 @@ def prompt_page():
                 st.write(st.session_state.prompt_list[i]["promptIntro"])
                 st.button(
                     "查看",
-                    use_container_width=True,
+                    width="stretch",
                     key=f"prompt_manage{col}",
                     on_click=prompt_manage,
                     args=(st.session_state.prompt_list[i]["id"],),
                 )
     st.button(
         "添加助手",
-        use_container_width=True,
+        width="stretch",
         type="primary",
         key=f"prompt_edit{col}",
         on_click=prompt_manage,

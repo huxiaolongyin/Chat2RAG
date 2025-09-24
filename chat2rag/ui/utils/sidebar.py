@@ -84,6 +84,6 @@ def render_sidebar():
     #     "删除知识库",
     #     on_click=del_knowledge_store_dialog,
     #     args=(collection,),
-    #     use_container_width=True,
+    #     width='stretch',
     #     type="primary",
     # )
