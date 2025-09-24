@@ -4,9 +4,7 @@ from config import CONFIG
 
 class MetricController:
     def __init__(self):
-        self.metric_base_url = (
-            f"http://{CONFIG.BACKEND_HOST}:{CONFIG.BACKEND_PORT}/api/v1/metrics/list"
-        )
+        self.metric_base_url = f"http://127.0.0.1:8000/api/v1/metrics/list"
 
     def get_metric_list(
         self,

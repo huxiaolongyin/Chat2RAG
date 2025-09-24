@@ -4,7 +4,8 @@ import streamlit as st
 from controller.knowledge_controller import knowledge_controller
 from controller.model_controller import model_controller
 from controller.prompt_controller import prompt_controller
-from controller.tool_controller import tool_controller
+
+# from controller.tool_controller import tool_controller
 from streamlit_cookie import EncryptedCookieManager
 from utils.version import version_list
 
@@ -81,8 +82,8 @@ def initialize_page():
         st.session_state.collection_select = st.session_state.collections_list[0]
 
     # 工具
-    if "tools_list" not in st.session_state:
-        st.session_state.tools_list = list(tool_controller.tools.keys())
+    # if "tools_list" not in st.session_state:
+    #     st.session_state.tools_list = list(tool_controller.tools.keys())
 
     if "tool_select_state" not in st.session_state:
         st.session_state.tool_select_state = [

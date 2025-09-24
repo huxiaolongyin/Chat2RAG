@@ -11,9 +11,7 @@ class ToolController:
         return cls._instance
 
     def __init__(self):
-        self.too_base_url = (
-            f"http://{CONFIG.BACKEND_HOST}:{CONFIG.BACKEND_PORT}/api/v1/tools"
-        )
+        self.too_base_url = f"http://127.0.0.1:8000/api/v1/tools"
         self.tools = self.fetch_tools()
 
     def fetch_tools(self) -> dict:

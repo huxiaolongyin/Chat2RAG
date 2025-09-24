@@ -4,9 +4,7 @@ from config import CONFIG
 
 class ModelController:
     def __init__(self):
-        self.model_base_url = (
-            f"http://{CONFIG.BACKEND_HOST}:{CONFIG.BACKEND_PORT}/api/v1/model/list"
-        )
+        self.model_base_url = f"http://127.0.0.1:8000/api/v1/model/list"
 
     def get_model_list(self):
         response = requests.get(

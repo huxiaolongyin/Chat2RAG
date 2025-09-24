@@ -3,17 +3,16 @@ from dataclasses import asdict
 from typing import List
 
 import requests
-from config import CONFIG
 from dataclass.document import QADocument
 
 
 class KnowledgeController:
     def __init__(self):
-        self.collect_base_url = f"http://{CONFIG.BACKEND_HOST}:{CONFIG.BACKEND_PORT}/api/v1/knowledge/collection"
-        self.doc_base_url = f"http://{CONFIG.BACKEND_HOST}:{CONFIG.BACKEND_PORT}/api/v1/knowledge/collection/document"
-        self.doc_query_url = (
-            f"http://{CONFIG.BACKEND_HOST}:{CONFIG.BACKEND_PORT}/api/v1/knowledge/query"
+        self.collect_base_url = f"http://127.0.0.1:8000/api/v1/knowledge/collection"
+        self.doc_base_url = (
+            f"http://127.0.0.1:8000/api/v1/knowledge/collection/document"
         )
+        self.doc_query_url = f"http://127.0.0.1:8000/api/v1/knowledge/query"
 
     def get_collection_list(self) -> List:
         response = requests.get(

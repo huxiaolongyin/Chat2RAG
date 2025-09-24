@@ -4,18 +4,10 @@ from config import CONFIG
 
 class PromptController:
     def __init__(self):
-        self.prompt_base_url = (
-            f"http://{CONFIG.BACKEND_HOST}:{CONFIG.BACKEND_PORT}/api/v1/prompt/list"
-        )
-        self.prompt_create_url = (
-            f"http://{CONFIG.BACKEND_HOST}:{CONFIG.BACKEND_PORT}/api/v1/prompt/add"
-        )
-        self.prompt_update_url = (
-            f"http://{CONFIG.BACKEND_HOST}:{CONFIG.BACKEND_PORT}/api/v1/prompt/update"
-        )
-        self.prompt_delete_url = (
-            f"http://{CONFIG.BACKEND_HOST}:{CONFIG.BACKEND_PORT}/api/v1/prompt/remove"
-        )
+        self.prompt_base_url = f"http://127.0.0.1:8000/api/v1/prompt/list"
+        self.prompt_create_url = f"http://127.0.0.1:8000/api/v1/prompt/add"
+        self.prompt_update_url = f"http://127.0.0.1:8000/api/v1/prompt/update"
+        self.prompt_delete_url = f"http://127.0.0.1:8000/api/v1/prompt/remove"
 
     def get_prompt_name_list(self):
         """获取提示词名称列表"""

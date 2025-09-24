@@ -13,8 +13,8 @@ def collection_change():
     )
 
 
-def tool_change():
-    st.session_state.tool_select_state = st.session_state.tool_select
+# def tool_change():
+#     st.session_state.tool_select_state = st.session_state.tool_select
 
 
 def prompt_change():
@@ -48,14 +48,14 @@ def render_sidebar():
             on_change=collection_change,
             options=st.session_state.collections_list,
         )
-        st.multiselect(
-            "请选择工具",
-            default=st.session_state.tool_select_state,
-            key="tool_select",
-            on_change=tool_change,
-            options=st.session_state.tools_list,
-            placeholder="请选择工具",
-        )
+        # st.multiselect(
+        #     "请选择工具",
+        #     default=st.session_state.tool_select_state,
+        #     key="tool_select",
+        #     on_change=tool_change,
+        #     options=st.session_state.tools_list,
+        #     placeholder="请选择工具",
+        # )
         st.selectbox(
             "请选择提示词",
             index=st.session_state.prompt_select_index,
