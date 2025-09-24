@@ -1,9 +1,14 @@
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Optional
 
 from pydantic import BaseModel, Field, field_validator
 
 from chat2rag.config import CONFIG
 from chat2rag.enums import ProcessType
+
+
+class Audio(BaseModel):
+    voice: str
+    format: str
 
 
 class ChatRequest(BaseModel):
@@ -41,7 +46,7 @@ class ChatRequest(BaseModel):
         ge=0,
         le=30,
         alias="topK",
-        description=f"文档检索的返回数量，非必填，范围0-30，默认: {CONFIG.TOP_K}",
+        description=f"  : {CONFIG.TOP_K}",
     )
     batch_or_stream: ProcessType = Field(
         default=CONFIG.BATCH_OR_STREAM,
@@ -57,7 +62,7 @@ class ChatRequest(BaseModel):
         default=CONFIG.TOOLS,
         description="工具列表，非必填，默认为空",
     )
-    processes: Optional[list] = Field(
+    flows: Optional[list] = Field(
         default=[], description="流程列表，非必填，选择调用的流程，默认为空"
     )
     content: dict = Field(
@@ -78,9 +83,9 @@ class ChatRequest(BaseModel):
     )
     modalities: list = Field(
         default=CONFIG.MODALITIES,
-        description=f'支持的模态性，如文本、图像等，非必填，支持["text","audio"]、["text"]，默认: {CONFIG.MODALITIES}',
+        description=f'支持输出的模态，如文本、图像等，非必填，支持["text","audio"]、["text"]，默认: {CONFIG.MODALITIES}',
     )
-    audio: dict = Field(default={}, description="声音输出配置, 非必填")
+    audio: Audio = Field(default={}, description="声音输出配置, 非必填")
     extra_params: dict = Field(
         default={},
         alias="extraParams",

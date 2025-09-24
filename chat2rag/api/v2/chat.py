@@ -1,5 +1,4 @@
 import asyncio
-from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from functools import lru_cache
 from time import perf_counter
@@ -12,12 +11,14 @@ from sqlalchemy.orm import Session
 
 from chat2rag.api.schema.chat import ChatRequest
 from chat2rag.core.document.qdrant import QAQdrantDocumentStore
-from chat2rag.core.process.process import handle_user_input
+from chat2rag.core.executor import executor, run_async_in_thread
+from chat2rag.core.flow.flow import handle_user_input
 from chat2rag.database.connection import get_db
 from chat2rag.enums import ProcessType
 from chat2rag.logger import get_logger
 from chat2rag.pipelines.agent import AgentPipeline
 from chat2rag.utils.chat_history import ChatHistory
+from chat2rag.utils.pipeline_cache import create_pipeline
 from chat2rag.utils.stream import StreamHandler
 
 # from chat2rag.utils.monitoring import async_performance_logger
@@ -28,25 +29,6 @@ from chat2rag.utils.stream import StreamHandler
 logger = get_logger(__name__)
 router = APIRouter()
 chat_history = ChatHistory()
-
-# To avoid creating a new executor for each request, which leads to resource waste, use a global executor
-executor = ThreadPoolExecutor(max_workers=5)
-
-
-@lru_cache(maxsize=32)
-def _create_agent_pipeline(
-    collections: Tuple[str, ...], model: str, tools: Tuple[str, ...]
-) -> AgentPipeline:
-    return AgentPipeline(list(collections), model, list(tools))
-
-
-def create_pipeline(
-    collections: List[str], model: str, tools: List[str]
-) -> AgentPipeline:
-    """
-    lru_cache cant cache list, so we use this function to create a pipeline
-    """
-    return _create_agent_pipeline(tuple(collections), model, tuple(tools))
 
 
 def _get_streaming_headers() -> dict:
@@ -105,18 +87,6 @@ async def _handle_exact_query(
     except Exception as e:
         logger.error("Error in exact query: %s", str(e))
         return None
-
-
-# async def _handle_process_answer(
-#     answer: str,
-#     request: ChatRequest,
-#     handler: StreamHandler,
-#     start_time: float,
-# ):
-#     """
-#     Handle process answer
-#     """
-#     # logger.info("Perform stream queries using the precise mode")
 
 
 async def _stream_answer(
@@ -212,9 +182,9 @@ async def _process_agent_pipeline(
     try:
         # Start the profiler
         # profiler.start()
-        logger.debug("start Agent pipeline...")
 
         pipeline = create_pipeline(
+            AgentPipeline,
             collections=request.collections,
             model=request.model,
             tools=request.tools,
@@ -237,7 +207,7 @@ async def _process_agent_pipeline(
             chat_history.add_message(request.chat_id, messages=new_messages)
 
         logger.info(
-            "Agent pipeline processed successfully, took %.2fs",
+            "Agent pipeline processed successfully. Cost: %.2fs",
             perf_counter() - start_time,
         )
         # profiler.stop()
@@ -268,13 +238,13 @@ def record_info(handler: StreamHandler, request: ChatRequest):
     handler.set_collection_info(collections=request.collections)
 
 
-async def _handle_process(
+async def _handle_flow(
     request: ChatRequest,
     handler: StreamHandler,
     start_time: float,
 ) -> StreamingResponse:
     """
-    Process procedural responses using state machines
+    Flow procedural responses using state machines
     """
     answer = []
     query = request.content.get("text")
@@ -288,7 +258,7 @@ async def _handle_process(
         asyncio.create_task(
             _stream_answer(
                 "".join(answer),
-                answer_source="Process answer",
+                answer_source="Flow answer",
                 request=request,
                 handler=handler,
                 start_time=start_time,
@@ -307,6 +277,7 @@ async def _handle_process(
 
 @router.post("/chat")
 async def chat(request: ChatRequest, db: Session = Depends(get_db)):
+    logger.info(f"Chat Version: V2; Request: {request}")
     start_time = perf_counter()
 
     # Initialize the stream processor
@@ -314,11 +285,11 @@ async def chat(request: ChatRequest, db: Session = Depends(get_db)):
     handler.start()
     record_info(handler=handler, request=request)
 
-    # process & state
-    if request.processes:
-        process_answer = await _handle_process(request, handler, start_time)
-        if process_answer:
-            return process_answer
+    # flow & state
+    if request.flows:
+        flow_answer = await _handle_flow(request, handler, start_time)
+        if flow_answer:
+            return flow_answer
 
     # Exact mode query
     if request.precision_mode == 1:
@@ -331,16 +302,6 @@ async def chat(request: ChatRequest, db: Session = Depends(get_db)):
     history_messages = chat_history.get_history_messages(
         request.prompt_name, request.chat_id, db, request.chat_rounds
     )
-
-    # TODO: Need to optimize the performance of the following code
-    # Key modification: Run the event loop using an independent thread
-    def run_async_in_thread(coro):
-        asyncio.set_event_loop(asyncio.new_event_loop())
-        loop = asyncio.get_event_loop()
-        try:
-            return loop.run_until_complete(coro)
-        finally:
-            loop.close()
 
     # Submit the task to the thread pool
     executor.submit(
