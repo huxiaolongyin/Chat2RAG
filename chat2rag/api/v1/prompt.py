@@ -1,6 +1,7 @@
 from math import ceil
 
 from fastapi import APIRouter, Body, Depends, Query
+from sqlalchemy import desc
 from sqlalchemy.orm import Session
 
 from chat2rag.api.schema import Error, Success
@@ -55,7 +56,13 @@ async def _(
     total = query.count()
 
     # 获取分页数据
-    records = [prompt.to_dict() for prompt in query.offset(offset).limit(size).all()]
+    records = [
+        prompt.to_dict()
+        for prompt in query.order_by(desc("create_time"))
+        .offset(offset)
+        .limit(size)
+        .all()
+    ]
 
     # 计算总页数
     pages = ceil(total / size)
