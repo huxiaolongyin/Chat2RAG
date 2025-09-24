@@ -16,6 +16,7 @@
 - 加强交互表现力，支持动作、表情、图片和链接标记的解析与处理
 - 新增音频配置模型，重命名流程字段，优化请求参数描述
 - 将 ChatUI 的按钮、选择器组件和状态包装成函数
+- 版本更新内容，直接通过接口提供
 
 ### Changed
 - 调整项目依赖，更新 arize-phoenix 到 11.35.0，旧版会报错
@@ -24,10 +25,10 @@
 - ChatUI 调整为 V1 的 chat 接口，地址接口调整为本地8000
 - 将 ChatUI 中的 st.button 旧参数 `use_container_width=True` 替换为 `width='stretch'`
 
-## Fixed
+### Fixed
 - 修正 example/RAGPipeline 导入路径，确保正确引用
 
-## Removed
+### Removed
 - 移除冗余日志和冗余导入
 
 ## [V0.2.2] - 2025-09-12
@@ -48,7 +49,7 @@
 - 修改 webUI 默认工具，设置为空
 - 重构数据模型和数据库连接，从 chat2rag/core/database 移动到 chat2rag/database 下
 
-## Fixed
+### Fixed
 - 增强BaseModel的to_dict方法，支持 datetime 类型转换
 - 将 PostgreSQL 容器的时区设置为中国时区，解决时区问题
 - 修复精准模式下，新增聊天历史记录，使用 ChatRole 枚举替代字符串标识用户和助手角色
@@ -92,7 +93,7 @@
 - 支持 多个知识库的检索
 - 新增 makefile 文件启动 后端和前端
 
-## Fixed
+### Fixed
 
 - 修复 qdrant-haystack 升级到 9.2.0，导致 qdrant.py 无法使用的问题
 - 修复 chat 接口修改导致的 collection 参数问题

@@ -8,6 +8,7 @@ from .metrics import router as metrics_router
 from .model import router as model_router
 from .prompt import router as prompt_router
 from .tools import router as tools_router
+from .version import router as version_router
 
 v1_router = APIRouter()
 
@@ -19,3 +20,4 @@ v1_router.include_router(router=chat_router, prefix="/chat", tags=["聊天"])
 v1_router.include_router(router=auth_router, prefix="/auth", tags=["认证"])
 v1_router.include_router(router=metrics_router, prefix="/metrics", tags=["指标"])
 v1_router.include_router(router=flow_router, prefix="/flow", tags=["流程"])
+v1_router.include_router(router=version_router, prefix="/version", tags=["版本"])
