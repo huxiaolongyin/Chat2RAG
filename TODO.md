@@ -23,10 +23,11 @@
 - [ ] 🟡P3 新增一个ORM Service 基类，实现基础增删改查；
 - [ ] 🟡P3 新增各个对象的Service服务，将ORM操作集成到Service上
 - [ ] 🟡P3 新增 Prompt 的版本管理，记录历史Prompt
+- [ ] 🟡P3 流式`stream.py`解析响应内容时，处理TAG内容
 
 ## 性能优化
 
-- [ ] 🟠P2 首次提问出现卡顿
+- [ ] 🟠P2 进行缓存优化，解决首次提问出现卡顿
 - [ ] 🟡P3 在init中加入lazy import，参考：[haystack](https://github.com/deepset-ai/haystack/blob/main/haystack/__init__.py)
 
 ## BUG 修复

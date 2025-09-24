@@ -3,26 +3,52 @@
 这个项目的所有值得注意的变化都将记录在这个文件中。
 
 这个格式基于 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)，还有这个原则遵循 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
-
 ## [unreleased]
+
+
+## [V0.2.3] - 2025-09-24
+### Added
+- 新增 makefile 构建和运行命令
+- 新增通用缓存管道创建器，支持将可变参数转换为可哈希格式
+- 恢复 v1 版本的 chat 接口，并对其进行优化
+- 对 prompt 在获取分页数据时按创建时间降序排序记录
+- 新增状态机流程FlowData 模型及相关 API，支持流程数据的创建、获取、更新和删除
+- 加强交互表现力，支持动作、表情、图片和链接标记的解析与处理
+- 新增音频配置模型，重命名流程字段，优化请求参数描述 
+### Changed
+- 调整项目依赖，更新 arize-phoenix 到 11.35.0，旧版会报错
+- 修改 dockerfile 构建文件
+- 调整异步执行器到全局，支持在独立线程中运行异步协程
+- ChatUI 调整为 V1的 chat 接口， 地址接口调整为本地8000
+
+## Fixed
+- 修正 example/RAGPipeline 导入路径，确保正确引用
+
+## Removed
+- 移除冗余日志和冗余导入
+
+## [V0.2.2] - 2025-09-12
 ### Added
 - 新增 Qwen3 14B 和 Qwen3 32B的模型
 - 使用 json 尝试格式化输出 Tool Result
-- 为数据库迁移集成Alembic，并在应用启动时初始化迁移
+- 为数据库迁移集成 Alembic，并在应用启动时初始化迁移
 - 重构流处理以提高性能和工具调用支持
 - 新增交互对话记录和响应记录
 - 新增交互记录、及响应指标查询接口，方便查询和分析用户交互数据。
 - 新增 管道的性能监控接口，及性能监控页面
 - 新增表情、动作、工具类型、链接的字段
+- 新增 chat v2 接口，移除参数 vin、city、time 等，由 extra_params 替代
+- 新增状态机控制大模型交互输出内容
+- 新增本地挂载 Swagger UI 所需静态内容
 
 ### Changed
 - 修改 webUI 默认工具，设置为空
-- 修改 chat 接口，移除参数vin、city、time等，由 extra_params 替代
-- 重构数据模型和数据库连接，从 chat2rag/core/database 移动到chat2rag/database 下
+- 重构数据模型和数据库连接，从 chat2rag/core/database 移动到 chat2rag/database 下
 
 ## Fixed
-- 增强BaseModel的to_dict方法，支持datetime类型转换
+- 增强BaseModel的to_dict方法，支持 datetime 类型转换
 - 将 PostgreSQL 容器的时区设置为中国时区，解决时区问题
+- 修复精准模式下，新增聊天历史记录，使用 ChatRole 枚举替代字符串标识用户和助手角色
 
 ## [V0.2.1] - 2025-07-04
 ### Added
