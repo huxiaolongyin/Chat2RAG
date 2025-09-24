@@ -9,6 +9,7 @@ from chat2rag.config import CONFIG
 from chat2rag.dataclass.document import QADocument
 from chat2rag.logger import get_logger
 from chat2rag.pipelines.document import DocumentSearchPipeline, DocumentWriterPipeline
+from chat2rag.utils.pipeline_cache import create_pipeline
 
 logger = get_logger(__name__)
 
@@ -105,7 +106,9 @@ class QAQdrantDocumentStore(QdrantDocumentStore):
             question_doc, answer_doc = prepare_documents(qa)
             documents.extend([question_doc, answer_doc])
 
-        doc_write_pipeline = DocumentWriterPipeline(qdrant_index=self.index)
+        doc_write_pipeline = create_pipeline(
+            DocumentWriterPipeline, qdrant_index=self.index
+        )
         return await doc_write_pipeline.run(documents=documents)
 
     @property
@@ -149,29 +152,36 @@ class QAQdrantDocumentStore(QdrantDocumentStore):
         """
         进行 QA 全文的检索
         """
-        doc_search_pipeline = DocumentSearchPipeline(self.index)
-        response = await doc_search_pipeline.run(
-            query=query,
-            top_k=top_k,
-            score_threshold=score_threshold,
-            doc_type=doc_type,
-        )
+        try:
+            doc_search_pipeline = create_pipeline(
+                DocumentSearchPipeline, qdrant_index=self.index
+            )
+            response = await doc_search_pipeline.run(
+                query=query,
+                top_k=top_k,
+                score_threshold=score_threshold,
+                doc_type=doc_type,
+            )
 
-        documents = response.get("retriever").get("documents")
-        # 优化 todo
-        type_condition = lambda doc: (
-            doc.meta.get("type") == doc_type
-            if doc_type == "question"
-            else doc.meta.get("type") != "question"
-        )
-        result = [doc for doc in documents if type_condition(doc)]
-        logger.debug("Query result count: %d", len(result))
-        return result
+            documents = response.get("retriever").get("documents")
+            # 优化 todo
+            type_condition = lambda doc: (
+                doc.meta.get("type") == doc_type
+                if doc_type == "question"
+                else doc.meta.get("type") != "question"
+            )
+            result = [doc for doc in documents if type_condition(doc)]
+            return result
+
+        except Exception as e:
+            logger.error(f"QAQdrantDocumentStore query failed: {e}")
+            raise e
 
     async def query_exact(self, query: str) -> Optional[str]:
         """
         通过精准匹配模式，直接索引问题，然后匹配答案
         """
+        logger.info("Found document retrieval in precise mode")
         response = await self.query(
             query=query,
             score_threshold=CONFIG.PRECISION_THRESHOLD,
@@ -179,6 +189,9 @@ class QAQdrantDocumentStore(QdrantDocumentStore):
             doc_type="question",
         )
         if not response:
+            logger.info(
+                "No relevant documents were found in the precise mode. Prepare the fallback after the precise mode"
+            )
             return None
         filters = {
             "operator": "AND",
