@@ -309,7 +309,11 @@ async def _(
     history_messages = []
     if params.chat_id:
         history_messages = chat_history.get_history_messages(
-            params.prompt_name, params.chat_id, db, params.chat_rounds
+            params.prompt_name,
+            params.chat_id,
+            db,
+            params.chat_rounds,
+            tag_get=False,
         )
 
     # 启动后台任务

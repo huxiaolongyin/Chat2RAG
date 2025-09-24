@@ -127,6 +127,7 @@ class ChatHistory:
         chat_id: str,
         db: Session,
         rounds: int = 1,
+        tag_get: bool = True,
     ) -> List[ChatMessage]:
         """
         get the history messages from the cache
@@ -142,5 +143,6 @@ class ChatHistory:
         cache_messages = self.message_cache.get(chat_id, [])
         if cache_messages:
             history_messages.extend(cache_messages[-rounds * 2 :])
-        history_messages.append(ChatMessage.from_user(DEFAULT_QUERY_TEMPLATE))
+        if tag_get:
+            history_messages.append(ChatMessage.from_user(DEFAULT_QUERY_TEMPLATE))
         return history_messages

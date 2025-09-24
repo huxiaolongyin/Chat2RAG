@@ -19,7 +19,7 @@ COPY ./pyproject.toml  .
 COPY ./README.md .
 COPY ./VERSION.txt .
 COPY ./static ./static
-
+COPY ./CHANGELOG.md .
 
 USER root
 
