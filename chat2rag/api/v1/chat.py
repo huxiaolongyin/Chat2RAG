@@ -267,6 +267,15 @@ async def _process_rag_pipeline(
         handler.finish()
 
 
+def record_info(handler: StreamHandlerV1, params: ChatQueryParams):
+    """
+    Record the interaction information of the LLM
+    """
+    handler.set_chat_info(chat_id=params.chat_id, chat_rounds=params.chat_rounds)
+    handler.set_query_info(question=params.query, prompt=params.prompt_name)
+    handler.set_collection_info(collections=params.collection_name)
+
+
 @router.get("/query-stream")
 async def _(
     params: ChatQueryParams = Depends(),
@@ -277,6 +286,7 @@ async def _(
     start_time = perf_counter()
     handler = StreamHandlerV1()
     handler.start()
+    record_info(handler=handler, params=params)
     is_batch = batch_or_stream == ProcessType.BATCH
 
     rag_prompt_template = CONFIG.RAG_PROMPT_TEMPLATE
