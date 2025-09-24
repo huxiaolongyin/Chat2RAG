@@ -9,8 +9,7 @@ ui:
 
 .PHONY: build
 build:
-	docker build -t jacob0827/chat2rag:latest .
-
+	powershell -Command "$$(Get-Content VERSION.txt -First 1) | ForEach-Object { docker build -t jacob0827/chat2rag:$$_ . }; docker build -t jacob0827/chat2rag:latest ."
 
 .PHONY: docker
 docker:
@@ -18,4 +17,4 @@ docker:
 
 .PHONY: save
 save:
-	docker save -o deploy/chat2rag0.2.2.tar jacob0827/chat2rag:latest
+	powershell -Command "$$(Get-Content VERSION.txt -First 1) | ForEach-Object { docker save -o deploy/chat2rag$$_.tar jacob0827/chat2rag:latest }"
