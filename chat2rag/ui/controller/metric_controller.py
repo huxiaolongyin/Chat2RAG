@@ -12,6 +12,7 @@ class MetricController:
         size: int = 10,
         start_time: str = "2023-01-01",
         end_time: str = "2026-01-01",
+        collection: str = "",
     ):
         """获取指标列表"""
         response = requests.get(
@@ -21,6 +22,7 @@ class MetricController:
                 "size": size,
                 "startTime": start_time,
                 "endTime": end_time,
+                "collection": collection,
             },
         )
         if response.status_code == 200:

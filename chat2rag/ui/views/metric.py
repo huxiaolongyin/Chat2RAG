@@ -12,7 +12,7 @@ def render_metrics_filters():
     """渲染指标过滤器"""
     st.subheader("筛选条件")
 
-    col1, col2 = st.columns(2)
+    col1, col2, col3, col4 = st.columns(4)
 
     # 时间范围选择
     with col1:
@@ -39,9 +39,7 @@ def render_metrics_filters():
         )
         st.session_state.metric_end_date = end_date.strftime("%Y-%m-%d")
 
-    # 分页控制
-    col1, col2 = st.columns(2)
-    with col1:
+    with col3:
         if "metric_current_page" not in st.session_state:
             st.session_state.metric_current_page = 1
 
@@ -54,7 +52,7 @@ def render_metrics_filters():
         )
         st.session_state.metric_current_page = current_page
 
-    with col2:
+    with col4:
         if "metric_page_size" not in st.session_state:
             st.session_state.metric_page_size = 10
 
@@ -79,6 +77,7 @@ def load_metrics_data():
         size=st.session_state.metric_page_size,
         start_time=st.session_state.metric_start_date,
         end_time=st.session_state.metric_end_date,
+        collection=st.session_state.collection_select,
     )
 
 
@@ -139,10 +138,11 @@ def render_metrics_table(metrics):
 
 def render_metrics_stats(metrics):
     """渲染指标统计图表"""
-    if not metrics or len(metrics) == 0:
-        return
 
-    st.subheader("指标统计")
+    st.subheader(f"{st.session_state.collection_select}指标统计")
+    if not metrics or len(metrics) == 0:
+        st.text("暂无数据")
+        return
 
     tab1, tab2, tab3 = st.tabs(["对话历史", "响应时间分析", "模型使用分布"])
     with tab1:
@@ -191,14 +191,11 @@ def metric_page():
     if "metrics_data" not in st.session_state:
         st.session_state.metrics_data = load_metrics_data()
 
-    metrics = st.session_state.metrics_data
-
     # 渲染数据表格
     # render_metrics_table(metrics)
 
     # 如果有数据，渲染统计图表
-    if metrics and len(metrics) > 0:
-        render_metrics_stats(metrics)
+    render_metrics_stats(st.session_state.metrics_data)
 
 
 def main():
@@ -207,7 +204,7 @@ def main():
     """
     st.title(":chart_with_upwards_trend: 对话历史与分析")
     initialize_page()
-    render_sidebar()
+    render_sidebar(load_metrics_data)
     metric_page()
 
 

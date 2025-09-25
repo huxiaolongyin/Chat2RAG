@@ -22,6 +22,7 @@ def get_metrics_list(
     end_time: Optional[str] = Query(
         "2026-01-01", description="结束时间", alias="endTime"
     ),
+    collection: Optional[str] = Query(description="知识库"),
 ):
     """获取指标列表，支持分页、搜索和排序"""
     current_value = current if not hasattr(current, "default") else current.default
@@ -30,6 +31,9 @@ def get_metrics_list(
         start_time if not hasattr(start_time, "default") else start_time.default
     )
     end_time_value = end_time if not hasattr(end_time, "default") else end_time.default
+    collection_value = (
+        collection if not hasattr(collection, "default") else collection.default
+    )
 
     # 将字符串转换为datetime对象
     start_datetime = (
@@ -47,6 +51,7 @@ def get_metrics_list(
             db=db,
             start_time=start_datetime,
             end_time=end_datetime,
+            collection=collection_value,
             page=current_value,
             page_size=size_value,
         )

@@ -1,3 +1,5 @@
+from typing import Callable
+
 import streamlit as st
 from controller.knowledge_controller import knowledge_controller
 from controller.model_controller import model_controller
@@ -36,7 +38,7 @@ def model_selector():
     )
 
 
-def collections_selector():
+def collections_selector(func: Callable = None, *args, **kwargs):
     """
     知识库选择器
     """
@@ -45,6 +47,8 @@ def collections_selector():
         st.session_state.collection_select_index = (
             st.session_state.collections_list.index(st.session_state.collection_select)
         )
+        if func:
+            st.session_state.metrics_data = func(*args, **kwargs)
 
     if "collections_list" not in st.session_state:
         st.session_state["collections_list"] = (
@@ -145,10 +149,10 @@ def precision_selector():
     )
 
 
-def render_sidebar():
+def render_sidebar(func: Callable = None, *args, **kwargs):
     with st.sidebar:
         model_selector()
-        collections_selector()
+        collections_selector(func, *args, **kwargs)
         prompt_selector()
         # _, col2, _ = st.columns([1, 5, 1])
         # with col2:

@@ -86,6 +86,7 @@ class MetricService(BaseService[Metric, MetricCreate, MetricUpdate]):
         start_time: datetime,
         end_time: datetime,
         model: Optional[str] = None,
+        collection: Optional[str] = None,
         page: int = 1,
         page_size: int = 20,
     ) -> Tuple[List[Metric], int]:
@@ -94,6 +95,8 @@ class MetricService(BaseService[Metric, MetricCreate, MetricUpdate]):
 
         if model:
             filters.append(Metric.model == model)
+        if collection:
+            filters.append(Metric.collections.like(f"%{collection}%"))
 
         order_by = [self.order_by_field("create_time", descending=True)]
 
