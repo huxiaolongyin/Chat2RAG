@@ -1,6 +1,9 @@
 from functools import lru_cache
 from typing import Any, Type, TypeVar
 
+from chat2rag.logger import get_logger
+
+logger = get_logger(__name__)
 T = TypeVar("T")
 
 
@@ -34,5 +37,9 @@ def create_pipeline(cls: Type[T], *args: Any, **kwargs: Any) -> T:
     Generic cached pipeline creator.
     Converts kwargs to hashable format before caching.
     """
-    hashable_kwargs = _make_hashable_kwargs(**kwargs)
-    return _cached_create_pipeline(cls, args, hashable_kwargs)
+    try:
+        hashable_kwargs = _make_hashable_kwargs(**kwargs)
+        return _cached_create_pipeline(cls, args, hashable_kwargs)
+    except Exception as e:
+        logger.warning(f"Failed to create the cache pipeline：{e}")
+        return cls(args, **kwargs)

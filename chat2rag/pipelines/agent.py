@@ -30,7 +30,10 @@ content: {{ doc.content }} score: {{ doc.score }}
 
 class AgentPipeline(BasePipeline[Pipeline]):
     def __init__(self, collections: List[str], model: str, tools: List[str] = []):
-        self._collections = collections[0]
+        if collections:
+            self._collections = collections[0]
+        else:
+            self._collections = "None"
         self._model = model
         if tools:
             self._tools = tool_manager.fetch_tools(tools)
