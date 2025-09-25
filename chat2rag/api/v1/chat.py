@@ -193,7 +193,7 @@ async def _handle_exact_query(
 
         if not answer:
             logger.info(
-                "No exact match found for query: '%s', falling back to RAG",
+                "No relevant documents were found in the precise mode: '%s', falling back to RAG",
                 query,
             )
             return None

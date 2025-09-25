@@ -189,9 +189,6 @@ class QAQdrantDocumentStore(QdrantDocumentStore):
             doc_type="question",
         )
         if not response:
-            logger.info(
-                "No relevant documents were found in the precise mode. Prepare the fallback after the precise mode"
-            )
             return None
         filters = {
             "operator": "AND",
