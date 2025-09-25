@@ -123,15 +123,6 @@ class ChatQueryParams(BaseModel):
 
             return eval(generation_kwargs)
 
-    @field_validator("prompt_name", mode="after")
-    def parse_prompt_name(cls, prompt_name):
-        with db_session() as db:
-            prompt_objs = db.query(Prompt).all()
-            prompt_list = [obj.prompt_name for obj in prompt_objs]
-
-            if prompt_name not in prompt_list:
-                return "默认"
-
 
 async def _stream_answer(
     answer: str,
