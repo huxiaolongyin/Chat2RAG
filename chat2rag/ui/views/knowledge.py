@@ -65,15 +65,19 @@ def export_documents():
 
 def process_uploaded_file(file) -> List[QADocument]:
     """
-    处理上传的Excel文件
+    处理上传的Excel或CSV文件
     """
-    df = pd.read_excel(file, header=0)
+    # 判断文件类型并读取
+    if file.name.endswith(".csv"):
+        df = pd.read_csv(file, sep=";")
+    else:
+        df = pd.read_excel(file, header=0)
+
     result = []
     for _, row in df.iterrows():
         question = row["问题"]
         answer = row["答案"]
         result.append(QADocument(question=question, answer=answer))
-
     return result
 
 
@@ -157,7 +161,7 @@ def render_upload_section():
     )
 
     uploaded_file = st.file_uploader(
-        "上传知识", type=["xlsx", "xls"], label_visibility="collapsed"
+        "上传知识", type=["xlsx", "xls", "csv"], label_visibility="collapsed"
     )
 
     if uploaded_file:
