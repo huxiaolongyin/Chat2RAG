@@ -75,7 +75,13 @@ async def get_collections(
                 collection
                 for collection in collection_list
                 if collection_name.lower() in collection["collection_name"].lower()
-                and collection["collection_name"].lower() != "none"
+                or collection["collection_name"] != "None"
+            ]
+        else:
+            collection_list = [
+                collection
+                for collection in collection_list
+                if collection["collection_name"] != "None"
             ]
 
         # 排序

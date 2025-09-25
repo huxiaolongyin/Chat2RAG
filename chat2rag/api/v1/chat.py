@@ -76,7 +76,7 @@ class ChatQueryParams(BaseModel):
     chat_rounds: int = Field(
         default=1, ge=0, le=30, alias="chatRounds", description="聊天轮数"
     )
-    prompt_name: str = Field("", alias="promptName", description="提示词名称选择")
+    prompt_name: str = Field("默认", alias="promptName", description="提示词名称选择")
     intention_model: str = Field(
         default=Config.DEFAULT_MODELS["intention"],
         alias="intentionModel",
@@ -292,12 +292,15 @@ async def _(
     rag_prompt_template = CONFIG.RAG_PROMPT_TEMPLATE
 
     # 提示词
-    if params.prompt_name:
-        prompt = (
-            db.query(Prompt).filter(Prompt.prompt_name == params.prompt_name).first()
-        )
-        if prompt:
-            rag_prompt_template = prompt.prompt_text
+    prompt = (
+        db.query(Prompt).filter(Prompt.prompt_name == params.prompt_name).first()
+        if params.prompt_name
+        else None
+    )
+    if not prompt:
+        prompt = db.query(Prompt).filter(Prompt.prompt_name == "默认").first()
+
+    rag_prompt_template = prompt.prompt_text
 
     # 使用精准匹配模式，直接索引问题，然后匹配答案
     if params.precision_mode == 1:
