@@ -18,8 +18,8 @@ def get_stream_response(query: str) -> requests.Response:
     获取流式响应
     """
     # tools: list = [tool_controller.tools.get(t) for t in st.session_state.tool_select]
-    if st.session_state.web_search_mode_state:
-        tools = tools + ["web_search"]
+    # if st.session_state.web_search_mode_state:
+    #     tools = tools + ["web_search"]
     json_content = {
         "generatorModel": st.session_state.model_select,
         "promptName": st.session_state.prompt_select,
