@@ -14,7 +14,7 @@ from chat2rag.api.schema import Error, Success
 from chat2rag.config import CONFIG
 from chat2rag.core.document.qdrant import QAQdrantDocumentStore
 from chat2rag.core.executor import executor, run_async_in_thread
-from chat2rag.database.connection import get_db
+from chat2rag.database.connection import db_session, get_db
 from chat2rag.database.models import Prompt
 from chat2rag.logger import logger
 from chat2rag.pipelines.rag_pipeline import RAGPipeline
@@ -122,6 +122,15 @@ class ChatQueryParams(BaseModel):
         else:
 
             return eval(generation_kwargs)
+
+    @field_validator("prompt_name", mode="after")
+    def parse_prompt_name(cls, prompt_name):
+        with db_session() as db:
+            prompt_objs = db.query(Prompt).all()
+            prompt_list = [obj.prompt_name for obj in prompt_objs]
+
+            if prompt_name not in prompt_list:
+                return "默认"
 
 
 async def _stream_answer(
