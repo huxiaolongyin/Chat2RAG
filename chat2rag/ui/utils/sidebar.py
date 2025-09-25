@@ -12,10 +12,10 @@ def model_selector():
     if "model_list" not in st.session_state:
         st.session_state["model_list"] = model_controller.get_model_list()
     if "model_select_index" not in st.session_state:
-        if "Qwen2.5-72B" in st.session_state["model_list"]:
+        if "Qwen2.5-32B" in st.session_state["model_list"]:
             st.session_state["model_select_index"] = st.session_state[
                 "model_list"
-            ].index("Qwen2.5-72B")
+            ].index("Qwen2.5-32B")
         else:
             st.session_state["model_select_index"] = 0
     if "model_select" not in st.session_state:
