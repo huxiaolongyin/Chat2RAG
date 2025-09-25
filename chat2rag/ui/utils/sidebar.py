@@ -150,9 +150,9 @@ def render_sidebar():
         model_selector()
         collections_selector()
         prompt_selector()
-        _, col2, _ = st.columns([1, 5, 1])
-        with col2:
-            web_selector()
+        # _, col2, _ = st.columns([1, 5, 1])
+        # with col2:
+        #     web_selector()
         _, col2, _ = st.columns([1, 5, 1])
         with col2:
             precision_selector()

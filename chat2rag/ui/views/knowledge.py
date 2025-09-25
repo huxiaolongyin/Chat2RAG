@@ -292,14 +292,14 @@ def main():
         on_change=get_documents_list,
     )
 
-    # 删除选中知识
-    delete_data = [item for item in knowledge_table if item["select"]]
-    st.button(
-        "删除选中知识",
-        width="stretch",
-        on_click=del_knowledge_dialog,
-        args=(delete_data,),
-    )
+    # # 删除选中知识
+    # delete_data = [item for item in knowledge_table if item["select"]]
+    # st.button(
+    #     "删除选中知识",
+    #     width="stretch",
+    #     on_click=del_knowledge_dialog,
+    #     args=(delete_data,),
+    # )
 
     if st.session_state["doc_list"]:
         st.download_button(
