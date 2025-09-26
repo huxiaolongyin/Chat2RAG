@@ -1,10 +1,8 @@
-from contextlib import contextmanager
-from typing import Generator, List
+from typing import List
 
 from haystack.tools import Tool
-from sqlalchemy.orm import Session
 
-from chat2rag.database.connection import SessionLocal
+from chat2rag.database.connection import db_session
 from chat2rag.database.models import CustomTool
 from chat2rag.enums import Status, ToolType
 from chat2rag.logger import get_logger
@@ -28,14 +26,6 @@ class ToolManager:
     def __init__(self):
         self.all_tools = self._fetch_all_tool()
 
-    @contextmanager
-    def get_db_session(self) -> Generator[Session, None, None]:
-        db = SessionLocal()
-        try:
-            yield db
-        finally:
-            db.close()
-
     def _fetch_all_tool(self) -> List[Tool]:
         """
         Fetch all tools from database
@@ -43,28 +33,17 @@ class ToolManager:
 
         all_tools = []
 
-        with self.get_db_session() as db:
+        with db_session() as db:
             # Build basic queries
-            base_query = db.query(CustomTool).filter(
-                CustomTool.status == Status.ENABLED
+            enabled_tools = (
+                db.query(CustomTool).filter(CustomTool.status == Status.ENABLED).all()
             )
-            # Obtain different types of tools respectively
-            api_tools = base_query.filter(CustomTool.type == ToolType.API).all()
-            mcp_tools = base_query.filter(CustomTool.type != ToolType.API).all()
 
-            # Processing API tools
-            for api_tool in api_tools:
-                fetched_tools = api_tool._fetch_api_tools()
-                all_tools.extend(fetched_tools.tools)
-
-            # Processing MCP tools
-            for mcp_tool in mcp_tools:
-                try:
-                    fetched_tools = mcp_tool._fetch_mcp_tools()
-                    all_tools.extend(fetched_tools.tools)
-
-                except Exception as e:
-                    logger.warning("Get the tool %s failed: %s", mcp_tool.name, e)
+            for t in enabled_tools:
+                if t.type == ToolType.API:
+                    all_tools.extend(t._fetch_api_tools().tools)
+                else:
+                    all_tools.extend(t._fetch_mcp_tools().tools)
 
         if not all_tools:
             raise ValueError("No available tools were found")
