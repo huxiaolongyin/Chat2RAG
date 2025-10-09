@@ -10,20 +10,11 @@ from utils.sidebar import render_sidebar
 
 def render_metrics_filters():
     """渲染指标过滤器"""
-    st.subheader("筛选条件")
 
-    col1, col2, col3, col4 = st.columns(4)
+    col1, col2, col3, col4, col5 = st.columns(5)
 
     # 时间范围选择
     with col1:
-        default_start_date = "2025-01-01"
-        default_end_date = (datetime.now() + timedelta(days=1)).strftime("%Y-%m-%d")
-
-        if "metric_start_date" not in st.session_state:
-            st.session_state.metric_start_date = default_start_date
-        if "metric_end_date" not in st.session_state:
-            st.session_state.metric_end_date = default_end_date
-
         start_date = st.date_input(
             "开始日期",
             datetime.strptime(st.session_state.metric_start_date, "%Y-%m-%d"),
@@ -40,9 +31,6 @@ def render_metrics_filters():
         st.session_state.metric_end_date = end_date.strftime("%Y-%m-%d")
 
     with col3:
-        if "metric_current_page" not in st.session_state:
-            st.session_state.metric_current_page = 1
-
         current_page = st.number_input(
             "页码",
             min_value=1,
@@ -53,18 +41,23 @@ def render_metrics_filters():
         st.session_state.metric_current_page = current_page
 
     with col4:
-        if "metric_page_size" not in st.session_state:
-            st.session_state.metric_page_size = 10
-
         page_size = st.selectbox(
             "每页显示",
-            options=[10, 20, 50, 100],
-            index=[10, 20, 50, 100].index(st.session_state.metric_page_size),
+            options=[10, 20, 50, 100, 9999],
+            index=[10, 20, 50, 100, 9999].index(st.session_state.metric_page_size),
             key="metric_size_input",
         )
         st.session_state.metric_page_size = page_size
+    with col5:
+        options = [""]
+        options.extend(st.session_state.collections_list)
+        st.selectbox(
+            "场景查询",
+            options=options,
+            key="collection_metric_select",
+        )
 
-    # 刷新按钮
+    # 查询按钮
     if st.button("查询", width="stretch", type="primary"):
         st.session_state.metrics_data = load_metrics_data()
         st.rerun()
@@ -77,7 +70,7 @@ def load_metrics_data():
         size=st.session_state.metric_page_size,
         start_time=st.session_state.metric_start_date,
         end_time=st.session_state.metric_end_date,
-        collection=st.session_state.collection_select,
+        collection=st.session_state.collection_metric_select,
     )
 
 
@@ -108,12 +101,13 @@ def render_metrics_table(metrics):
 
     # 重命名列以便更好地显示
     column_map = {
-        "createTime": "创建时间",
+        "collections": "场景",
         "model": "模型",
         "question": "问题",
         "answer": "回答",
         "firstResponseMs": "首次响应时间",
         "totalMs": "总响应时间",
+        "createTime": "创建时间",
     }
 
     df = df.rename(columns=column_map)
@@ -139,19 +133,30 @@ def render_metrics_table(metrics):
 def render_metrics_stats(metrics):
     """渲染指标统计图表"""
 
-    st.subheader(f"{st.session_state.collection_select}指标统计")
+    df = pd.DataFrame(metrics)
     if not metrics or len(metrics) == 0:
         st.text("暂无数据")
         return
 
-    tab1, tab2, tab3 = st.tabs(["对话历史", "响应时间分析", "模型使用分布"])
+    tab1, tab2, tab3, tab4 = st.tabs(
+        ["对话历史", "场景分布", "响应时间分析", "模型分布"]
+    )
     with tab1:
-        # render_metrics_filters()
         render_metrics_table(metrics)
-    with tab2:
-        # 创建响应时间数据
-        df = pd.DataFrame(metrics)
 
+    # 场景分布
+    with tab2:
+        if "collections" in df.columns:
+            model_counts = df["collections"].value_counts().reset_index()
+            model_counts.columns = ["collections", "count"]
+
+            fig = px.pie(
+                model_counts, values="count", names="collections", title="场景分布"
+            )
+            st.plotly_chart(fig, config={"width": "stretch"})
+
+    # 响应时间分析
+    with tab3:
         if "totalMs" in df.columns and "createTime" in df.columns:
             # 确保时间格式正确
             df["createTime"] = pd.to_datetime(df["createTime"])
@@ -168,10 +173,9 @@ def render_metrics_stats(metrics):
                 labels={"createTime": "时间", "firstResponseMs": "响应时间(ms)"},
                 markers=True,  # 添加这个参数显示数据点
             )
-            st.plotly_chart(fig, width="stretch")
-
-    with tab3:
-        # 创建模型使用分布饼图
+            st.plotly_chart(fig, config={"width": "stretch"})
+    # 模型使用分布
+    with tab4:
         if "model" in df.columns:
             model_counts = df["model"].value_counts().reset_index()
             model_counts.columns = ["model", "count"]
@@ -179,23 +183,40 @@ def render_metrics_stats(metrics):
             fig = px.pie(
                 model_counts, values="count", names="model", title="模型使用分布"
             )
-            st.plotly_chart(fig, width="stretch")
+            st.plotly_chart(fig, config={"width": "stretch"})
+
+
+def init_state():
+    default_start_date = "2025-01-01"
+    default_end_date = (datetime.now() + timedelta(days=1)).strftime("%Y-%m-%d")
+    if "metric_start_date" not in st.session_state:
+        st.session_state.metric_start_date = default_start_date
+    if "metric_end_date" not in st.session_state:
+        st.session_state.metric_end_date = default_end_date
+    if "metric_current_page" not in st.session_state:
+        st.session_state.metric_current_page = 1
+    if "metric_page_size" not in st.session_state:
+        st.session_state.metric_page_size = 10
+    if "collection_metric_select" not in st.session_state:
+        st.session_state.collection_metric_select = ""
+    # 加载数据
+    if "metrics_data" not in st.session_state:
+        st.session_state.metrics_data = load_metrics_data()
 
 
 def metric_page():
     """指标页面主体"""
-    # 渲染过滤器
-    render_metrics_filters()
-
-    # 加载数据
-    if "metrics_data" not in st.session_state:
-        st.session_state.metrics_data = load_metrics_data()
+    # 初始化状态
+    init_state()
 
     # 渲染数据表格
     # render_metrics_table(metrics)
 
     # 如果有数据，渲染统计图表
     render_metrics_stats(st.session_state.metrics_data)
+
+    # 渲染过滤器
+    render_metrics_filters()
 
 
 def main():

@@ -19,7 +19,7 @@ classifiers = [
 ]
 dependencies = [
     # 页面UI
-    "streamlit>=1.43.0",
+    "streamlit==1.50.0",
     "requests>=2.31.0",
     "streamlit-antd-components>=0.3.2",
     "openpyxl>=3.1.5",
@@ -38,7 +38,6 @@ dependencies = [
     "pyinstrument==5.0.0",
     "plotly==6.3.0",
     "xlrd",
-
 
     # 数据库
     "psycopg2-binary>=2.9.10",

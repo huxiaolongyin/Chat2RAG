@@ -15,7 +15,7 @@ metric_service = MetricService()
 @router.get("/list", summary="获取对话历史")
 def get_metrics_list(
     current: int = Query(1, ge=1, description="页码"),
-    size: int = Query(10, ge=1, le=100, description="每页数量"),
+    size: int = Query(10, ge=1, le=9999, description="每页数量"),
     start_time: Optional[str] = Query(
         "2023-01-01", description="开始时间", alias="startTime"
     ),
@@ -58,12 +58,13 @@ def get_metrics_list(
         data = []
         for metric in metrics:
             parse_content = {
-                "create_time": metric.create_time.strftime("%Y-%m-%d %H:%M:%S"),
+                "collections": metric.collections,
                 "model": metric.model,
                 "question": metric.question,
                 "answer": metric.answer,
                 "first_response_ms": metric.first_response_ms,
                 "total_ms": metric.total_ms,
+                "create_time": metric.create_time.strftime("%Y-%m-%d %H:%M:%S"),
             }
             data.append(parse_content)
 
