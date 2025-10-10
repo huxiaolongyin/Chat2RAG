@@ -82,13 +82,20 @@ class StreamHandlerV1:
         self.metrics["chat_id"] = chat_id
         self.metrics["chat_rounds"] = chat_rounds
 
-    def set_query_info(self, question: str, model: str = None, prompt: str = None):
+    def set_query_info(
+        self,
+        question: str,
+        model: str = None,
+        prompt: str = None,
+        precision_mode: bool = False,
+    ):
         """设置查询信息"""
         self.metrics["question"] = question
         if model:
             self.metrics["model"] = model
         if prompt:
             self.metrics["prompt"] = prompt
+        self.metrics["precision_mode"] = precision_mode
 
     def set_tool_info(self, tools: str = None, tool_time_ms: float = 0.0):
         """设置工具信息"""

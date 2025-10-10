@@ -128,6 +128,7 @@ class ChatHistory:
         db: Session,
         rounds: int = 1,
         tag_get: bool = True,
+        collection: str = None,
     ) -> List[ChatMessage]:
         """
         get the history messages from the cache
@@ -138,7 +139,10 @@ class ChatHistory:
             chat_id,
             rounds,
         )
-        prompt_template = get_prompt_template(prompt_name, db)
+        extra_prompt = ""
+        if prompt_name == "默认" and collection:
+            extra_prompt = f"你当前处于{collection}场景下。\n"
+        prompt_template = extra_prompt + get_prompt_template(prompt_name, db)
         history_messages = [ChatMessage.from_system(prompt_template)]
         cache_messages = self.message_cache.get(chat_id, [])
         if cache_messages:

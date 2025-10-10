@@ -263,7 +263,12 @@ def record_info(handler: StreamHandlerV1, params: ChatQueryParams):
     Record the interaction information of the LLM
     """
     handler.set_chat_info(chat_id=params.chat_id, chat_rounds=params.chat_rounds)
-    handler.set_query_info(question=params.query, prompt=params.prompt_name)
+    handler.set_query_info(
+        question=params.query,
+        model=params.generator_model,
+        prompt=params.prompt_name,
+        precision_mode=params.precision_mode,
+    )
     handler.set_collection_info(collections=params.collection_name)
 
 
@@ -304,6 +309,7 @@ async def _(
             db,
             params.chat_rounds,
             tag_get=False,
+            collection=params.collection_name,
         )
 
     # 启动后台任务
