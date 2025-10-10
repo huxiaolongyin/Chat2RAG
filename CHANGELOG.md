@@ -4,7 +4,7 @@
 
 这个格式基于 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)，还有这个原则遵循 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [unreleased]
+## [V0.2.4] - 2025-10-10
 ### Added
 - 增加对 csv 文件的解析
 - 新增指标搜索中，对知识库(场景下)的过滤
