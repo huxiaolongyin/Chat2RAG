@@ -1,6 +1,6 @@
+import ast
 import asyncio
 from enum import Enum
-from functools import lru_cache
 from time import perf_counter
 from typing import List, Optional
 
@@ -14,7 +14,7 @@ from chat2rag.api.schema import Error, Success
 from chat2rag.config import CONFIG
 from chat2rag.core.document.qdrant import QAQdrantDocumentStore
 from chat2rag.core.executor import executor, run_async_in_thread
-from chat2rag.database.connection import db_session, get_db
+from chat2rag.database.connection import get_db
 from chat2rag.database.models import Prompt
 from chat2rag.logger import logger
 from chat2rag.pipelines.rag_pipeline import RAGPipeline
@@ -24,28 +24,6 @@ from chat2rag.utils.stream_v1 import StreamHandlerV1
 
 router = APIRouter()
 chat_history = ChatHistory()
-
-
-class Config:
-    """配置常量集中管理"""
-
-    DEFAULT_MODELS = {
-        "intention": "Qwen2.5-14B",
-        "generator": "Qwen2.5-32B",
-    }
-
-    GENERATION_KWARGS = {
-        "temperature": 0.1,
-        "presence_penalty": -0.2,
-        "max_tokens": 150,
-    }
-
-    MODEL_MAP = {
-        "Qwen2.5-14B": "Qwen/Qwen2.5-14B-Instruct",
-        "Qwen2.5-32B": "Qwen/Qwen2.5-32B-Instruct",
-        "Qwen2.5-72B": "Qwen/Qwen2.5-72B-Instruct",
-        "Deepseek-v3": "deepseek-ai/DeepSeek-V3.1",
-    }
 
 
 # 使用枚举
@@ -78,12 +56,12 @@ class ChatQueryParams(BaseModel):
     )
     prompt_name: str = Field("默认", alias="promptName", description="提示词名称选择")
     intention_model: str = Field(
-        default=Config.DEFAULT_MODELS["intention"],
+        default=CONFIG.DEFAULT_MODELS["intention"],
         alias="intentionModel",
         description="意图模型",
     )
     generator_model: str = Field(
-        default=Config.DEFAULT_MODELS["generator"],
+        default=CONFIG.DEFAULT_MODELS["generator"],
         alias="generatorModel",
         description="生成模型",
     )
@@ -99,29 +77,44 @@ class ChatQueryParams(BaseModel):
 
     @field_validator("generator_model", mode="after")
     def parse_generator_model(cls, model):
-        if model in Config.MODEL_MAP.keys():
-            return Config.MODEL_MAP.get(model)
-        else:
+        if model in CONFIG.MODEL_MAP:
+            return CONFIG.MODEL_MAP[model]
+        elif model in CONFIG.VALID_MODEL_VALUES:
             return model
+        else:
+            logger.warning(
+                f"Invalid generator_model: {model!r}. Must be one of {sorted(CONFIG.VALID_MODEL_VALUES)}"
+            )
+            return CONFIG.DEFAULT_MODEL
 
     @field_validator("intention_model", mode="after")
     def parse_intention_model(cls, model):
-        if model in Config.MODEL_MAP.keys():
-            return Config.MODEL_MAP.get(model)
-        else:
+        if model in CONFIG.MODEL_MAP:
+            return CONFIG.MODEL_MAP[model]
+        elif model in CONFIG.VALID_MODEL_VALUES:
             return model
+        else:
+            logger.warning(
+                f"Invalid intention_model: {model!r}. Must be one of {sorted(CONFIG.VALID_MODEL_VALUES)}"
+            )
+            return CONFIG.DEFAULT_MODEL
 
     @field_validator("generation_kwargs", mode="after")
     def parse_generation_kwargs(cls, generation_kwargs):
-        if generation_kwargs == "{}" or generation_kwargs == "":
-            return {
-                "temperature": 0.1,
-                "presence_penalty": -0.2,
-                "max_tokens": 150,
-            }
-        else:
+        # Start with the default config
+        merged_kwargs = dict(CONFIG.GENERATION_KWARGS)
 
-            return eval(generation_kwargs)
+        # If user provided non-empty and non-"{}" string, parse and update
+        if generation_kwargs and generation_kwargs != "{}":
+            try:
+                user_kwargs = ast.literal_eval(generation_kwargs)
+                if not isinstance(user_kwargs, dict):
+                    raise ValueError("generation_kwargs must be a dictionary string.")
+                merged_kwargs.update(user_kwargs)
+            except (ValueError, SyntaxError) as e:
+                raise ValueError(f"Invalid generation_kwargs format: {e}")
+
+        return merged_kwargs
 
 
 async def _stream_answer(
@@ -217,7 +210,6 @@ async def _handle_exact_query(
 
 async def _process_rag_pipeline(
     params: ChatQueryParams,
-    rag_prompt_template,
     history_messages: list,
     handler: StreamHandlerV1,
     start_time: float,
@@ -234,7 +226,6 @@ async def _process_rag_pipeline(
         )
         result = await pipeline.run(
             query=params.query,
-            rag_prompt_template=rag_prompt_template,
             top_k=params.top_k,
             score_threshold=params.score_threshold,
             messages=history_messages,
@@ -289,8 +280,6 @@ async def _(
     record_info(handler=handler, params=params)
     is_batch = batch_or_stream == ProcessType.BATCH
 
-    rag_prompt_template = CONFIG.RAG_PROMPT_TEMPLATE
-
     # 提示词
     prompt = (
         db.query(Prompt).filter(Prompt.prompt_name == params.prompt_name).first()
@@ -299,8 +288,6 @@ async def _(
     )
     if not prompt:
         prompt = db.query(Prompt).filter(Prompt.prompt_name == "默认").first()
-
-    rag_prompt_template = prompt.prompt_text
 
     # 使用精准匹配模式，直接索引问题，然后匹配答案
     if params.precision_mode == 1:
@@ -322,9 +309,7 @@ async def _(
     # 启动后台任务
     executor.submit(
         run_async_in_thread,
-        _process_rag_pipeline(
-            params, rag_prompt_template, history_messages, handler, start_time
-        ),
+        _process_rag_pipeline(params, history_messages, handler, start_time),
     )
 
     return StreamingResponse(

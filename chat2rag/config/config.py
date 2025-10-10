@@ -168,14 +168,22 @@ class Config:
 
     # MODEL
     MODEL_LIST = [
-        # {"name": "Qwen-Plus", "id": "qwen-plus"},
         {"name": "Deepseek-v3", "id": "Pro/deepseek-ai/DeepSeek-V3"},
         {"name": "Qwen2.5-14B", "id": "Qwen/Qwen2.5-14B-Instruct"},
         {"name": "Qwen2.5-32B", "id": "Qwen/Qwen2.5-32B-Instruct"},
         {"name": "Qwen2.5-72B", "id": "Qwen/Qwen2.5-72B-Instruct"},
         {"name": "Qwen3-32B", "id": "Qwen/Qwen3-32B"},
         {"name": "Qwen3-14B", "id": "Qwen/Qwen3-14B"},
+        {"name": "Qwen3-235B", "id": "Qwen/Qwen3-235B-A22B-Instruct-2507"},
     ]
+
+    MODEL_MAP = {item["name"]: item["id"] for item in MODEL_LIST}
+    VALID_MODEL_VALUES = set(MODEL_MAP.keys()) | set(MODEL_MAP.values())
+
+    DEFAULT_MODELS = {
+        "intention": "Qwen2.5-14B",
+        "generator": "Qwen2.5-32B",
+    }
 
     # old_version
     GAODE_API_KEY = load_str_env("GAODE_API_KEY")
