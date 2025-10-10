@@ -90,15 +90,7 @@ def render_sidebar(clear_message: bool = False, show_only: str | None = None):
                     value=st.session_state.get("precision_mode_value", False),
                     key="precision_mode",
                     on_change=lambda: st.session_state.update(
-                        {
-                            "precision_mode_value": st.session_state["precision_mode"],
-                            "threshold_value": (
-                                0.88 if st.session_state["precision_mode"] else 0.60
-                            ),
-                            "threshold": (
-                                0.88 if st.session_state["precision_mode"] else 0.60
-                            ),
-                        }
+                        {"precision_mode_value": st.session_state["precision_mode"]}
                     ),
                     width="stretch",
                 )

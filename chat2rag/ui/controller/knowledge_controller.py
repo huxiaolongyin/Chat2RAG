@@ -81,7 +81,7 @@ class KnowledgeController:
                     "query": query,
                     "type": "question",
                     "topK": st.session_state["topK"],
-                    "scoreThreshold": st.session_state["threshold"],
+                    "scoreThreshold": 0.88,
                 }
                 response = requests.get(self.doc_query_url, params=params, timeout=10)
                 response_data = response.json()
