@@ -1,5 +1,6 @@
 import streamlit as st
 from config import CONFIG
+from utils.initialize import initialize_session
 
 st.set_page_config(
     page_title=CONFIG.TITLE,
@@ -7,6 +8,8 @@ st.set_page_config(
     page_icon="🤖",
 )
 
+# 初始化会话
+initialize_session()
 
 pages = [
     st.Page("views/chat.py", title="ChatBot", icon=":material/forum:"),
@@ -16,5 +19,5 @@ pages = [
     st.Page("views/metric.py", title="指标分析", icon=":material/trending_up:"),
     st.Page("views/version.py", title="版本更新", icon=":material/book:"),
 ]
-pg = st.navigation(pages)
+pg = st.navigation(pages, expanded=True)
 pg.run()

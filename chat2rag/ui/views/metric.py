@@ -4,8 +4,6 @@ import pandas as pd
 import plotly.express as px
 import streamlit as st
 from controller.metric_controller import metric_controller
-from utils.initialize import initialize_page
-from utils.sidebar import render_sidebar
 
 
 def render_metrics_filters():
@@ -231,8 +229,6 @@ def main():
     指标分析页面
     """
     st.title(":chart_with_upwards_trend: 对话历史与分析")
-    initialize_page()
-    render_sidebar(load_metrics_data)
     metric_page()
 
 

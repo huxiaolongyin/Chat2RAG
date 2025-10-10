@@ -1,7 +1,5 @@
 import streamlit as st
 from controller.prompt_controller import prompt_controller
-from utils.initialize import initialize_page
-from utils.sidebar import render_sidebar
 
 
 @st.dialog("提示词管理", width="small")
@@ -46,7 +44,7 @@ def prompt_page():
     for i, col in enumerate(row):
         if i < len(st.session_state.prompt_list):
             with col.container(height=160):
-                st.markdown(f'##### {st.session_state.prompt_list[i]["promptName"]}')
+                st.markdown(f'###### {st.session_state.prompt_list[i]["promptName"]}')
                 st.write(st.session_state.prompt_list[i]["promptIntro"])
                 st.button(
                     "查看",
@@ -70,8 +68,6 @@ def main():
     知识库管理页面
     """
     st.title(":material/face: 提示词管理")
-    initialize_page()
-    render_sidebar()
     prompt_page()
 
 

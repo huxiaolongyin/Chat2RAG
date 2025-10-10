@@ -3,6 +3,7 @@ from dataclasses import asdict
 from typing import List
 
 import requests
+import streamlit as st
 from dataclass.document import QADocument
 
 
@@ -67,17 +68,20 @@ class KnowledgeController:
             json=document_id,
         )
 
-    def query_document(self, collection_name: str, query: str, precision_mode: bool):
+    def query_document(self, query: str):
         """
         获取引用文档
         """
         try:
+            precision_mode = st.session_state["precision_mode"]
             # 精确模式查询
             if precision_mode:
                 params = {
-                    "collectionName": collection_name,
+                    "collectionName": st.session_state["collection_select"],
                     "query": query,
                     "type": "question",
+                    "topK": st.session_state["topK"],
+                    "scoreThreshold": st.session_state["threshold"],
                 }
                 response = requests.get(self.doc_query_url, params=params, timeout=10)
                 response_data = response.json()
@@ -91,9 +95,11 @@ class KnowledgeController:
             # 模糊查询
             if not precision_mode:
                 params = {
-                    "collectionName": collection_name,
+                    "collectionName": st.session_state["collection_select"],
                     "query": query,
                     "type": "qa_pair",
+                    "topK": st.session_state["topK"],
+                    "scoreThreshold": st.session_state["threshold"],
                 }
                 response = requests.get(self.doc_query_url, params=params, timeout=10)
                 response_data = response.json()

@@ -3,7 +3,8 @@ import json
 import requests
 import streamlit as st
 from controller.knowledge_controller import knowledge_controller
-from utils.initialize import init_welcome_page, initialize_page
+
+# from utils.initialize import init_welcome_page, initialize_page
 from utils.sidebar import render_sidebar
 
 # from pyinstrument import Profiler
@@ -21,13 +22,15 @@ def get_stream_response(query: str) -> requests.Response:
     # if st.session_state.web_search_mode_state:
     #     tools = tools + ["web_search"]
     json_content = {
-        "generatorModel": st.session_state.model_select,
-        "promptName": st.session_state.prompt_select,
-        "collectionName": st.session_state.collection_select,
+        "generatorModel": st.session_state["model_select"],
+        "promptName": st.session_state["prompt_select"],
+        "collectionName": st.session_state["collection_select"],
+        "scoreThreshold": st.session_state["threshold"],
+        "topK": st.session_state["topK"],
         "batchOrStream": "batch",
-        "precisionMode": 1 if st.session_state.precision_mode else 0,
+        "precisionMode": 1 if st.session_state["precision_mode"] else 0,
         "query": query,
-        "chatId": str(st.session_state.message_id),
+        "chatId": str(st.session_state["message_id"]),
         "chatRounds": 5,
         # "tools": tools,
         # "flows": ["点菜流程"],
@@ -63,7 +66,6 @@ def process_stream_response(response: requests.Response, placeholder):
     )
     for chunk in response.iter_lines():
         if chunk:
-
             decoded_chunk = json.loads(chunk.decode("utf-8").replace("data: ", ""))
             content = decoded_chunk.get("content")
             tool = decoded_chunk.get("tool")
@@ -171,22 +173,18 @@ def handle_user_input(query: str):
                     message_placeholder.markdown(message["content"])
 
             # 获取引用文档
-            documents = knowledge_controller.query_document(
-                st.session_state.collection_select,
-                query=query,
-                precision_mode=st.session_state.precision_mode,
-            )
+            documents = knowledge_controller.query_document(query=query)
 
             display_references(documents)
 
 
 # TODO
-def transcribe_audio(audio_bytes):
-    """
-    将音频转换为文本
-    使用speech_recognition库处理音频并转为文本
-    """
-    return "暂不支持语音输入"
+# def transcribe_audio(audio_bytes):
+#     """
+#     将音频转换为文本
+#     使用speech_recognition库处理音频并转为文本
+#     """
+#     return "暂不支持语音输入"
 
 
 def main():
@@ -210,26 +208,12 @@ def main():
     chat_container = st.container()
 
     # init_welcome_page()
-    initialize_page()
-    render_sidebar()
+    # initialize_page()
+    render_sidebar(clear_message=True)
 
     # 显示聊天界面
     with chat_container:
         display_chat_history()
-
-    # 使用callback方式存储录音数据到session_state
-    # audio_bytes = st.audio_input(
-    #     "🎤",
-    #     key="audio_recorder",
-    #     label_visibility="hidden",
-    # )
-
-    # # 语音处理逻辑
-    # if audio_bytes is not None:
-    #     with st.spinner("正在识别语音..."):
-    #         text = transcribe_audio(audio_bytes)
-    #         if text:
-    #             handle_user_input(text)
 
     # 正常使用chat_input
     if query := st.chat_input("你想说什么?", accept_file="multiple"):

@@ -1,6 +1,9 @@
 import random
 
 import streamlit as st
+from controller.knowledge_controller import knowledge_controller
+from controller.model_controller import model_controller
+from controller.prompt_controller import prompt_controller
 from streamlit_cookie import EncryptedCookieManager
 from utils.version import version_list
 
@@ -51,18 +54,39 @@ def init_welcome_page():
         welcome_page()
 
 
-def initialize_page():
+def initilize_messages():
+    st.session_state["messages"] = [
+        {"role": "assistant", "content": "你好，有什么可以帮你的吗？"}
+    ]
+    st.session_state["message_id"] = random.randint(100000, 9000000)
+
+
+def initialize_session():
     """
-    初始化知识库列表
+    初始化会话存储
     """
+    # 模型
+    if "model_list" not in st.session_state:
+        st.session_state["model_list"] = model_controller.get_model_list()
+    if "model_select" not in st.session_state:
+        st.session_state["model_select"] = "Qwen2.5-32B"
+
+    # 知识库
+    if "collections_list" not in st.session_state:
+        st.session_state["collections_list"] = (
+            knowledge_controller.get_collection_list()
+        )
+
+    # 提示词
+    if "prompt_list" not in st.session_state:
+        st.session_state["prompt_list"] = prompt_controller.get_prompt_list()
+    if "prompt_name_list" not in st.session_state:
+        st.session_state["prompt_name_list"] = prompt_controller.get_prompt_name_list()
 
     # 如果 "messages" 不存在于会话状态中，则初始化它，用于加载历史消息
     if "messages" not in st.session_state:
-        st.session_state.messages = [
-            {"role": "assistant", "content": "你好，有什么可以帮你的吗？"}
-        ]
-        st.session_state.message_id = random.randint(100000, 9000000)
+        initilize_messages()
 
     # 页码
     if "current" not in st.session_state:
-        st.session_state.current = 1
+        st.session_state["current"] = 1

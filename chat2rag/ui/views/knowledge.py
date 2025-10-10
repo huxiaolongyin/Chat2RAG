@@ -7,7 +7,6 @@ import streamlit as st
 import streamlit_antd_components as sac
 from controller.knowledge_controller import knowledge_controller
 from dataclass.document import QADocument
-from utils.initialize import initialize_page
 from utils.sidebar import render_sidebar
 
 
@@ -120,33 +119,8 @@ def get_documents_list():
     st.session_state["current"] = 1
 
 
-def render_knowledge_table():
-    """
-    渲染知识库表格
-    """
-    get_documents_list()
-
-    data_with_select = [
-        {"select": False, **item} for item in st.session_state["doc_list"]
-    ]
-
-    return st.data_editor(
-        data_with_select,
-        column_config={
-            "select": st.column_config.CheckboxColumn(
-                "选择", help="选择要操作的知识", width="small"
-            ),
-            "id": st.column_config.TextColumn("ID", width="small"),
-            "content": st.column_config.TextColumn("内容", width="large"),
-        },
-        hide_index=True,
-        width="stretch",
-    )
-
-
-def render_upload_section():
+def render_upload_view():
     """渲染上传区域"""
-    st.markdown("---")
     st.markdown("### 上传知识")
 
     if "upload_complete" not in st.session_state:
@@ -255,13 +229,13 @@ def render_upload_section():
             st.rerun()
 
 
-def render_search_bar():
+def render_knowledge_view():
     col1, col2 = st.columns([4, 1])  # 优化列宽比例
 
     with col1:
         st.text_input(
             label="知识搜索",  # 移除重复的标签
-            placeholder="输入关键词搜索知识库...",  # 更友好的提示文本
+            placeholder="输入关键词搜索知识库内容...",  # 更友好的提示文本
             key="document_content",
         )
 
@@ -274,17 +248,24 @@ def render_search_bar():
             type="primary",  # 使用主要按钮样式
         )
 
+    get_documents_list()
 
-def main():
-    """
-    知识库管理页面
-    """
-    st.title(":material/auto_stories: 知识库管理")
-    initialize_page()
-    render_sidebar()
-    render_search_bar()
+    data_with_select = [
+        {"select": False, **item} for item in st.session_state["doc_list"]
+    ]
 
-    knowledge_table = render_knowledge_table()
+    knowledge_table = st.data_editor(
+        data_with_select,
+        column_config={
+            "select": st.column_config.CheckboxColumn(
+                "选择", help="选择要操作的知识", width="small"
+            ),
+            "id": st.column_config.TextColumn("ID", width="small"),
+            "content": st.column_config.TextColumn("内容", width="large"),
+        },
+        hide_index=True,
+        width="stretch",
+    )
 
     # 分页
     sac.pagination(
@@ -296,24 +277,33 @@ def main():
         on_change=get_documents_list,
     )
 
-    # # 删除选中知识
-    # delete_data = [item for item in knowledge_table if item["select"]]
-    # st.button(
-    #     "删除选中知识",
-    #     width="stretch",
-    #     on_click=del_knowledge_dialog,
-    #     args=(delete_data,),
-    # )
+    # 删除选中知识
+    delete_data = [item for item in knowledge_table if item["select"]]
+
+    st.button(
+        "删除选中知识",
+        width="stretch",
+        on_click=del_knowledge_dialog,
+        args=(delete_data,),
+    )
 
     if st.session_state["doc_list"]:
         st.download_button(
-            "导出知识库",
+            "导出所有知识库",
             data=export_documents(),
             file_name=f"{st.session_state['collection_select']}.xlsx",
             width="stretch",
             type="primary",
         )
-    render_upload_section()
 
 
-main()
+st.title(":material/auto_stories: 知识库管理")
+
+render_sidebar(show_only="collection_select")
+
+tab1, tab2 = st.tabs(["知识库查看", "知识库上传"])
+with tab1:
+    render_knowledge_view()
+
+with tab2:
+    render_upload_view()
