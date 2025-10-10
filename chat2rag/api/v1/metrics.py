@@ -20,7 +20,7 @@ def get_metrics_list(
         "2023-01-01", description="开始时间", alias="startTime"
     ),
     end_time: Optional[str] = Query(
-        "2026-01-01", description="结束时间", alias="endTime"
+        "2099-01-01", description="结束时间", alias="endTime"
     ),
     collection: Optional[str] = Query(description="知识库"),
 ):
@@ -42,9 +42,11 @@ def get_metrics_list(
         else datetime(2023, 1, 1)
     )
     end_datetime = (
-        datetime.strptime(end_time_value, "%Y-%m-%d")
+        datetime.strptime(end_time_value, "%Y-%m-%d").replace(
+            hour=23, minute=59, second=59
+        )
         if end_time_value
-        else datetime(2026, 1, 1)
+        else datetime(2026, 1, 1, 23, 59, 59)
     )
     with db_session() as db:
         metrics, total = metric_service.get_metrics_by_time_range(
@@ -58,13 +60,18 @@ def get_metrics_list(
         data = []
         for metric in metrics:
             parse_content = {
+                "create_time": metric.create_time.strftime("%Y-%m-%d %H:%M:%S"),
                 "collections": metric.collections,
-                "model": metric.model,
                 "question": metric.question,
                 "answer": metric.answer,
                 "first_response_ms": metric.first_response_ms,
                 "total_ms": metric.total_ms,
-                "create_time": metric.create_time.strftime("%Y-%m-%d %H:%M:%S"),
+                "model": metric.model,
+                "chat_id": metric.chat_id,
+                "chat_rounds": metric.chat_rounds,
+                "tools": metric.tools,
+                "precision_mode": metric.precision_mode,
+                "prompt": metric.prompt,
             }
             data.append(parse_content)
 

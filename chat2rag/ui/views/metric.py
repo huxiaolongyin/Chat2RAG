@@ -102,15 +102,22 @@ def render_metrics_table(metrics):
     # 重命名列以便更好地显示
     column_map = {
         "collections": "场景",
-        "model": "模型",
+        "prompt": "提示词",
         "question": "问题",
         "answer": "回答",
-        "firstResponseMs": "首次响应时间",
-        "totalMs": "总响应时间",
+        "firstResponseMs": "首次响应时间 (ms)",
+        "totalMs": "总响应时间 (ms)",
+        "model": "模型",
+        "chatId": "对话ID",
+        "chatRounds": "对话轮次",
+        "tools": "工具调用",
+        "precisionMode": "精准模式",
         "createTime": "创建时间",
     }
 
     df = df.rename(columns=column_map)
+    ordered_columns = [v for k, v in column_map.items() if v in df.columns]
+    df = df[ordered_columns]
 
     # 显示数据表格
     st.dataframe(
@@ -187,8 +194,8 @@ def render_metrics_stats(metrics):
 
 
 def init_state():
-    default_start_date = "2025-01-01"
-    default_end_date = (datetime.now() + timedelta(days=1)).strftime("%Y-%m-%d")
+    default_start_date = (datetime.now() - timedelta(days=7)).strftime("%Y-%m-%d")
+    default_end_date = datetime.now().strftime("%Y-%m-%d")
     if "metric_start_date" not in st.session_state:
         st.session_state.metric_start_date = default_start_date
     if "metric_end_date" not in st.session_state:
