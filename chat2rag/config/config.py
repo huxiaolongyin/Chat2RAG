@@ -175,6 +175,7 @@ class Config:
         {"name": "Qwen3-32B", "id": "Qwen/Qwen3-32B"},
         {"name": "Qwen3-14B", "id": "Qwen/Qwen3-14B"},
         {"name": "Qwen3-235B", "id": "Qwen/Qwen3-235B-A22B-Instruct-2507"},
+        {"name": "DeepSeek-V3.1", "id": "Pro/deepseek-ai/DeepSeek-V3.1-Terminus"},
     ]
 
     MODEL_MAP = {item["name"]: item["id"] for item in MODEL_LIST}
