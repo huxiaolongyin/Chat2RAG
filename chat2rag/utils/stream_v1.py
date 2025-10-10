@@ -1,3 +1,4 @@
+import copy
 import datetime
 import json
 import uuid
@@ -167,87 +168,97 @@ class StreamHandlerV1:
             or len(batch_content) >= self.config.batch_size
         )
 
+    def _is_split_punctuation(self, char):
+        # 定义需要在何处分割的符号，包括中文标点和英文标点
+        return char in self.config.split_symbols
+
+    def __handle_first_response(self):
+        """处理首次响应，记录时间指标"""
+        elapsed = perf_counter() - self.stream_start
+        self.metrics["first_response_ms"] = round(elapsed * 1000, 2)
+        logger.info(f"The first reply time of the Agent pipeline. Cost: {elapsed:.3f}s")
+        return False
+
+    def __yield_data(self, content="", meta=None, **kwargs):
+        """生成并发送数据"""
+        data = self._create_message(content, meta, **kwargs)
+        return f"data: {json.dumps(data, ensure_ascii=False)}\n\n"
+
     def get_stream(self, is_batch: bool = False):
         first_response = True  # 添加标志位跟踪第一条响应
         message_id = str(uuid.uuid4().hex[:16])
-        if not is_batch:
+        current_batch = []
 
-            # 流式处理模式
-            while True:
-                chunk = self.queue.get()
-                if isinstance(chunk, dict) and chunk.get("type") == "doc_info":
-                    self.doc_length = chunk["count"]
-                    continue
-                if chunk == "[START]":
-                    # 开始处理新一批数据
-                    data = self._create_message("", is_start=1, message_id=message_id)
-                    yield f"data: {json.dumps(data, ensure_ascii=False)}\n\n"
-                    continue
+        while True:
+            chunk = self.queue.get()
 
-                if chunk == "[END]":
-                    break
+            # 处理特殊控制消息
+            if isinstance(chunk, dict) and chunk.get("type") == "doc_info":
+                self.doc_length = chunk["count"]
+                continue
 
+            if chunk == "[START]":
+                yield self.__yield_data("", is_start=1, message_id=message_id)
+                continue
+
+            if chunk == "[END]":
+                # 处理最后一批数据
+                if is_batch and current_batch:
+                    combined_content = "".join([c.content for c in current_batch])
+
+                    yield self.__yield_data(
+                        combined_content,
+                        current_batch[-1].meta,
+                        message_id=message_id,
+                    )
+
+                if is_batch:
+                    yield self.__yield_data(
+                        "", meta={"finish_reason": "stop", "model": ""}
+                    )
+                # 保存指标
+                self.save_metrics()
+                break
+
+            # 处理内容
+            if not is_batch:
+                # 单条流式处理模式
                 if first_response:
-                    elapsed = perf_counter() - self.stream_start
-                    logger.info(
-                        f"The first reply time of the RAG pipeline. Cost: {elapsed:.3f}s"
-                    )
-                    first_response = False
-
-                data = self._create_message(
-                    chunk.content, chunk.meta, message_id=message_id
-                )
-                yield f"data: {json.dumps(data, ensure_ascii=False)}\n\n"
-        else:
-            # 批量处理模式
-            current_batch = []
-            while True:
-                chunk = self.queue.get()
-
-                if isinstance(chunk, dict) and chunk.get("type") == "doc_info":
-                    self.doc_length = chunk["count"]
+                    first_response = self.__handle_first_response()
+                    yield self.__yield_data(chunk.content, chunk.meta)
                     continue
-                if chunk == "[START]":
-                    # 开始处理新一批数据
-                    data = self._create_message("", is_start=1, message_id=message_id)
-                    yield f"data: {json.dumps(data, ensure_ascii=False)}\n\n"
-                    continue
-                if chunk == "[END]":
-                    # 处理最后一批数据
-                    if current_batch:
-                        combined_content = "".join([c.content for c in current_batch])
-                        data = self._create_message(
-                            combined_content,
-                            current_batch[-1].meta,
-                            message_id=message_id,
-                        )
-                        yield f"data: {json.dumps(data, ensure_ascii=False)}\n\n"
+                if chunk.content or chunk.meta.get("finish_reason") == "stop":
+                    yield self.__yield_data(chunk.content, chunk.meta)
+            else:
+                # 批处理模式
+                content = chunk.content
+                last_split_pos = 0
 
-                    # 保存指标
-                    self.save_metrics()
-                    break
+                # 遍历内容，查找分割点
+                for i, char in enumerate(content):
+                    if self._is_split_punctuation(char):
+                        # 将分割点前的内容加入当前批次
+                        split_chunk = copy.copy(chunk)
+                        split_chunk.content = content[
+                            last_split_pos : i + 1
+                        ]  # 包含分隔符
+                        current_batch.append(split_chunk)
 
-                if not self.model:
-                    self.model = chunk.meta.get("model", "")
-                    self.metrics["model"] = self.model
+                        # 合并并发送当前批次
+                        batch_content = "".join([c.content for c in current_batch])
+                        if first_response:
+                            first_response = self.__handle_first_response()
+                        yield self.__yield_data(batch_content, chunk.meta)
 
-                current_batch.append(chunk)
+                        # 重置批次
+                        current_batch = []
+                        last_split_pos = i + 1
 
-                batch_content = "".join([c.content for c in current_batch])
-                if self._should_flush_batch(chunk, batch_content):
-                    if first_response:
-                        elapsed = perf_counter() - self.stream_start
-                        self.metrics["first_response_ms"] = round(elapsed * 1000, 2)
-                        logger.info(
-                            f"The first reply time of the RAG pipeline. Cost:{elapsed:.3f}s"
-                        )
-                        first_response = False
-
-                    data = self._create_message(
-                        batch_content, chunk.meta, message_id=message_id
-                    )
-                    yield f"data: {json.dumps(data, ensure_ascii=False)}\n\n"
-                    current_batch = []
+                # 处理剩余内容
+                if last_split_pos < len(content):
+                    remaining_chunk = copy.copy(chunk)
+                    remaining_chunk.content = content[last_split_pos:]
+                    current_batch.append(remaining_chunk)
 
     def start(self):
         self.queue.put("[START]")

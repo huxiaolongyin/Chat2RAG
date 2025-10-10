@@ -16,6 +16,8 @@
 - 模型常量集中到 CONFIG 进行配置，新增 QWEN3 其他模型
 - Chat V1接口的 prompt 增加当前时间
 - 优化 旧UI 的 render 代码逻辑，新增阈值、topK的控制，新增清除会话的功能
+- 优化Chat V1接口的输出逻辑，对符号在任意位置都可分段
+
 
 ### Fixed
 - 处理当 collection 为空时的异常
