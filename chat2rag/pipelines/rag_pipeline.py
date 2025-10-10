@@ -1,4 +1,5 @@
 import asyncio
+from datetime import datetime
 from time import perf_counter
 from typing import Any, Callable, Dict, List, Union
 
@@ -86,7 +87,6 @@ class RAGPipeline(BasePipeline):
     async def run(
         self,
         query: str,
-        rag_prompt_template: str = CONFIG.RAG_PROMPT_TEMPLATE,
         top_k: int = CONFIG.TOP_K,
         score_threshold: float = CONFIG.SCORE_THRESHOLD,
         messages: List[ChatMessage] = [],
@@ -110,20 +110,20 @@ class RAGPipeline(BasePipeline):
             ]
 
             # 构建问题模板
-            question_template = """
-            问题：{{query}}；
-            工具调用响应内容：{{func_response}}；
+            current_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            question_template = f"""
+            问题：{{{{query}}}}；
+            当前日期时间：{current_date}
             文档参考内容(移除所有URL和网页地址再输出)：
-            {% if documents %}
-                {% for doc in documents %}
-                    content: {{ doc.content }} score: {{ doc.score }}
-                {% endfor %}
-            {% else %}
+            {{% if documents %}}
+                {{% for doc in documents %}}
+                    content: {{{{ doc.content }}}} score: {{{{ doc.score }}}}
+                {{% endfor %}}
+            {{% else %}}
                 None
-            {% endif %}
+            {{% endif %}}
             """
             prompt_template = [
-                ChatMessage.from_system(rag_prompt_template),
                 *messages,
                 ChatMessage.from_user(question_template),
             ]
