@@ -221,7 +221,9 @@ class StreamHandlerV1:
 
                 if is_batch:
                     yield self.__yield_data(
-                        "", meta={"finish_reason": "stop", "model": ""}
+                        "",
+                        meta={"finish_reason": "stop", "model": ""},
+                        message_id=message_id,
                     )
                 # 保存指标
                 self.save_metrics()
@@ -232,10 +234,14 @@ class StreamHandlerV1:
                 # 单条流式处理模式
                 if first_response:
                     first_response = self.__handle_first_response()
-                    yield self.__yield_data(chunk.content, chunk.meta)
+                    yield self.__yield_data(
+                        chunk.content, chunk.meta, message_id=message_id
+                    )
                     continue
                 if chunk.content or chunk.meta.get("finish_reason") == "stop":
-                    yield self.__yield_data(chunk.content, chunk.meta)
+                    yield self.__yield_data(
+                        chunk.content, chunk.meta, message_id=message_id
+                    )
             else:
                 # 批处理模式
                 content = chunk.content
@@ -255,7 +261,9 @@ class StreamHandlerV1:
                         batch_content = "".join([c.content for c in current_batch])
                         if first_response:
                             first_response = self.__handle_first_response()
-                        yield self.__yield_data(batch_content, chunk.meta)
+                        yield self.__yield_data(
+                            batch_content, chunk.meta, message_id=message_id
+                        )
 
                         # 重置批次
                         current_batch = []
