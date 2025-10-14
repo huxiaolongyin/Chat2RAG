@@ -23,6 +23,7 @@
 ### Fixed
 - 处理当 collection 为空时的异常
 - 修复精准模式参数错乱
+- 添加SSE响应头，修复精准模式下SSE流异常
 
 ### Removed
 - 删除 ChatUI 上，不使用的功能组件

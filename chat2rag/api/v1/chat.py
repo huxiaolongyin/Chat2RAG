@@ -26,6 +26,17 @@ router = APIRouter()
 chat_history = ChatHistory()
 
 
+def _get_streaming_headers() -> dict:
+    """
+    Obtain the streaming response header
+    """
+    return {
+        "Cache-Control": "no-cache",
+        "Connection": "keep-alive",
+        "Transfer-Encoding": "chunked",
+    }
+
+
 # 使用枚举
 class ProcessType(str, Enum):
     BATCH = "batch"
@@ -190,6 +201,7 @@ async def _handle_exact_query(
                 query,
             )
             return None
+
         asyncio.create_task(
             _stream_answer(
                 answer,
@@ -201,6 +213,8 @@ async def _handle_exact_query(
         )
         return StreamingResponse(
             handler.get_stream(is_batch),
+            media_type="text/event-stream",
+            headers=_get_streaming_headers(),
         )
 
     except Exception as e:
@@ -321,9 +335,5 @@ async def _(
     return StreamingResponse(
         handler.get_stream(is_batch),
         media_type="text/event-stream",
-        headers={
-            "Cache-Control": "no-cache",
-            "Connection": "keep-alive",
-            "Transfer-Encoding": "chunked",
-        },
+        headers=_get_streaming_headers(),
     )
