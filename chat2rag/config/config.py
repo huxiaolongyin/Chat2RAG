@@ -113,7 +113,7 @@ class Config:
         "frequency_penalty": -0.5,  # 添加轻微频率惩罚以减少重复
         "top_p": 0.95,  # 添加top_p参数限制token选择范围
         "seed": 1234,
-        "extra_body": {"enable_thinking": False, "thinking_budget": 100},
+        # "extra_body": {"enable_thinking": False, "thinking_budget": 100}, # 部分模型不支持 enable_thinking
     }
 
     # PROMPT_NAME
@@ -172,7 +172,13 @@ class Config:
         {"name": "Qwen2.5-14B", "id": "Qwen/Qwen2.5-14B-Instruct"},
         {"name": "Qwen2.5-32B", "id": "Qwen/Qwen2.5-32B-Instruct"},
         {"name": "Qwen2.5-72B", "id": "Qwen/Qwen2.5-72B-Instruct"},
-        {"name": "Qwen3-32B", "id": "Qwen/Qwen3-32B"},
+        {
+            "name": "Qwen3-32B",
+            "id": "Qwen/Qwen3-32B",
+            "GENERATION_KWARGS": {
+                "extra_body": {"enable_thinking": False, "thinking_budget": 100}
+            },
+        },
         {"name": "Qwen3-14B", "id": "Qwen/Qwen3-14B"},
         {"name": "Qwen3-235B", "id": "Qwen/Qwen3-235B-A22B-Instruct-2507"},
         {"name": "DeepSeek-V3.1", "id": "Pro/deepseek-ai/DeepSeek-V3.1-Terminus"},

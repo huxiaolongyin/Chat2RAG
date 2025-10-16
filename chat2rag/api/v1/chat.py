@@ -111,9 +111,23 @@ class ChatQueryParams(BaseModel):
             return CONFIG.DEFAULT_MODEL
 
     @field_validator("generation_kwargs", mode="after")
-    def parse_generation_kwargs(cls, generation_kwargs):
+    def parse_generation_kwargs(cls, generation_kwargs, info):
         # Start with the default config
         merged_kwargs = dict(CONFIG.GENERATION_KWARGS)
+
+        # 获取模型 id 或名称
+        model_id_or_name = info.data.get("generator_model")
+        if model_id_or_name:
+            # Find matching model in CONFIG.MODEL_LIST
+            for model_entry in CONFIG.MODEL_LIST:
+                if (
+                    model_entry.get("id") == model_id_or_name
+                    or model_entry.get("name") == model_id_or_name
+                ):
+                    model_gen_kwargs = model_entry.get("GENERATION_KWARGS")
+                    if model_gen_kwargs and isinstance(model_gen_kwargs, dict):
+                        merged_kwargs.update(model_gen_kwargs)
+                    break
 
         # If user provided non-empty and non-"{}" string, parse and update
         if generation_kwargs and generation_kwargs != "{}":
@@ -125,6 +139,7 @@ class ChatQueryParams(BaseModel):
             except (ValueError, SyntaxError) as e:
                 raise ValueError(f"Invalid generation_kwargs format: {e}")
 
+        logger.info(f"Model merge parameter configuration: {merged_kwargs}")
         return merged_kwargs
 
 

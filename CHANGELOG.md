@@ -24,6 +24,7 @@
 - 处理当 collection 为空时的异常
 - 修复精准模式参数错乱
 - 添加SSE响应头，修复精准模式下SSE流异常
+- 部分模型不支持 enable_thinking 参数，去除固定的写法，关联到模型表中
 
 ### Removed
 - 删除 ChatUI 上，不使用的功能组件
