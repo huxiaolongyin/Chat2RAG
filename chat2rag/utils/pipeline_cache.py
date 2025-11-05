@@ -1,6 +1,16 @@
 from functools import lru_cache
 from typing import Any, Type, TypeVar
 
+from chat2rag.core.pipelines.base import BasePipeline
+from chat2rag.logger import get_logger
+
+logger = get_logger(__name__)
+T = TypeVar("T")
+
+
+from functools import lru_cache
+from typing import Any, Type, TypeVar
+
 from chat2rag.logger import get_logger
 
 logger = get_logger(__name__)
@@ -25,21 +35,27 @@ def _make_hashable_kwargs(**kwargs) -> tuple:
 
 
 @lru_cache(maxsize=32)
-def _cached_create_pipeline(cls: Type[T], args: tuple, hashable_kwargs: tuple) -> T:
-    """实际被缓存的工厂函数"""
+def _cached_get_pipeline(cls: Type[T], args: tuple, hashable_kwargs: tuple) -> T:
+    """实际被缓存的工厂函数 - 只缓存实例本身"""
     kwargs = dict(hashable_kwargs)
-    # 注意：这里假设值已经是构造所需类型（如 str, int），否则需反序列化
     return cls(*args, **kwargs)
 
 
-def create_pipeline(cls: Type[T], *args: Any, **kwargs: Any) -> T:
+async def create_pipeline(cls: Type[T], *args: Any, **kwargs: Any) -> T:
     """
-    Generic cached pipeline creator.
+    Generic cached pipeline creator with async initialization support.
     Converts kwargs to hashable format before caching.
     """
     try:
         hashable_kwargs = _make_hashable_kwargs(**kwargs)
-        return _cached_create_pipeline(cls, args, hashable_kwargs)
+        pipeline: BasePipeline = _cached_get_pipeline(cls, args, hashable_kwargs)
+
+        # 确保 pipeline 已经初始化
+        await pipeline.initialize()
+
+        return pipeline
     except Exception as e:
         logger.warning(f"Failed to create the cache pipeline：{e}")
-        return cls(args, **kwargs)
+        pipeline = cls(*args, **kwargs)
+        await pipeline.initialize()
+        return pipeline

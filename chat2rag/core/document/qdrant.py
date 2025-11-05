@@ -6,9 +6,12 @@ from haystack.dataclasses import Document
 from haystack_integrations.document_stores.qdrant import QdrantDocumentStore
 
 from chat2rag.config import CONFIG
+from chat2rag.core.pipelines.document import (
+    DocumentSearchPipeline,
+    DocumentWriterPipeline,
+)
 from chat2rag.dataclass.document import QADocument
 from chat2rag.logger import get_logger
-from chat2rag.pipelines.document import DocumentSearchPipeline, DocumentWriterPipeline
 from chat2rag.utils.pipeline_cache import create_pipeline
 
 logger = get_logger(__name__)
@@ -106,7 +109,7 @@ class QAQdrantDocumentStore(QdrantDocumentStore):
             question_doc, answer_doc = prepare_documents(qa)
             documents.extend([question_doc, answer_doc])
 
-        doc_write_pipeline = create_pipeline(
+        doc_write_pipeline = await create_pipeline(
             DocumentWriterPipeline, qdrant_index=self.index
         )
         return await doc_write_pipeline.run(documents=documents)
@@ -153,7 +156,7 @@ class QAQdrantDocumentStore(QdrantDocumentStore):
         进行 QA 全文的检索
         """
         try:
-            doc_search_pipeline = create_pipeline(
+            doc_search_pipeline = await create_pipeline(
                 DocumentSearchPipeline, qdrant_index=self.index
             )
             response = await doc_search_pipeline.run(

@@ -13,12 +13,10 @@ temp*
 model
 audio_chat
 
-
 #=======================#
 #       Logs file       #
 #=======================#
 logs
-
 
 #=======================#
 #     Deploy files      #
@@ -27,9 +25,9 @@ logs
 **.zip
 deploy/
 
-
 #=======================#
 #      Data files       #
 #=======================#
 data/
 **/versions
+migrations

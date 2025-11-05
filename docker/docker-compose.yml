@@ -76,22 +76,22 @@ services:
       - chat2rag-network
     restart: always
     
-  mysql:
-    # image: registry.cn-hangzhou.aliyuncs.com/fastgpt/mysql:8.0.36 # 阿里云
-    image: mysql:8.0.36
-    container_name: mysql
-    restart: always
-    ports:
-      - 7586:3306
-    networks:
-      - chat2rag-network
-    command: --default-authentication-plugin=mysql_native_password
-    environment:
-      # 默认root密码，仅首次运行有效
-      MYSQL_ROOT_PASSWORD: Aa@123123
-      MYSQL_DATABASE: oneapi
-    volumes:
-      - ${DATA_PATH}/mysql:/var/lib/mysql
+  # mysql:
+  #   # image: registry.cn-hangzhou.aliyuncs.com/fastgpt/mysql:8.0.36 # 阿里云
+  #   image: mysql:8.0.36
+  #   container_name: mysql
+  #   restart: always
+  #   ports:
+  #     - 7586:3306
+  #   networks:
+  #     - chat2rag-network
+  #   command: --default-authentication-plugin=mysql_native_password
+  #   environment:
+  #     # 默认root密码，仅首次运行有效
+  #     MYSQL_ROOT_PASSWORD: Aa@123123
+  #     MYSQL_DATABASE: oneapi
+  #   volumes:
+  #     - ${DATA_PATH}/mysql:/var/lib/mysql
 
 networks:
   chat2rag-network:

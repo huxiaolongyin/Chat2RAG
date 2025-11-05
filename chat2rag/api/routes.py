@@ -8,7 +8,7 @@ from chat2rag.api.v2 import v2_router
 router = APIRouter()
 
 
-@router.get("/health", tags=["健康检查"])
+@router.get("/health", summary="健康检查", tags=["健康检查"])
 async def _():
     return {"status": "healthy", "timestamp": datetime.now().isoformat()}
 

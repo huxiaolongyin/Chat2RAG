@@ -1,31 +1,24 @@
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.openapi.docs import get_swagger_ui_html
 from fastapi.staticfiles import StaticFiles
 
 from chat2rag.api.routes import router
 from chat2rag.config import CONFIG
-from chat2rag.core.executor import executor
-from chat2rag.database.init_db import run_migrations
-from chat2rag.logger import logger
-from chat2rag.tools.tool_manager import ToolManager
+from chat2rag.core.init_app import modify_db
+from chat2rag.logger import get_logger
 
-# from chat2rag.api.v1 import ws_router
+# from chat2rag.tools.tool_manager import ToolManager
+
+logger = get_logger(__name__)
 
 
-# @asynccontextmanager
+@asynccontextmanager
 async def lifespan(app: FastAPI):
-    # 启动时执行
-    # FastAPICache.init(InMemoryBackend(), prefix="fastapi-cache")
+    # 数据库自动迁移
+    await modify_db()
 
-    logger.info("正在应用数据库迁移...")
-    migration_success = run_migrations()
-
-    if not migration_success:
-        logger.error("数据库迁移失败，应用可能无法正常运行")
-        # 视情况决定是否继续
-        # return False
-
-    logger.info("数据库设置完成")
     # 进行 RAG 流程监控
     if CONFIG.TELEMETRY_ENABLED:
         from chat2rag.telemetry import setup_telemetry
@@ -36,22 +29,23 @@ async def lifespan(app: FastAPI):
         logger.info("Telemetry setup successfully")
 
     # 加载MCP连接
-    ToolManager()
+    # ToolManager()
 
     yield
     # 关闭时执行
     # await FastAPICache.clear()
-    executor.shutdown()
+
     logger.info("Stopping Chat2RAG application")
 
 
 def create_app():
     app = FastAPI(
-        title="Chat2RAG", version=CONFIG.VERSION, lifespan=lifespan, docs_url=None
+        title="Chat2RAG",
+        version=CONFIG.VERSION,
+        lifespan=lifespan,
+        docs_url=None,
     )
     app.include_router(router, prefix=CONFIG.WEB_ROUTE_PREFIX)
-
-    # app.include_router(ws_router)
 
     return app
 

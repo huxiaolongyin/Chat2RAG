@@ -4,6 +4,40 @@
 
 这个格式基于 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)，还有这个原则遵循 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [V0.3.0rc1] - 2025-11-03
+### Added
+- 项目重构
+    - 升级依赖包版本
+    - 将 ORM 从 `SQLAlchemy` 改为支持异步的 `Tortoise-ORM` 
+    - 重构 `Agent` 和 `RAG` 管道为异步管道
+    - 重构缓存方法为异步
+    - 将工具管理改为 `tool_service` 管理
+    - 整体模块目录重构，如 `chat2rag.api.schema` 调整为 `chat2rag.schemas`，`chat2rag.api.model` 调整为 `chat2rag.models` 等
+    - 配置、枚举及响应目录简化为单一文件，减少复杂性 
+- 【重要更新】策略模块及策略链：
+    - 实现模块化策略能力，灵活控制大模型 chat 接口返回策略组合，如 V1 接口使用「精准模式策略+RAG策略」，V2 接口使用「命令策略+流程策略+精准模式策略+Agent策略」
+- 【重要更新】优化 `flow` 流程管理，改进入点、转移点和退出点判断逻辑
+- 【重要更新】新增 command、flow、metric、prompt、sensitive、tool 的 service 层实现数据库 ORM 操作 
+- 【重要更新】加入 MCP 连接管理器，管理连接生命周期
+- 【重要更新】新增自动化测试，包含接口测试(`tests.test_api`)及数据库模拟(`conftest`)，保证测试安全无侵入
+- 【重要更新】为便于部署，移入内部`MCP`独立服务(导航等)，并进行单独`config`配置及初始化sql服务等
+- 新增敏感词接口和命令词接口
+- 新增 `logger.py` 中接口入参自动记录装饰器
+- 新增 makefile 快速启动 mcp服务的命令
+
+### Changed
+- 优化 `TODO.md` 
+
+### Fixed
+- 修复对话轮数获取异常，能够正常获取`user->assistant`的正常对话轮，配置 `chat_rounds` 为当前对话+历史对话的轮数，`chat_rounds=1` 则只有当前对话
+
+### Removed
+- 移除无用 mysql 容器配置（docker-compose.yml）  
+- 移除无用的 `chat2rag.component`  
+- 移除多线程 executor，改为异步实现  
+- 移除 `SQLAlchemy` 连接及管理相关代码 `chat2rag.database`
+
+
 ## [V0.2.4] - 2025-10-10
 ### Added
 - 增加对 csv 文件的解析

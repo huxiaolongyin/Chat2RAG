@@ -2,12 +2,15 @@ from typing import List, Optional
 
 from cachetools import TTLCache
 from haystack.dataclasses import ChatMessage, ChatRole, ToolCall
-from sqlalchemy.orm import Session
 
-from chat2rag.database.models import Prompt
+from chat2rag.config import CONFIG
 from chat2rag.logger import get_logger
+from chat2rag.schemas.prompt import PromptCreate
+from chat2rag.services.prompt_service import PromptService
 
 logger = get_logger(__name__)
+prompt_service = PromptService()
+
 action_list = [
     "点头",
     "摇头",
@@ -57,27 +60,37 @@ content: {{{{ doc.content }}}} score: {{{{ doc.score }}}}
 """
 
 
-def get_prompt_template(prompt_name: str, db: Session) -> Optional[str]:
+async def get_prompt_template(prompt_name: str) -> Optional[str]:
     """
     Obtain the prompt template from the database
     """
     if not prompt_name:
         return None
+    prompt = await prompt_service.get_by_prompt_name(prompt_name)
 
-    prompt = db.query(Prompt).filter(Prompt.prompt_name == prompt_name).first()
+    # 没找到提示词则使用默认或创建
     if not prompt:
         logger.warning("Prompt with name '%s' not found", prompt_name)
         try:
-            prompt = (
-                db.query(Prompt)
-                .filter(Prompt.prompt_name in ["默认", "default"])
-                .first()
-            )
-            return prompt.prompt_text
+
+            prompt = await prompt_service.model.filter(
+                prompt_name__in=["默认", "default"]
+            ).first()
+            if not prompt:
+                logger.debug("Create default prompt '%s'", prompt_name)
+                prompt = await prompt_service.create(
+                    PromptCreate(
+                        promptName="默认",
+                        promptDesc=f"默认",
+                        promptText=CONFIG.RAG_PROMPT_TEMPLATE,
+                    )
+                )
+            return prompt.get("promptText")
+
         except Exception as e:
             logger.error("Error retrieving prompt '%s': %s", prompt_name, str(e))
             return None
-    return prompt.prompt_text
+    return prompt.get("promptText")
 
 
 class ChatHistory:
@@ -121,11 +134,46 @@ class ChatHistory:
             else:
                 raise ValueError("Invalid role")
 
-    def get_history_messages(
+    def get_last_n_rounds(self, cache_messages: List[ChatMessage], rounds: int):
+        """
+        根据user->assistant的顺序回溯最近的rounds轮对话，
+        其中一轮包括user消息及紧随其后的assistant（包含中间tool）。
+        返回截取的消息列表（从旧到新排好序）
+        """
+        if not cache_messages or rounds < 1:
+            return []
+
+        rounds_found = 0
+        collected = []
+        i = len(cache_messages) - 1
+
+        # 临时堆栈，用来临时保存当前轮段消息，方便完成后整体加入结果
+        temp_stack = []
+
+        # 逆序遍历消息
+        while i >= 0 and rounds_found < rounds:
+            current_msg = cache_messages[i]
+
+            temp_stack.insert(0, current_msg)  # 头插，保持顺序
+
+            # 检查是否遇到一轮对话开始的user消息
+            if current_msg.role == ChatRole.USER:
+
+                # 找到了user消息，一个完整轮次的起点
+                rounds_found += 1
+
+                # 将这轮对话消息加入总收集列表，从前往后
+                collected = temp_stack + collected
+                temp_stack = []
+
+            i -= 1
+
+        return collected
+
+    async def get_history_messages(
         self,
         prompt_name: str,
         chat_id: str,
-        db: Session,
         rounds: int = 1,
         tag_get: bool = True,
         collection: str = None,
@@ -142,11 +190,13 @@ class ChatHistory:
         extra_prompt = ""
         if prompt_name == "默认" and collection:
             extra_prompt = f"你当前处于{collection}场景下。\n"
-        prompt_template = extra_prompt + get_prompt_template(prompt_name, db)
+        prompt_template = extra_prompt + await get_prompt_template(prompt_name)
         history_messages = [ChatMessage.from_system(prompt_template)]
         cache_messages = self.message_cache.get(chat_id, [])
-        if cache_messages:
-            history_messages.extend(cache_messages[-rounds * 2 :])
+
+        if cache_messages and int(rounds) >= 2:
+            recent_history = self.get_last_n_rounds(cache_messages, rounds - 1)
+            history_messages.extend(recent_history)
         if tag_get:
             history_messages.append(ChatMessage.from_user(DEFAULT_QUERY_TEMPLATE))
         return history_messages

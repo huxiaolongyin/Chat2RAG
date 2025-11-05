@@ -1,17 +1,16 @@
+import asyncio
 import copy
 import datetime
 import json
 import uuid
 from dataclasses import dataclass
-from queue import Queue
 from time import perf_counter
 from typing import List, Optional
 
 from haystack.dataclasses import StreamingChunk
 
-from chat2rag.database.connection import db_session
-from chat2rag.database.services.metric_service import MetricCreate, MetricService
 from chat2rag.logger import logger
+from chat2rag.services.metric_service import MetricCreate, MetricService
 
 
 @dataclass
@@ -36,7 +35,7 @@ class StreamConfig:
 class StreamHandlerV1:
     def __init__(self, config: Optional[StreamConfig] = None):
         self.stream_start = perf_counter()
-        self.queue = Queue()
+        self.queue = asyncio.Queue()
         self.model = None
         self.config = config or StreamConfig()
         self.doc_length = 0  # 新增属性
@@ -70,11 +69,11 @@ class StreamHandlerV1:
         # 初始化指标服务
         self.metric_service = MetricService()
 
-    def callback(self, chunk: StreamingChunk):
-        self.queue.put(chunk)
+    async def callback(self, chunk: StreamingChunk):
+        await self.queue.put(chunk)
 
-    def set_doc_info(self, doc_count: int):
-        self.queue.put({"type": "doc_info", "count": doc_count})
+    async def set_doc_info(self, doc_count: int):
+        await self.queue.put({"type": "doc_info", "count": doc_count})
         self.metrics["document_count"] = doc_count
 
     def set_chat_info(self, chat_id: str, chat_rounds: int = None):
@@ -119,21 +118,18 @@ class StreamHandlerV1:
         """设置错误信息"""
         self.metrics["error_message"] = error_message
 
-    def save_metrics(self):
+    async def save_metrics(self):
         """保存指标到数据库"""
         try:
             # 计算总响应时间
             total_time = perf_counter() - self.stream_start
             self.metrics["total_ms"] = round(total_time * 1000, 2)
 
-            try:
-                with db_session() as db:
-                    # 创建指标记录
-                    metric_data = MetricCreate(**self.metrics)
-                self.metric_service.create_metric(db, metric_data)
-                logger.info(f"Performance metrics saved for message {self.message_id}")
-            finally:
-                db.close()
+            # 创建指标记录
+            metric_data = MetricCreate(**self.metrics)
+            await self.metric_service.create(metric_data)
+            logger.info(f"Performance metrics saved for message {self.message_id}")
+
         except Exception as e:
             logger.error(f"Failed to save metrics: {str(e)}")
 
@@ -191,13 +187,13 @@ class StreamHandlerV1:
         data = self._create_message(content, meta, **kwargs)
         return f"data: {json.dumps(data, ensure_ascii=False)}\n\n"
 
-    def get_stream(self, is_batch: bool = False):
+    async def get_stream(self, is_batch: bool = False, **kwargs):
         first_response = True  # 添加标志位跟踪第一条响应
         message_id = str(uuid.uuid4().hex[:16])
         current_batch = []
 
         while True:
-            chunk = self.queue.get()
+            chunk = await self.queue.get()
 
             # 处理特殊控制消息
             if isinstance(chunk, dict) and chunk.get("type") == "doc_info":
@@ -226,7 +222,7 @@ class StreamHandlerV1:
                         message_id=message_id,
                     )
                 # 保存指标
-                self.save_metrics()
+                await self.save_metrics()
                 break
 
             # 处理内容
@@ -275,8 +271,8 @@ class StreamHandlerV1:
                     remaining_chunk.content = content[last_split_pos:]
                     current_batch.append(remaining_chunk)
 
-    def start(self):
-        self.queue.put("[START]")
+    async def start(self):
+        await self.queue.put("[START]")
 
-    def finish(self):
-        self.queue.put("[END]")
+    async def finish(self):
+        await self.queue.put("[END]")

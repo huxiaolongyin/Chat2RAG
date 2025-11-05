@@ -1,121 +1,107 @@
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy.orm import Session
+from fastapi import APIRouter
+from tortoise.expressions import Q
 
-from chat2rag.api.schema import Error, Success
-from chat2rag.database.connection import get_db
-from chat2rag.database.models import FlowData
-from chat2rag.database.services.base_service import Paginator
-from chat2rag.database.services.flow_service import (
-    FlowDataCreate,
-    FlowDataService,
-    FlowDataUpdate,
-)
+from chat2rag.logger import auto_log, get_logger
+from chat2rag.responses import Error, Success
+from chat2rag.schemas.common import Current, Size
+from chat2rag.schemas.flow_data import FlowDataCreate, FlowDataUpdate
+from chat2rag.services.flow_service import FlowDataService
 
+logger = get_logger(__name__)
 router = APIRouter()
-flow_service = FlowDataService(FlowData)
+flow_service = FlowDataService()
 
 
-@router.post("/add")
-def create_flow(
-    *, db: Session = Depends(get_db), flow_in: FlowDataCreate
-) -> Dict[str, Any]:
-    """
-    创建新的流程数据
-    """
+@router.post("/", summary="创建流程")
+@auto_log(level="info")
+async def create_flow(*, flow_in: FlowDataCreate) -> Dict[str, Any]:
     try:
-        flow_service.create(db, flow_in)
-        return Success(msg="流程创建成功")
-
+        exist_flow = await flow_service.model.filter(name=flow_in.name).first()
+        if exist_flow:
+            return Error(msg="该流程已存在")
+        flow = await flow_service.create(flow_in)
+        return Success(msg="流程创建成功", data=await flow.to_dict())
     except Exception as e:
-        return Error(msg=f"创建流程失败: {str(e)}")
+        msg = f"创建流程失败: {str(e)}"
+        logger.error(msg)
+        return Error(msg)
 
 
-@router.get("/{id}")
-def get_flow(*, db: Session = Depends(get_db), id: int) -> Dict[str, Any]:
-    """
-    根据ID获取流程数据
-    """
-    flow = flow_service.get(db, id)
-    if not flow:
-        return Error(msg=f"流程数据不存在")
-
-    return Success(
-        msg="获取成功",
-        data=flow.to_dict() if hasattr(flow, "to_dict") else flow.__dict__,
-    )
-
-
-@router.get("/", response_model=Dict[str, Any])
-def get_flows(
+@router.get("/", response_model=Dict[str, Any], summary="获取流程列表")
+@auto_log(level="info")
+async def get_flow_list(
     *,
-    db: Session = Depends(get_db),
-    page: int = Query(1, ge=1),
-    page_size: int = Query(20, le=100),
+    current: Current = 1,
+    size: Size = 10,
     name: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """
-    分页获取流程数据列表，支持按名称搜索
-    """
+
     try:
-        paginator = flow_service.get_with_pagination(
-            db, page=page, page_size=page_size, name=name
+        q = Q()
+        if name:
+            q &= Q(name__icontains=name)
+        total, flows = await flow_service.get_list(
+            page=current, page_size=size, search=q
         )
-        # total =
 
         return Success(
             data={
-                "prompt_list": paginator.to_dict(),
-                "current": page,
-                "size": page_size,
-                # "total": total,
-                # "pages": pages,
+                "flowList": [await flow.to_dict() for flow in flows],
+                "total": total,
+                "current": current,
+                "size": size,
             },
         )
     except Exception as e:
-        return Error(msg="获取流程列表失败")
+        msg = f"获取流程列表失败: {str(e)}"
+        logger.error(msg)
+        return Error(msg)
 
 
-@router.put("/{id}", response_model=Dict[str, Any])
-def update_flow(
-    *, db: Session = Depends(get_db), id: int, flow_in: FlowDataUpdate
-) -> Dict[str, Any]:
-    """
-    更新流程数据
-    """
-    flow = flow_service.get(db, id)
-    if not flow:
-        return Error(msg="流程数据不存在")
-
+@router.get("/{id}", summary="获取流程明细")
+@auto_log(level="info")
+async def get_flow_detail(*, id: int) -> Dict[str, Any]:
     try:
-        flow = flow_service.update(db, db_obj=flow, obj_in=flow_in)
-        return Success(
-            msg="更新成功",
-            data=flow.to_dict() if hasattr(flow, "to_dict") else flow.__dict__,
-        )
+        flow = await flow_service.get(id)
+        if not flow:
+            return Error(msg="流程数据不存在")
+        return Success(data=await flow.to_dict())
     except Exception as e:
-        return Error(msg=f"更新流程失败: {str(e)}")
+        msg = f"获取流程失败: {str(e)}"
+        logger.error(msg)
+        return Error(msg)
 
 
-@router.delete("/{id}", response_model=Dict[str, Any])
-def delete_flow(*, db: Session = Depends(get_db), id: int) -> Dict[str, Any]:
-    """
-    删除流程数据
-    """
-    flow = flow_service.get(db, id)
-    if not flow:
-        return Error(msg="流程数据不存在")
-        # raise HTTPException(
-        #     status_code=status.HTTP_404_NOT_FOUND, detail="流程数据不存在"
-        # )
-
+@router.put("/{id}", response_model=Dict[str, Any], summary="更新流程")
+@auto_log(level="info")
+async def update_flow(*, id: int, flow_in: FlowDataUpdate) -> Dict[str, Any]:
     try:
-        flow_service.delete(db, id=id)
+        flow = await flow_service.get(id)
+        if not flow:
+            return Error(msg="流程数据不存在")
+        exist_flow = await flow_service.model.filter(name=flow_in.name).first()
+        if exist_flow:
+            return Error(msg="该分类已存在")
+        flow = await flow_service.update(id, flow_in)
+        return Success(data=await flow.to_dict())
+    except Exception as e:
+        msg = f"更新流程失败: {str(e)}"
+        logger.error(msg)
+        return Error(msg)
+
+
+@router.delete("/{id}", response_model=Dict[str, Any], summary="删除流程")
+@auto_log(level="info")
+async def delete_flow(*, id: int) -> Dict[str, Any]:
+    try:
+        flow = await flow_service.get(id)
+        if not flow:
+            return Error(msg="流程数据不存在")
+        await flow_service.remove(id)
         return Success(msg="删除成功")
-        # return {"code": 200, "message": "删除成功", "data": {}}
     except Exception as e:
-        return Error(msg=f"删除流程失败: {str(e)}")
-        # raise HTTPException(
-        #     status_code=status.HTTP_400_BAD_REQUEST, detail=f"删除流程失败: {str(e)}"
-        # )
+        msg = f"流程数据不存在:{str(e)}"
+        logger.error(msg)
+        return Error(msg)

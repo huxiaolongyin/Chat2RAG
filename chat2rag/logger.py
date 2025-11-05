@@ -1,3 +1,5 @@
+import functools
+import inspect
 import logging
 import logging.config
 import sys
@@ -83,6 +85,7 @@ def initialize_logging():
             "urllib3": {"level": "ERROR", "propagate": True},
             "asyncio": {"level": "ERROR", "propagate": True},
             "openai": {"level": "ERROR", "propagate": True},
+            "tortoise": {"level": "WARNING", "propagate": True},
             # 可以在这里添加其他logger的配置
         },
         # 根logger设置
@@ -110,6 +113,57 @@ def get_logger(name: str = "chat2rag"):
 
     # 返回已配置的logger
     return logging.getLogger(name)
+
+
+logger = logging.getLogger(__name__)
+
+
+def auto_log(level="info", log_success: bool = False):
+    """
+    自动记录函数参数和异常的装饰器
+
+    Args:
+        level: 日志级别 ("info", "debug")
+        log_exceptions: 是否记录异常
+        log_success: 是否记录成功执行
+        log_result: 是否记录返回结果
+    """
+
+    def decorator(func):
+        @functools.wraps(func)
+        async def wrapper(*args, **kwargs):
+            # 获取函数签名
+            sig = inspect.signature(func)
+            bound_args = sig.bind(*args, **kwargs)
+            bound_args.apply_defaults()
+
+            # 记录参数信息
+            params_str = ", ".join(
+                [
+                    f"{k}={v}"
+                    for k, v in bound_args.arguments.items()
+                    if k not in ["request"]  # 排除request参数
+                ]
+            )
+            msg = f"{func.__name__} - params: {params_str}"
+
+            if level == "info":
+                logger.info(msg)
+            elif level == "debug":
+                logger.debug(msg)
+
+            try:
+                result = await func(*args, **kwargs)
+                if log_success:
+                    logger.info(f"调用 {func.__name__} 成功")
+                return result
+
+            except Exception as e:
+                raise e
+
+        return wrapper
+
+    return decorator
 
 
 # 初始化日志系统
