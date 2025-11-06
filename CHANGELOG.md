@@ -9,6 +9,7 @@
 - 新增模型渠道管理和模型列表管理Model、Service、Schema及API
 - 新增chat2rag各个组件使用模型渠道及管理，取消或降低对CONFIG配置的依赖
 - 新增定时1小时刷新模型延迟
+- 优化 `flow.py` 变量命名及日志打印
 
 ### Removed
 - 移除重复无用`doc_pipeline.py`文件
