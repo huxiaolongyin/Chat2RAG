@@ -4,6 +4,14 @@
 
 这个格式基于 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)，还有这个原则遵循 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] - 2025-11-05
+### Added
+- 
+
+### Removed
+- 移除重复无用`doc_pipeline.py`文件
+
+
 ## [V0.3.0rc1] - 2025-11-03
 ### Added
 - 项目重构
