@@ -36,6 +36,11 @@ class Metric(BaseModel, TimestampMixin):
         null=True, description="检索相关参数，包含top_k、score_threshold等"
     )
 
+    # 执行工具
+    execute_tools = fields.CharField(
+        max_length=255, null=True, description="使用的工具名称，逗号分隔"
+    )
+
     # 性能指标 - 时序数据的核心指标
     document_count = fields.IntField(default=0, description="检索的文档数量")
     document_ms = fields.FloatField(default=0.0, description="文档检索耗时(毫秒)")

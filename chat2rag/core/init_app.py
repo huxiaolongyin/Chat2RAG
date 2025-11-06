@@ -1,4 +1,5 @@
 from aerich import Command
+from tortoise.exceptions import OperationalError
 
 from chat2rag.config import CONFIG
 from chat2rag.logger import get_logger
@@ -41,5 +42,8 @@ async def modify_db(config=None):
         upgraded = await command.upgrade(run_in_transaction=True)
         if upgraded:
             logger.debug(f"数据库升级完成: {upgraded}")
+    except OperationalError as e:
+        logger.error(f"数据库升级失败: {e}")
+        raise e
     except Exception as e:
         logger.debug(f"数据库已是最新版本: {e}")

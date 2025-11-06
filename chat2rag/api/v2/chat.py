@@ -63,9 +63,22 @@ class ChatProcessor:
 
     def _record_info(self):
         """记录聊天信息"""
-        self.handler.set_chat_info(self.request.chat_id, self.request.chat_rounds)
-        self.handler.set_query_info(self.query, self.request.prompt_name)
-        self.handler.set_collection_info(self.request.collections)
+        retrieval_params = {
+            "top_k": self.request.top_k,
+            "score_threshold": self.request.score_threshold,
+        }
+        self.handler.set_query_info(
+            question=self.query,
+            chat_id=self.request.chat_id,
+            chat_rounds=self.request.chat_rounds,
+            collections=self.request.collections,
+            retrieval_params=retrieval_params,
+            model=self.request.model,
+            prompt=self.request.prompt_name,
+            precision_mode=self.is_batch,
+            tools=self.request.tools,
+            extra_params=self.request.extra_params,
+        )
 
 
 @router.post("/chat")
@@ -74,19 +87,20 @@ async def chat(chat_request: ChatRequest):
     """聊天接口"""
 
     # TODO: 临时补丁
-    chat_request.model = "qwen3-235b-a22b-instruct-2507"
-    chat_request.tools = [
-        "navigate_to_location",
-        "maps_weather",
-        "maps_geo",
-        "maps_direction_transit_integrated",
-    ]
-    chat_request.flows = ["点菜流程"]
-    chat_request.chat_rounds = 5
-    try:
-        chat_request.chat_id = chat_request.chat_id.split("_")[1]
-    except:
-        pass
+    # chat_request.model = "qwen3-235b-a22b-instruct-2507"
+    # chat_request.model = "qwen3-vl-235b-a22b-instruct"
+    # chat_request.tools = [
+    #     "navigate_to_location",
+    #     "maps_weather",
+    #     "maps_geo",
+    #     "maps_direction_transit_integrated",
+    # ]
+    # chat_request.flows = ["点菜流程"]
+    # chat_request.chat_rounds = 5
+    # try:
+    #     chat_request.chat_id = chat_request.chat_id.split("_")[1]
+    # except:
+    #     pass
 
     processor = ChatProcessor(chat_request)
     return StreamingResponse(processor.process(), media_type="text/event-stream")

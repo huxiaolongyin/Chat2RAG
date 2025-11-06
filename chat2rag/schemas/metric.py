@@ -27,6 +27,7 @@ class MetricCreate(BaseModel):
     precision_mode: Optional[bool] = False
     extra_params: Optional[Dict[str, Any]] = None
     meta_data: Optional[Dict[str, Any]] = None
+    execute_tools: Optional[str] = None
     create_time: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)

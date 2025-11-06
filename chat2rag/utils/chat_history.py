@@ -1,7 +1,13 @@
 from typing import List, Optional
 
 from cachetools import TTLCache
-from haystack.dataclasses import ChatMessage, ChatRole, ToolCall
+from haystack.dataclasses import (
+    ChatMessage,
+    ChatRole,
+    ImageContent,
+    TextContent,
+    ToolCall,
+)
 
 from chat2rag.config import CONFIG
 from chat2rag.logger import get_logger
@@ -46,7 +52,9 @@ content: {{{{ doc.content }}}} score: {{{{ doc.score }}}}
 {{% else %}}
     None
 {{% endif %}}
+"""
 
+EXTRA_PROMPT = f"""
 请根据以上内容回答用户问题。
 你可以使用以下特殊标记来表示非文本内容：
 - 动作：[ACTION:动作名称]，示例: [ACTION:{action_list[0]}]，可选动作：{'、'.join(action_list)}
@@ -114,9 +122,8 @@ class ChatHistory:
         tool_call: Optional[ToolCall] = None,
         messages: Optional[List[ChatMessage]] = None,
     ):
-        """
-        Add a message to the cache
-        """
+        """Add a message to the cache"""
+
         if chat_id not in self.message_cache:
             self.message_cache[chat_id] = []
 
@@ -175,28 +182,37 @@ class ChatHistory:
         prompt_name: str,
         chat_id: str,
         rounds: int = 1,
-        tag_get: bool = True,
         collection: str = None,
+        enable_extra_prompt: bool = True,
+        image: str = "",
     ) -> List[ChatMessage]:
-        """
-        get the history messages from the cache
-        """
+        """get the history messages from the cache"""
+
         logger.info(
             "Get the history messages. Prompt name: %s; Chat ID: %s; History messages length: %d",
             prompt_name,
             chat_id,
             rounds,
         )
-        extra_prompt = ""
-        if prompt_name == "默认" and collection:
-            extra_prompt = f"你当前处于{collection}场景下。\n"
-        prompt_template = extra_prompt + await get_prompt_template(prompt_name)
-        history_messages = [ChatMessage.from_system(prompt_template)]
-        cache_messages = self.message_cache.get(chat_id, [])
 
-        if cache_messages and int(rounds) >= 2:
-            recent_history = self.get_last_n_rounds(cache_messages, rounds - 1)
-            history_messages.extend(recent_history)
-        if tag_get:
-            history_messages.append(ChatMessage.from_user(DEFAULT_QUERY_TEMPLATE))
-        return history_messages
+        # Prepare system prompt with optional context about collection
+        system_context = f"你当前处于{collection}场景下。\n" if collection else ""
+        system_prompt = system_context + await get_prompt_template(prompt_name)
+        messages = [ChatMessage.from_system(system_prompt)]
+
+        rounds_to_retrieve = max(0, rounds - 1)  # exclude current round
+
+        cached_msgs = self.message_cache.get(chat_id, [])
+        if cached_msgs and rounds_to_retrieve > 0:
+            recent_msgs = self.get_last_n_rounds(cached_msgs, rounds_to_retrieve)
+            messages.extend(recent_msgs)
+
+        user_msg = DEFAULT_QUERY_TEMPLATE
+        if enable_extra_prompt:
+            user_msg += EXTRA_PROMPT
+
+        contents = [user_msg]
+        if image:
+            contents.append(ImageContent.from_url(image))
+        messages.append(ChatMessage.from_user(content_parts=contents))
+        return messages

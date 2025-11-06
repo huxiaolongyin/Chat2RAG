@@ -47,6 +47,9 @@ class StreamHandler:
             "tool_result": {},
             "error_message": None,
             "precision_mode": False,
+            "extra_params": {},
+            "retrieval_params": {},
+            "execute_tools": "",
             "meta_data": {},
         }
 
@@ -60,31 +63,64 @@ class StreamHandler:
         await self.queue.put({"type": "doc_info", "count": doc_count})
         self.metrics["document_count"] = doc_count
 
-    def set_chat_info(self, chat_id: str, chat_rounds: int = None):
-        """设置会话信息"""
+    def set_query_info(
+        self,
+        question: str,
+        chat_id: str,
+        chat_rounds: int = None,
+        collections: str | list = None,
+        retrieval_params: dict = {},
+        model: str = None,
+        prompt: str = None,
+        precision_mode: bool = False,
+        tools: list = [],
+        extra_params: dict = {},
+    ):
+        """设置查询信息"""
+        # 问题
+        self.metrics["question"] = question
+
+        # 会话信息
         self.metrics["chat_id"] = chat_id
         self.metrics["chat_rounds"] = chat_rounds
 
-    def set_query_info(self, question: str, model: str = None, prompt: str = None):
-        """设置查询信息"""
-        self.metrics["question"] = question
-        if model:
-            self.metrics["model"] = model
-        if prompt:
-            self.metrics["prompt"] = prompt
-
-    def set_tool_info(self, tools: str = None, tool_time_ms: float = 0.0):
-        """设置工具信息"""
-        if tools:
-            self.metrics["tools"] = tools
-        self.metrics["tool_ms"] = tool_time_ms
-
-    def set_collection_info(self, collections: str | list = None):
-        """设置知识库信息"""
+        # 知识库
         if isinstance(collections, list):
             collections = ",".join(collections)
         if collections:
             self.metrics["collections"] = collections
+        self.metrics["retrieval_params"] = retrieval_params
+
+        # 模型
+        if model:
+            self.metrics["model"] = model
+            self.model = model
+
+        # 提示词
+        if prompt:
+            self.metrics["prompt"] = prompt
+
+        # 精准模式
+        self.metrics["precision_mode"] = precision_mode
+
+        # 工具
+        self.metrics["tools"] = ",".join(tools)
+
+        # 额外参数
+        self.metrics["extra_params"] = extra_params
+
+    def set_tool_info(self, tools: str = None):
+        """设置执行工具信息"""
+        if tools:
+            if self.metrics.get("execute_tools"):
+                self.metrics["execute_tools"] += "," + tools
+            else:
+                self.metrics["execute_tools"] = tools
+
+            # TODO: 临时措施
+            self.metrics["tool_ms"] = round(
+                (perf_counter() - self.stream_start) * 1000, 2
+            )
 
     def set_token_info(self, input_tokens: int = 0, output_tokens: int = 0):
         """设置Token信息"""
@@ -235,7 +271,7 @@ class StreamHandler:
             arguments = tool_call.arguments
 
             # 记录工具调用信息
-            self.metrics["tools"] = tool_call.tool_name
+            self.set_tool_info(tool_name)
 
         if tool_result:
             try:
@@ -246,10 +282,14 @@ class StreamHandler:
                 tool_result["content"] = tool_result.get("content")[0]
 
             except Exception:
-                logger.warning("解析工具调用结果失败，使用原始结果")
+                logger.warning(
+                    "The call result of the json parsing tool failed. Use the original result"
+                )
 
             # 记录工具结果
-            self.metrics["tool_result"] = tool_result
+            self.metrics["tool_result"] = (
+                tool_result if isinstance(tool_result, dict) else {}
+            )
 
         yield self.__yield_data(
             "", chunk.meta, tool=tool_name, arguments=arguments, tool_result=tool_result
