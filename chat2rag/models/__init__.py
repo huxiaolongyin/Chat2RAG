@@ -1,6 +1,7 @@
 from .command import Command, CommandCategory, CommandVariant
 from .flow import FlowData
 from .metric import Metric
+from .models import ModelLatency, ModelProvider, ModelSource
 from .prompt import Prompt, PromptVersion
 from .sensitive import SensitivedCategory, SensitiveWords
 from .tools import APITool, MCPServer, MCPTool
@@ -18,4 +19,7 @@ __all__ = [
     "APITool",
     "MCPServer",
     "MCPTool",
+    "ModelProvider",
+    "ModelLatency",
+    "ModelSource",
 ]
