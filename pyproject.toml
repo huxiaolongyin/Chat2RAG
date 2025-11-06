@@ -41,7 +41,7 @@ dependencies = [
 
     # 数据库
     "tortoise-orm[asyncpg]==0.25.1",
-    "aerich",
+    "aerich==0.9.2",
 
     # Web服务
     "fastapi==0.120.3",
@@ -101,6 +101,6 @@ ignore = ["E501"]
 target-version = "py311"
 
 [tool.aerich]
-tortoise_orm = "chat2rag.config.Config.TORTOISE_ORM"
+tortoise_orm = "chat2rag.config.tortoise_orm"
 location = "./migrations"
 src_folder = "./."
