@@ -12,7 +12,7 @@
 
 ### Removed
 - 移除重复无用`doc_pipeline.py`文件
-
+- 移除无用 `shot_name.py` 文件
 
 ## [V0.3.0rc1] - 2025-11-03
 ### Added
