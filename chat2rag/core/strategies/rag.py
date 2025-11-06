@@ -3,14 +3,19 @@ from typing import AsyncIterator
 
 from haystack.dataclasses import ChatRole, StreamingChunk
 
+from chat2rag.config import CONFIG
 from chat2rag.core.pipelines.rag_pipeline import RAGPipeline
 from chat2rag.logger import get_logger
+from chat2rag.models.models import ModelProvider, ModelSource
+from chat2rag.services.model_service import ModelSourceService
 from chat2rag.utils.chat_history import ChatHistory
+from chat2rag.utils.merge_kwargs import merge_generation_kwargs
 from chat2rag.utils.pipeline_cache import create_pipeline
 
 from .base import ResponseStrategy
 
 logger = get_logger(__name__)
+model_source_service = ModelSourceService()
 chat_history = ChatHistory()
 
 
@@ -24,7 +29,7 @@ class RAGStrategy(ResponseStrategy):
             self.request.prompt_name,
             self.request.chat_id,
             self.request.chat_rounds,
-            tag_get=False,
+            enable_extra_prompt=False,
         )
 
         asyncio.create_task(self._process_pipeline(query, history_messages))
@@ -33,11 +38,23 @@ class RAGStrategy(ResponseStrategy):
             yield chunk
 
     async def _process_pipeline(self, query: str, history_messages: list):
+        model_source: ModelSource = await model_source_service.get_best_source(
+            self.request.model
+        )
+        model_provider: ModelProvider = await model_source.provider
+        generation_kwargs = merge_generation_kwargs(
+            self.request.generation_kwargs,
+            model_source.generation_kwargs,
+            CONFIG.GENERATION_KWARGS,
+        )
         try:
             pipeline = await create_pipeline(
                 RAGPipeline,
-                intention_model=self.request.intention_model,
-                generator_model=self.request.model,
+                intention_model=model_source.name,
+                generator_model=model_source.name,
+                api_base_url=model_provider.base_url,
+                api_key=model_provider.api_key,
+                generation_kwargs=generation_kwargs,
             )
 
             result = await pipeline.run(
@@ -63,6 +80,19 @@ class RAGStrategy(ResponseStrategy):
                     ChatRole.ASSISTANT,
                     result["generator"]["replies"][0].text,
                 )
+
+            # 更新 token 消费
+            latest_messages = result["generator"]["replies"][0]
+            input_tokens = 0
+            output_tokens = 0
+            input_tokens += int(
+                latest_messages.meta.get("usage", {}).get("prompt_tokens", 0)
+            )
+            output_tokens += int(
+                latest_messages.meta.get("usage", {}).get("completion_tokens", 0)
+            )
+            self.handler.set_token_info(input_tokens, output_tokens)
+
         except Exception as e:
             logger.error("Error in exact query processing: %s", str(e))
             await self.handler.callback(

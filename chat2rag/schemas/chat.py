@@ -37,12 +37,12 @@ class ChatQueryParams(BaseModel):
     )
     prompt_name: str = Field("默认", alias="promptName", description="提示词名称选择")
     intention_model: str = Field(
-        default=CONFIG.DEFAULT_MODELS["intention"],
+        default=CONFIG.CHAT_V1_DEFAULT_MODELS["intention"],
         alias="intentionModel",
         description="意图模型",
     )
     generator_model: str = Field(
-        default=CONFIG.DEFAULT_MODELS["generator"],
+        default=CONFIG.CHAT_V1_DEFAULT_MODELS["generator"],
         alias="generatorModel",
         description="生成模型",
     )
@@ -56,24 +56,6 @@ class ChatQueryParams(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
     # class Config:
     #     populate_by_name = True
-
-    @field_validator("generator_model", mode="after")
-    def parse_generator_model(cls, model):
-        if model in CONFIG.MODEL_MAP:
-            return CONFIG.MODEL_MAP[model]
-        elif model in CONFIG.VALID_MODEL_VALUES:
-            return model
-        else:
-            return CONFIG.DEFAULT_MODEL
-
-    @field_validator("intention_model", mode="after")
-    def parse_intention_model(cls, model):
-        if model in CONFIG.MODEL_MAP:
-            return CONFIG.MODEL_MAP[model]
-        elif model in CONFIG.VALID_MODEL_VALUES:
-            return model
-        else:
-            return CONFIG.DEFAULT_MODEL
 
     @field_validator("generation_kwargs", mode="after")
     def parse_generation_kwargs(cls, generation_kwargs, info):

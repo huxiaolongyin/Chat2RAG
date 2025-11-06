@@ -1,26 +1,30 @@
 from openai import AsyncOpenAI
 
 from chat2rag.config import CONFIG
+from chat2rag.models.models import ModelProvider, ModelSource
+from chat2rag.services.model_service import ModelSourceService
+
+model_source_service = ModelSourceService()
 
 
 # OpenAI 客户端初始化
 class LLMClient:
-    def __init__(self):
-        self.client = AsyncOpenAI(
-            api_key=CONFIG.OPENAI_API_KEY,
-            base_url=CONFIG.OPENAI_BASE_URL,
-        )
-
     async def acall_llm(
         self,
         messages: list[dict],
-        model: str = "Qwen/Qwen2.5-32B-Instruct",
+        model: str = CONFIG.PROCESS_MODEL,
         max_tokens: int = 20,
         temperature: float = 0.0,
     ) -> str:
         """异步调用 LLM"""
+        model_source: ModelSource = await model_source_service.get_best_source(model)
+        model_provider: ModelProvider = await model_source.provider
+        self.client = AsyncOpenAI(
+            api_key=model_provider.api_key,
+            base_url=model_provider.base_url,
+        )
         response = await self.client.chat.completions.create(
-            model=model,
+            model=model_source.name,
             messages=messages,
             max_tokens=max_tokens,
             temperature=temperature,

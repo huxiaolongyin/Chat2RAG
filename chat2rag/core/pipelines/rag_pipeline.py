@@ -14,6 +14,7 @@ from chat2rag.config import CONFIG
 from chat2rag.core.pipelines.base import BasePipeline
 from chat2rag.core.pipelines.document import DocumentSearchPipeline
 from chat2rag.logger import get_logger
+from chat2rag.utils.merge_kwargs import recursive_tuple_to_dict
 from chat2rag.utils.pipeline_cache import create_pipeline
 
 logger = get_logger(__name__)
@@ -25,16 +26,17 @@ class RAGPipeline(BasePipeline[AsyncPipeline]):
         # qdrant_index: Union[str, List[str]],
         intention_model: str = "Qwen/Qwen2.5-14B-Instruct",
         generator_model: str = "Qwen/Qwen2.5-32B-Instruct",
+        api_base_url: str = "",
+        api_key: str = "",
+        generation_kwargs: Dict[str, Any] = {},
     ):
-        try:
 
-            self.intention_model = intention_model
-            self.generator_model = generator_model
-            super().__init__()
-
-        except Exception as e:
-            logger.error(f"The initialization of the RAG pipeline was failed: {e}")
-            raise e
+        self._intention_model = intention_model
+        self._generator_model = generator_model
+        self._api_base_url = api_base_url
+        self._api_key = api_key
+        self._generation_kwargs = recursive_tuple_to_dict(generation_kwargs)
+        super().__init__()
 
     def _initialize_pipeline(self):
         """
@@ -51,9 +53,9 @@ class RAGPipeline(BasePipeline[AsyncPipeline]):
                 ]
             )
             generator = OpenAIChatGenerator(
-                model=self.generator_model,
-                api_key=Secret.from_env_var("OPENAI_API_KEY"),
-                api_base_url=CONFIG.OPENAI_BASE_URL,
+                model=self._generator_model,
+                api_key=Secret.from_token(self._api_key),
+                api_base_url=self._api_base_url,
             )
             pipeline.add_component("doc_joiner", DocumentJoiner())
             pipeline.add_component("prompt_builder", prompt_builder)
@@ -109,30 +111,30 @@ class RAGPipeline(BasePipeline[AsyncPipeline]):
             ]
 
             # 构建问题模板
-            current_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            question_template = f"""
-            问题：{{{{query}}}}；
-            当前日期时间：{current_date}
-            文档参考内容(移除所有URL和网页地址再输出)：
-            {{% if documents %}}
-                {{% for doc in documents %}}
-                    content: {{{{ doc.content }}}} score: {{{{ doc.score }}}}
-                {{% endfor %}}
-            {{% else %}}
-                None
-            {{% endif %}}
-            """
-            prompt_template = [
-                *messages,
-                ChatMessage.from_user(question_template),
-            ]
+            # current_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            # question_template = f"""
+            # 问题：{{{{query}}}}；
+            # 当前日期时间：{current_date}
+            # 文档参考内容(移除所有URL和网页地址再输出)：
+            # {{% if documents %}}
+            #     {{% for doc in documents %}}
+            #         content: {{{{ doc.content }}}} score: {{{{ doc.score }}}}
+            #     {{% endfor %}}
+            # {{% else %}}
+            #     None
+            # {{% endif %}}
+            # """
+            # prompt_template = [
+            #     *messages,
+            #     ChatMessage.from_user(question_template),
+            # ]
 
             # 构建并返回结果
             result = await self.pipeline.run_async(
                 data={
                     "doc_joiner": {"documents": documents_list},
                     "prompt_builder": {
-                        "template": prompt_template,
+                        "template": messages,
                         "qdrant_index": qdrant_index,
                         "query": query,
                     },

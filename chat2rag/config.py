@@ -103,9 +103,8 @@ class Config:
     SQLITE_DIR = DATA_DIR / "sqlite"
 
     # Open AI LLM
-    OPENAI_BASE_URL = load_str_env("OPENAI_BASE_URL", required=True)
-    OPENAI_API_KEY = load_str_env("OPENAI_API_KEY", required=True)
-    MODEL = load_str_env("MODEL") or "Qwen/Qwen3-235B-A22B-Instruct-2507"
+    MODEL = load_str_env("MODEL") or "Qwen3-32B"
+    PROCESS_MODEL = MODEL
     DEFAULT_MODEL = MODEL  # 兼容旧版
 
     GENERATION_KWARGS = {
@@ -114,9 +113,7 @@ class Config:
         "frequency_penalty": -0.5,  # 添加轻微频率惩罚以减少重复
         "top_p": 0.95,  # 添加top_p参数限制token选择范围
         "seed": 1234,
-        # "extra_body": {"enable_thinking": False, "thinking_budget": 100}, # 部分模型不支持 enable_thinking
         "extra_body": {
-            # "enable_search": True,
             "stream_options": {"include_usage": True},
         },
     }
@@ -172,7 +169,6 @@ class Config:
     # Function
     FUNCTION_PROMPT_TEMPLATE = load_prompt("function_prompt.txt")
     FUNCION_ENABLED = load_bool_env("FUNCION_ENABLED") or False
-    # GAODE_API_KEY = load_str_env("GAODE_API_KEY", required=True)
 
     # API RETURN FORM
     BATCH_OR_STREAM = load_str_env("BATCH_OR_STREAM") or "batch"
@@ -207,16 +203,10 @@ class Config:
         {"name": "DeepSeek-V3.1", "id": "Pro/deepseek-ai/DeepSeek-V3.1-Terminus"},
     ]
 
-    MODEL_MAP = {item["name"]: item["id"] for item in MODEL_LIST}
-    VALID_MODEL_VALUES = set(MODEL_MAP.keys()) | set(MODEL_MAP.values())
-
-    DEFAULT_MODELS = {
+    CHAT_V1_DEFAULT_MODELS = {
         "intention": "Qwen2.5-14B",
         "generator": "Qwen2.5-32B",
     }
-
-    # old_version
-    GAODE_API_KEY = load_str_env("GAODE_API_KEY")
 
     TORTOISE_ORM = {
         "connections": {
@@ -246,3 +236,4 @@ class Config:
 
 
 CONFIG = Config()
+tortoise_orm = CONFIG.TORTOISE_ORM

@@ -15,6 +15,7 @@ from chat2rag.config import CONFIG
 from chat2rag.core.pipelines.base import BasePipeline
 from chat2rag.logger import get_logger
 from chat2rag.services.tool_service import mcp_service
+from chat2rag.utils.merge_kwargs import recursive_tuple_to_dict
 
 logger = get_logger(__name__)
 
@@ -29,11 +30,22 @@ content: {{ doc.content }} score: {{ doc.score }}
 
 
 class AgentPipeline(BasePipeline[AsyncPipeline]):
-    def __init__(self, collections: List[str], model: str, tools: List[str] = []):
+    def __init__(
+        self,
+        collections: List[str],
+        model: str,
+        tools: List[str] = [],
+        api_base_url: str = "",
+        api_key: str = "",
+        generation_kwargs: Dict[str, Any] = {},
+    ):
         self._collections = collections[0] if collections else "None"
         self._model = model
         self._tools = []
         self._tool_names = tools
+        self._api_base_url = api_base_url
+        self._api_key = api_key
+        self._generation_kwargs = recursive_tuple_to_dict(generation_kwargs)  # 临时
         super().__init__()
 
     async def _prepare_async_resources(self):
@@ -54,7 +66,7 @@ class AgentPipeline(BasePipeline[AsyncPipeline]):
                 "embedder",
                 OpenAITextEmbedder(
                     api_base_url=CONFIG.EMBEDDING_OPENAI_URL,
-                    api_key=Secret.from_env_var("OPENAI_API_KEY"),
+                    api_key=Secret.from_token("OPENAI_API_KEY"),
                     model=CONFIG.EMBEDDING_MODEL,
                     dimensions=CONFIG.EMBEDDING_DIMENSIONS,
                 ),
@@ -82,10 +94,10 @@ class AgentPipeline(BasePipeline[AsyncPipeline]):
                 "agent",
                 Agent(
                     chat_generator=OpenAIChatGenerator(
-                        api_key=Secret.from_env_var("OPENAI_API_KEY"),
+                        api_key=Secret.from_token(self._api_key),
                         model=self._model,
-                        api_base_url=CONFIG.OPENAI_BASE_URL,
-                        generation_kwargs=CONFIG.GENERATION_KWARGS,
+                        api_base_url=self._api_base_url,
+                        generation_kwargs=self._generation_kwargs,
                     ),
                     raise_on_tool_invocation_failure=False,
                     tools=self._tools,
@@ -113,10 +125,12 @@ class AgentPipeline(BasePipeline[AsyncPipeline]):
         messages: List[ChatMessage],
         extra_params: Dict[str, Any] = {},
         streaming_callback: Optional[Callable] = None,
+        # generation_kwargs: Dict[str, Any] = {},
     ):
         """
         Run the pipeline with the given parameters.
         """
+
         return await self.pipeline.run_async(
             {
                 "embedder": {"text": query},
@@ -133,7 +147,10 @@ class AgentPipeline(BasePipeline[AsyncPipeline]):
                     "template": messages,
                     "template_variables": {"query": query} | extra_params,
                 },
-                "agent": {"streaming_callback": streaming_callback},
+                "agent": {
+                    "streaming_callback": streaming_callback,
+                    # "generation_kwargs": generation_kwargs,
+                },
             },
             # include_outputs_from=["doc_joiner"],
         )

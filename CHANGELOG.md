@@ -6,7 +6,9 @@
 
 ## [V0.3.0rc2] - 2025-11-06
 ### Added
-- 
+- 新增模型渠道管理和模型列表管理Model、Service、Schema及API
+- 新增chat2rag各个组件使用模型渠道及管理，取消或降低对CONFIG配置的依赖
+- 新增定时1小时刷新模型延迟
 
 ### Removed
 - 移除重复无用`doc_pipeline.py`文件

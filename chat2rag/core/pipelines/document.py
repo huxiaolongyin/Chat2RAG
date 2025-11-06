@@ -38,7 +38,7 @@ class DocumentSearchPipeline(BasePipeline):
             pipeline = Pipeline()
             embedder = OpenAITextEmbedder(
                 api_base_url=CONFIG.EMBEDDING_OPENAI_URL,
-                api_key=Secret.from_env_var("OPENAI_API_KEY"),
+                api_key=Secret.from_token("OPENAI_API_KEY"),
                 model=CONFIG.EMBEDDING_MODEL,
                 dimensions=CONFIG.EMBEDDING_DIMENSIONS,
             )
@@ -145,7 +145,7 @@ class DocumentWriterPipeline(BasePipeline):
             pipeline = Pipeline()
             embedder = OpenAIDocumentEmbedder(
                 api_base_url=CONFIG.EMBEDDING_OPENAI_URL,
-                api_key=Secret.from_env_var("OPENAI_API_KEY"),
+                api_key=Secret.from_token("OPENAI_API_KEY"),
                 model=CONFIG.EMBEDDING_MODEL,
                 dimensions=CONFIG.EMBEDDING_DIMENSIONS,
             )

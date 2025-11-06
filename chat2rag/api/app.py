@@ -1,3 +1,4 @@
+import asyncio
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -8,6 +9,7 @@ from chat2rag.api.routes import router
 from chat2rag.config import CONFIG
 from chat2rag.core.init_app import modify_db
 from chat2rag.logger import get_logger
+from chat2rag.services.model_service import ModelSourceService, periodic_latency_update
 
 # from chat2rag.tools.tool_manager import ToolManager
 
@@ -30,6 +32,9 @@ async def lifespan(app: FastAPI):
 
     # 加载MCP连接
     # ToolManager()
+    asyncio.create_task(
+        periodic_latency_update(ModelSourceService(), interval_sec=3600)
+    )
 
     yield
     # 关闭时执行
