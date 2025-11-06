@@ -48,7 +48,7 @@ class MCPConnectionManager:
                 return None
 
             # 创建并缓存toolset
-            logger.debug(f"连接MCP服务：{server_info}")
+            logger.debug(f"Connect to the MCP service: {server_info}")
             toolset = MCPToolset(server_info=server_info)
             self._toolsets[server.id] = toolset
             return toolset
@@ -61,8 +61,9 @@ class MCPConnectionManager:
         """移除并清理toolset"""
         if server_id in self._toolsets:
             toolset = self._toolsets.pop(server_id)
+
             # 如果toolset有cleanup方法，调用它
-            if hasattr(toolset, "cleanup"):
+            if hasattr(toolset, "close"):
                 try:
                     await toolset.close()
                 except Exception as e:
