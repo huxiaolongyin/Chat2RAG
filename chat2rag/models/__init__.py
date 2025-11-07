@@ -1,4 +1,6 @@
+from .action import RobotAction
 from .command import Command, CommandCategory, CommandVariant
+from .expression import RobotExpression
 from .flow import FlowData
 from .metric import Metric
 from .models import ModelLatency, ModelProvider, ModelSource
@@ -22,4 +24,6 @@ __all__ = [
     "ModelProvider",
     "ModelLatency",
     "ModelSource",
+    "RobotExpression",
+    "RobotAction",
 ]

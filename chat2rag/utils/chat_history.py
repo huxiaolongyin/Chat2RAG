@@ -12,35 +12,40 @@ from haystack.dataclasses import (
 from chat2rag.config import CONFIG
 from chat2rag.logger import get_logger
 from chat2rag.schemas.prompt import PromptCreate
+from chat2rag.services.action_service import RobotActionService
+from chat2rag.services.expression_service import RobotExpressionService
 from chat2rag.services.prompt_service import PromptService
 
 logger = get_logger(__name__)
 prompt_service = PromptService()
+action_service = RobotActionService()
+expression_service = RobotExpressionService()
 
-action_list = [
-    "点头",
-    "摇头",
-    "挥手",
-    "招手",
-    "耸肩",
-    "鼓掌",
-    "站立",
-    "坐下",
-    "前进",
-    "后退",
-]
-emoji_list = [
-    "微笑",
-    "开心",
-    "难过",
-    "愤怒",
-    "困惑",
-    "思考",
-    "惊讶",
-    "疲惫",
-    "害羞",
-    "鼓励",
-]
+
+# [
+#     "点头",
+#     "摇头",
+#     "挥手",
+#     "招手",
+#     "耸肩",
+#     "鼓掌",
+#     "站立",
+#     "坐下",
+#     "前进",
+#     "后退",
+# ]
+# emoji_list = [
+#     "微笑",
+#     "开心",
+#     "难过",
+#     "愤怒",
+#     "困惑",
+#     "思考",
+#     "惊讶",
+#     "疲惫",
+#     "害羞",
+#     "鼓励",
+# ]
 DEFAULT_QUERY_TEMPLATE = f"""
 问题：{{{{ query }}}}；
 
@@ -54,11 +59,11 @@ content: {{{{ doc.content }}}} score: {{{{ doc.score }}}}
 {{% endif %}}
 """
 
-EXTRA_PROMPT = f"""
+EXTRA_PROMPT = """
 请根据以上内容回答用户问题。
 你可以使用以下特殊标记来表示非文本内容：
-- 动作：[ACTION:动作名称]，示例: [ACTION:{action_list[0]}]，可选动作：{'、'.join(action_list)}
-- 表情：[EMOJI:emoji名称]，示例: [EMOJI:{emoji_list[0]}]，可选表情：{'、'.join(emoji_list)}
+- 动作：[ACTION:动作名称]，示例: [ACTION:{action0}]，可选动作：可选动作：{actions}
+- 表情：[EMOJI:emoji名称]，示例: [EMOJI:{emoji0}]，可选表情：可选表情：{emojis}
 - 图片: `[IMAGE:图片地址]`，以 png、jpg、jpeg、gif 结尾的链接，示例：[IMAGE:https://pic.nximg.cn/file/20200430/24969966_224422361084_2.jpg]
 - 链接：`[LINK:URL]`，示例：[LINK:https://example.com]，确保 URL 完整且以 http:// 或 https:// 开头
 
@@ -209,7 +214,15 @@ class ChatHistory:
 
         user_msg = DEFAULT_QUERY_TEMPLATE
         if enable_extra_prompt:
-            user_msg += EXTRA_PROMPT
+            action_list = await action_service.get_active_action_list()
+            emoji_list = await expression_service.get_active_expression_list()
+            formatted_prompt = EXTRA_PROMPT.format(
+                action0=action_list[0],
+                actions="、".join(action_list),
+                emoji0=emoji_list[0],
+                emojis="、".join(emoji_list),
+            )
+            user_msg += formatted_prompt
 
         contents = [user_msg]
         if image:

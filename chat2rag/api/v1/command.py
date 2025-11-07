@@ -1,5 +1,3 @@
-from typing import Optional
-
 from fastapi import APIRouter, Query
 from tortoise.expressions import Q
 

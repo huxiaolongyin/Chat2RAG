@@ -4,11 +4,12 @@
 
 这个格式基于 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)，还有这个原则遵循 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [V0.3.0rc2] - 2025-11-06
+## [V0.3.0rc2] - 2025-11-07
 ### Added
 - 新增模型渠道管理和模型列表管理Model、Service、Schema及API
 - 新增chat2rag各个组件使用模型渠道及管理，取消或降低对CONFIG配置的依赖
 - 新增定时1小时刷新模型延迟
+- 新增动作和表情配置的Model、Service、Schema及API
 - 优化 `flow.py` 变量命名及日志打印
 
 ### Fixed
