@@ -1,168 +1,102 @@
-from math import ceil
-
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Path, Query
 from tortoise.expressions import Q
 
-from chat2rag.config import CONFIG
 from chat2rag.logger import auto_log, get_logger
-from chat2rag.responses import Error, Success
+from chat2rag.schemas.base import BaseResponse
 from chat2rag.schemas.common import Current, Size
-from chat2rag.schemas.prompt import PromptCreate, PromptUpdate
-from chat2rag.services.prompt_service import PromptService
+from chat2rag.schemas.prompt import (
+    PromptCreate,
+    PromptIdResponse,
+    PromptItemResponse,
+    PromptPaginatedData,
+    PromptUpdate,
+)
+from chat2rag.services.prompt_service import prompt_service
+from chat2rag.utils.decorators import exception_handler
 
 logger = get_logger(__name__)
 
 router = APIRouter()
 
-prompt_service = PromptService()
 
-
-@router.get("/", summary="获取提示词列表")
-@router.get("/list", summary="获取提示词列表")
+# fmt: off
+@router.get("/list", response_model=BaseResponse[PromptPaginatedData], summary="获取提示词列表", deprecated=True)
+@router.get("", response_model=BaseResponse[PromptPaginatedData], summary="获取提示词列表")
 @auto_log(level="info")
+@exception_handler
 async def get_prompt_list(
     current: Current = 1,
     size: Size = 10,
     prompt_name: str = Query(
-        None, description="提示词名称", alias="promptName", max_length=50
+        None,
+        description="提示词名称",
+        alias="promptName",
+        max_length=50,
+        pattern=r"^[a-zA-Z0-9\u4e00-\u9fa5_-]+$",
     ),
     prompt_desc: str = Query(
-        None, description="提示词描述", alias="promptDesc", max_length=50
+        None,
+        description="提示词描述",
+        alias="promptDesc",
+        max_length=200,
+        pattern=r"^[a-zA-Z0-9\u4e00-\u9fa5_-]+$",
     ),
 ):
-    try:
-        # 创建默认提示词
-        defaul_prompt = await prompt_service.model.filter(prompt_name="默认").first()
-        if not defaul_prompt:
-            await prompt_service.create(
-                PromptCreate(
-                    promptName="默认",
-                    promptDesc=f"默认",
-                    promptText=CONFIG.RAG_PROMPT_TEMPLATE,
-                )
-            )
+    q = Q()
+    if prompt_name:
+        q &= Q(prompt_name__icontains=prompt_name)
+    if prompt_desc:
+        q &= Q(versions__prompt_desc__icontains=prompt_desc)
 
-        q = Q()
-        if prompt_name:
-            q &= Q(prompt_name__icontains=prompt_name)
-        if prompt_desc:
-            q &= Q(prompt_desc__icontains=prompt_desc)
-
-        total, prompts = await prompt_service.get_list(current, size, q)
-
-        return Success(
-            data={
-                "promptList": [prompt for prompt in prompts],
-                "total": total,
-                "current": current,
-                "size": size,
-                "pages": ceil(total / size),
-            }
-        )
-    except Exception as e:
-        msg = f"获取提示词列表失败: {str(e)}"
-        logger.error(msg)
-        return Error(msg)
+    total, prompts = await prompt_service.get_list(current, size, q)
+    data = PromptPaginatedData.create(
+        items=prompts, total=total, current=current, size=size
+    )
+    return BaseResponse.success(data=data)
 
 
-@router.get("/version", summary="设置提示词版本")
+@router.get("/version", response_model=BaseResponse[PromptItemResponse], summary="设置指定提示词的活跃版本")
 @auto_log(level="info")
+@exception_handler
 async def update_version(
     prompt_id: int = Query(alias="promptId"),
     version: int = Query(),
 ):
-    try:
-        return Success(data=await prompt_service.set_version(prompt_id, version))
-    except Exception as e:
-        msg = f"设置提示词版本失败: {str(e)}"
-        logger.error(msg)
-        return Error(msg)
+    result = await prompt_service.set_version(prompt_id, version)
+    return BaseResponse.success(data=result, msg="版本设置成功")
 
 
-@router.get("/{prompt_id}", summary="获取提示词详情")
+@router.get("/{prompt_id}", response_model=BaseResponse[PromptItemResponse], summary="获取提示词详情")
 @auto_log(level="info")
-async def get_detail(prompt_id: int):
-    try:
-        return Success(data=await prompt_service.get_detail(prompt_id))
-    except Exception as e:
-        msg = f"获取提示词详情失败: {str(e)}"
-        logger.error(msg)
-        return Error(msg)
+@exception_handler
+async def get_detail(prompt_id: int = Path(..., gt=0, description="提示词ID")):
+    prompt = await prompt_service.get_version(prompt_id)
+    return BaseResponse.success(data=prompt)
 
 
-@router.post("/", summary="添加提示词")
-@router.post("/add", summary="添加提示词")
+@router.post("/add", response_model=BaseResponse[PromptIdResponse], summary="添加提示词", deprecated=True)
+@router.post("", response_model=BaseResponse[PromptIdResponse], summary="添加提示词")
 @auto_log(level="info")
+@exception_handler
 async def create_prompt(prompt_in: PromptCreate):
-    try:
-        exist_prompt = await prompt_service.model.filter(
-            prompt_name=prompt_in.prompt_name
-        ).first()
-
-        # 查看是否重名
-        if exist_prompt:
-            msg = "该提示词名称已存在"
-            logger.warning(msg)
-            return Error(msg)
-
-        prompt = await prompt_service.create(prompt_in)
-        return Success(data={"promptId": prompt.get("id")}, msg="创建提示词成功")
-
-    except Exception as e:
-        msg = f"创建提示词失败: {str(e)}"
-        logger.error(msg)
-        return Error(msg)
+    prompt = await prompt_service.create(prompt_in)
+    
+    return BaseResponse.success(data=PromptIdResponse(prompt_id = prompt.id), msg="提示词创建成功")
 
 
-@router.put("/{prompt_id}", summary="更新提示词")
-@router.put("/update/{prompt_id}", summary="更新提示词")
+@router.put("/update/{prompt_id}", response_model=BaseResponse[PromptIdResponse], summary="更新提示词",  deprecated=True)
+@router.put("/{prompt_id}", response_model=BaseResponse[PromptIdResponse], summary="更新提示词")
 @auto_log(level="info")
-async def _(prompt_id: int, prompt_in: PromptUpdate):
-    try:
-        # 查看是否存在分类
-        prompt = await prompt_service.get(prompt_id)
-        if not prompt:
-            msg = "提示词不存在"
-            logger.warning(msg)
-            return Error(msg)
-
-        if prompt_in.prompt_name:
-            # 查看是否重名
-            exist_prompt = (
-                await prompt_service.model.filter(prompt_name=prompt_in.prompt_name)
-                .exclude(id=prompt_id)
-                .first()
-            )
-            if exist_prompt:
-                msg = "该提示词已存在"
-                logger.warning(msg)
-                return Error(msg)
-
-        prompt = await prompt_service.update(prompt_id, prompt_in)
-        return Success(data={"promptId": prompt.get("id")}, msg="更新提示词成功")
-
-    except Exception as e:
-        msg = f"更新指令分类失败: {str(e)}"
-        logger.error(msg)
-        return Error(msg)
+@exception_handler
+async def update_prompt(prompt_id: int, prompt_in: PromptUpdate):
+    prompt = await prompt_service.update(prompt_id, prompt_in)
+    return BaseResponse.success(data=PromptIdResponse(prompt_id = prompt.id), msg="提示词更新成功")
 
 
-@router.delete("/{prompt_id}", summary="删除提示词")
-@router.delete("/remove/{prompt_id}", summary="删除提示词")
+@router.delete("/remove/{prompt_id}", response_model=BaseResponse, summary="删除提示词", deprecated=True)
+@router.delete("/{prompt_id}", response_model=BaseResponse, summary="删除提示词")
 @auto_log(level="info")
-async def _(prompt_id: int):
-    try:
-        # 查看是否存在
-        prompt = await prompt_service.get(prompt_id)
-        if not prompt:
-            msg = "提示词不存在"
-            logger.warning(msg)
-            return Error(msg)
-
-        await prompt_service.remove(prompt_id)
-        return Success(msg="删除提示词成功")
-
-    except Exception as e:
-        msg = f"删除提示词失败: {str(e)}"
-        logger.error(msg)
-        return Error(msg)
+@exception_handler
+async def delete_prompt(prompt_id: int):
+    await prompt_service.remove(prompt_id)
+    return BaseResponse.success(msg="提示词删除成功")

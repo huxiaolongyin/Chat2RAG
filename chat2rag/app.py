@@ -11,6 +11,7 @@ from chat2rag.config import CONFIG
 from chat2rag.core.init_app import modify_db
 from chat2rag.logger import get_logger
 from chat2rag.services.model_service import ModelSourceService, periodic_latency_update
+from chat2rag.services.prompt_service import prompt_service
 
 logger = get_logger(__name__)
 
@@ -28,6 +29,9 @@ async def lifespan(app: FastAPI):
         # 需要先启动 server 服务： python -m phoenix.server.main serve
         setup_telemetry()
         logger.info("Telemetry setup successfully")
+
+    # 创建默认提示词
+    await prompt_service.ensure_default_prompt()
 
     # 加载MCP连接
     # ToolManager()

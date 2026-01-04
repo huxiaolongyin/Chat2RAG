@@ -3,8 +3,10 @@
 from datetime import datetime
 from typing import Generic, List, TypeVar
 
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field, computed_field, field_validator
 
+from chat2rag.config import CONFIG
 from chat2rag.utils.camelize import to_lower_camel_case
 
 # =====================================================================
@@ -130,12 +132,12 @@ class PaginationParams(BaseSchema):
     用于接收分页请求参数，提供计算好的 offset 和 limit。
 
     Attributes:
-        page: 页码，从 1 开始
-        page_size: 每页条数，默认 20，最大 100
+        current: 页码，从 1 开始
+        size: 每页条数，默认 20，最大 100
 
     Computed:
-        offset: 数据库查询偏移量 = (page - 1) * page_size
-        limit: 等同于 page_size
+        offset: 数据库查询偏移量 = (current - 1) * size
+        limit: 等同于 size
 
     Examples:
         @router.get("/users")
@@ -146,8 +148,8 @@ class PaginationParams(BaseSchema):
             ...
     """
 
-    page: int = Field(default=1, ge=1, description="页码（从1开始）", examples=[1])
-    page_size: int = Field(
+    current: int = Field(default=1, ge=1, description="页码（从1开始）", examples=[1])
+    size: int = Field(
         default=20, ge=1, le=100, description="每页条数（最大100）", examples=[20]
     )
 
@@ -160,18 +162,18 @@ class PaginationParams(BaseSchema):
         Returns:
             偏移量 = (当前页码 - 1) * 每页条数
         """
-        return (self.page - 1) * self.page_size
+        return (self.current - 1) * self.size
 
     @computed_field
     @property
     def limit(self) -> int:
         """
-        返回查询限制数量（等同于 page_size）
+        返回查询限制数量（等同于 size）
 
         Returns:
             每页条数
         """
-        return self.page_size
+        return self.size
 
 
 class SortParams(BaseSchema):
@@ -227,7 +229,7 @@ class BaseResponse(BaseSchema, Generic[T]):
 
     Attributes:
         code: 业务状态码，200 表示成功，其他表示各类错误
-        msg: 响应消息，成功时为 "success"，失败时为错误描述
+        msg: 响应消息，成功时为 "OK"，失败时为错误描述
         data: 响应数据，泛型支持任意类型
 
     Class Methods:
@@ -246,22 +248,30 @@ class BaseResponse(BaseSchema, Generic[T]):
         return BaseResponse[UserSchema](data=user)
     """
 
-    code: int = Field(default=200, description="业务状态码: 200-成功", examples=[200])
-    msg: str = Field(default="success", description="响应消息", examples=["success"])
-    data: T | None = Field(default=None, description="响应数据")
+    code: str = Field(
+        default="0000", description="业务状态码: '0000'-成功", examples=["0000"]
+    )
+    msg: str = Field(default="OK", description="响应消息", examples=["OK"])
+    version: str = CONFIG.VERSION
     response_time: str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    data: T | None = Field(default=None, description="响应数据")
 
     @classmethod
-    def success(cls, data: T | None = None, msg: str = "success") -> "BaseResponse[T]":
+    def success(cls, data: T | None = None, msg: str = "OK") -> "BaseResponse[T]":
         """创建成功响应"""
-        return cls(code=200, msg=msg, data=data)
+        return cls(code="0000", msg=msg, data=data)
 
     @classmethod
     def error(
-        cls, msg: str = "error", code: int = 400, data: T | None = None
-    ) -> "BaseResponse[T]":
-        """创建错误响应 - 错误时通常不返回业务数据"""
-        return cls(code=code, msg=msg, data=data)
+        cls,
+        msg: str = "error",
+        code: str = "4000",
+        data: T | None = None,
+        http_status: int = 400,
+    ) -> JSONResponse:
+        """创建错误响应 - 返回带正确 HTTP 状态码的 JSONResponse"""
+        response_data = cls(code=code, msg=msg, data=data)
+        return JSONResponse(status_code=http_status, content=response_data.model_dump())
 
 
 class PaginatedData(BaseSchema, Generic[T]):
@@ -273,8 +283,8 @@ class PaginatedData(BaseSchema, Generic[T]):
     Attributes:
         list: 当前页的数据列表
         total: 符合条件的总记录数
-        page: 当前页码
-        page_size: 每页条数
+        current: 当前页码
+        size: 每页条数
 
     Computed:
         pages: 总页数
@@ -285,8 +295,8 @@ class PaginatedData(BaseSchema, Generic[T]):
         paginated = PaginatedData.create(
             items=users,
             total=100,
-            page=1,
-            page_size=20
+            current=1,
+            size=20
         )
         print(paginated.pages)     # 5
         print(paginated.has_next)  # True
@@ -294,8 +304,8 @@ class PaginatedData(BaseSchema, Generic[T]):
 
     list: List[T] = Field(default_factory=list, description="数据列表")
     total: int = Field(default=0, ge=0, description="总记录数", examples=[100])
-    page: int = Field(default=1, ge=1, description="当前页码", examples=[1])
-    page_size: int = Field(default=20, ge=1, description="每页条数", examples=[20])
+    current: int = Field(default=1, ge=1, description="当前页码", examples=[1])
+    size: int = Field(default=20, ge=1, description="每页条数", examples=[20])
 
     @computed_field
     @property
@@ -306,39 +316,17 @@ class PaginatedData(BaseSchema, Generic[T]):
         Returns:
             总页数，向上取整
         """
-        if self.page_size <= 0:
+        if self.size <= 0:
             return 0
-        return (self.total + self.page_size - 1) // self.page_size
-
-    @computed_field
-    @property
-    def has_next(self) -> bool:
-        """
-        是否有下一页
-
-        Returns:
-            当前页码 < 总页数 时返回 True
-        """
-        return self.page < self.pages
-
-    @computed_field
-    @property
-    def has_prev(self) -> bool:
-        """
-        是否有上一页
-
-        Returns:
-            当前页码 > 1 时返回 True
-        """
-        return self.page > 1
+        return (self.total + self.size - 1) // self.size
 
     @classmethod
     def create(
         cls,
         items: List[T],
         total: int,
-        page: int = 1,
-        page_size: int = 20,
+        current: int = 1,
+        size: int = 20,
     ) -> "PaginatedData[T]":
         """
         创建分页数据的工厂方法
@@ -346,13 +334,13 @@ class PaginatedData(BaseSchema, Generic[T]):
         Args:
             items: 当前页的数据列表
             total: 总记录数
-            page: 当前页码
-            page_size: 每页条数
+            current: 当前页码
+            size: 每页条数
 
         Returns:
             PaginatedData 实例
         """
-        return cls(list=items, total=total, page=page, page_size=page_size)
+        return cls(list=items, total=total, current=current, size=size)
 
 
 class PaginatedResponse(BaseResponse[PaginatedData[T]], Generic[T]):
@@ -368,8 +356,8 @@ class PaginatedResponse(BaseResponse[PaginatedData[T]], Generic[T]):
             return PaginatedResponse.create(
                 items=users,
                 total=total,
-                page=params.page,
-                page_size=params.page_size
+                current=params.current,
+                size=params.size
             )
     """
 
@@ -378,9 +366,9 @@ class PaginatedResponse(BaseResponse[PaginatedData[T]], Generic[T]):
         cls,
         items: List[T],
         total: int,
-        page: int = 1,
-        page_size: int = 10,
-        msg: str = "success",
+        current: int = 1,
+        size: int = 10,
+        msg: str = "OK",
     ) -> "PaginatedResponse[T]":
         """
         创建分页响应的工厂方法
@@ -388,8 +376,8 @@ class PaginatedResponse(BaseResponse[PaginatedData[T]], Generic[T]):
         Args:
             items: 当前页的数据列表
             total: 总记录数
-            page: 当前页码
-            page_size: 每页条数
+            current: 当前页码
+            size: 每页条数
             msg: 响应消息
 
         Returns:
@@ -398,7 +386,7 @@ class PaginatedResponse(BaseResponse[PaginatedData[T]], Generic[T]):
         return cls(
             code=200,
             msg=msg,
-            data=PaginatedData.create(items, total, page, page_size),
+            data=PaginatedData.create(items, total, current, size),
         )
 
 
