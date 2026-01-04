@@ -1,6 +1,7 @@
 import asyncio
 from contextlib import asynccontextmanager
 
+import uvicorn
 from fastapi import FastAPI
 from fastapi.openapi.docs import get_swagger_ui_html
 from fastapi.staticfiles import StaticFiles
@@ -11,15 +12,13 @@ from chat2rag.core.init_app import modify_db
 from chat2rag.logger import get_logger
 from chat2rag.services.model_service import ModelSourceService, periodic_latency_update
 
-# from chat2rag.tools.tool_manager import ToolManager
-
 logger = get_logger(__name__)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # 数据库自动迁移
-    await modify_db()
+
+    await modify_db()  # 数据库自动迁移
 
     # 进行 RAG 流程监控
     if CONFIG.TELEMETRY_ENABLED:
@@ -56,8 +55,7 @@ def create_app():
 
 
 app = create_app()
-# 加载静态文件
-app.mount("/static", StaticFiles(directory="static"), name="static")
+app.mount("/static", StaticFiles(directory="static"), name="static")  # 加载静态文件
 
 
 # 自定义 Swagger 文档路由
@@ -79,11 +77,4 @@ async def get_openapi_json():
 
 
 if __name__ == "__main__":
-    import uvicorn
-
-    uvicorn.run(
-        "chat2rag.api.app:app",
-        host="0.0.0.0",
-        port=CONFIG.BACKEND_PORT,
-        reload=False,
-    )
+    uvicorn.run("app:app", host="0.0.0.0", port=CONFIG.BACKEND_PORT, reload=False)
