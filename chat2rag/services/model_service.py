@@ -41,8 +41,6 @@ class ModelProviderService(CRUDBase[ModelProvider, ModelProviderCreate, ModelPro
         async with in_transaction():
             provider = await super().update(id, obj_in, exclude)
             await ModelSource.filter(provider=provider).all().delete()
-            if provider.enabled:
-                await provider.get_models()
 
         return provider
 

@@ -135,7 +135,10 @@ class Config:
     POSTGRESQL_HOST = load_str_env("POSTGRESQL_HOST") or "localhost"
     POSTGRESQL_DATABASE = load_str_env("POSTGRESQL_DATABASE") or "chat2rag"
     POSTGRESQL_PASSWORD = load_str_env("POSTGRESQL_PASSWORD") or "123456"
-    DATABASE_URL = f"postgresql://postgres:{POSTGRESQL_PASSWORD}@{POSTGRESQL_HOST}:5432/{POSTGRESQL_DATABASE}"
+    POSTGRESQL_PORT = load_int_env("POSTGRESQL_PORT") or 5432
+    DATABASE_URL = (
+        f"postgresql://postgres:{POSTGRESQL_PASSWORD}@{POSTGRESQL_HOST}:{POSTGRESQL_PORT}/{POSTGRESQL_DATABASE}"
+    )
 
     # RAG
     RAG_PROMPT_TEMPLATE = """
@@ -187,18 +190,19 @@ class Config:
 
     # MODEL
     MODEL_LIST = [
+        {
+            "name": "DeepSeek-V3.2",
+            "id": "Pro/deepseek-ai/DeepSeek-V3.2",
+            "generation_kwargs": {"extra_body": {"enable_thinking": False, "thinking_budget": 100}},
+        },
         {"name": "Deepseek-v3", "id": "Pro/deepseek-ai/DeepSeek-V3"},
-        {"name": "Qwen2.5-14B", "id": "Qwen/Qwen2.5-14B-Instruct"},
         {"name": "Qwen2.5-32B", "id": "Qwen/Qwen2.5-32B-Instruct"},
         {"name": "Qwen2.5-72B", "id": "Qwen/Qwen2.5-72B-Instruct"},
         {
             "name": "Qwen3-32B",
             "id": "Qwen/Qwen3-32B",
-            "generation_kwargs": {
-                "extra_body": {"enable_thinking": False, "thinking_budget": 100}
-            },
+            "generation_kwargs": {"extra_body": {"enable_thinking": False, "thinking_budget": 100}},
         },
-        {"name": "Qwen3-14B", "id": "Qwen/Qwen3-14B"},
         {"name": "Qwen3-235B", "id": "Qwen/Qwen3-235B-A22B-Instruct-2507"},
         {"name": "DeepSeek-V3.1", "id": "Pro/deepseek-ai/DeepSeek-V3.1-Terminus"},
     ]
@@ -208,6 +212,9 @@ class Config:
         "generator": "Qwen2.5-32B",
     }
 
+    # Strategy
+    IS_FLOW = load_bool_env("IS_FLOW")
+
     TORTOISE_ORM = {
         "connections": {
             "default": {
@@ -215,7 +222,7 @@ class Config:
                 "credentials": {
                     "database": POSTGRESQL_DATABASE,
                     "host": POSTGRESQL_HOST,
-                    "port": 5432,
+                    "port": POSTGRESQL_PORT,
                     "user": "postgres",
                     "password": POSTGRESQL_PASSWORD,
                 },

@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 from tortoise.expressions import Q
 from tortoise.transactions import in_transaction
@@ -168,7 +168,7 @@ class PromptService(CRUDBase[Prompt, PromptCreate, PromptUpdate]):
         page_size: int,
         search: Q = Q(),
         order: list[str] | None = None,
-        prefetch: Optional[List[str]] = None,
+        prefetch: List[str] | None = None,
         distinct: bool = False,
     ) -> tuple[int, List[PromptItemResponse]]:
         """优化后的列表查询"""
@@ -200,7 +200,7 @@ class PromptService(CRUDBase[Prompt, PromptCreate, PromptUpdate]):
 
         return total, results
 
-    async def get_by_prompt_name(self, prompt_name: str) -> Dict[str, Any]:
+    async def get_by_prompt_name(self, prompt_name: str) -> PromptItemResponse:
         prompt = await self.model.filter(prompt_name=prompt_name).first()
         if not prompt:
             raise ValueNoExist(msg="提示词不存在")

@@ -10,6 +10,7 @@ from chat2rag.api.routes import router
 from chat2rag.config import CONFIG
 from chat2rag.core.init_app import modify_db
 from chat2rag.logger import get_logger
+from chat2rag.middleware import ExceptionHandlerMiddleware, LoggingMiddleware
 from chat2rag.services.model_service import ModelSourceService, periodic_latency_update
 from chat2rag.services.prompt_service import prompt_service
 
@@ -35,9 +36,7 @@ async def lifespan(app: FastAPI):
 
     # 加载MCP连接
     # ToolManager()
-    asyncio.create_task(
-        periodic_latency_update(ModelSourceService(), interval_sec=3600)
-    )
+    asyncio.create_task(periodic_latency_update(ModelSourceService(), interval_sec=3600))
 
     yield
     # 关闭时执行
@@ -53,6 +52,10 @@ def create_app():
         lifespan=lifespan,
         docs_url=None,
     )
+    # 注意顺序：异常处理在外层，日志记录在内层
+    app.add_middleware(ExceptionHandlerMiddleware)
+    app.add_middleware(LoggingMiddleware, log_level="info", log_body=True)
+
     app.include_router(router, prefix=CONFIG.WEB_ROUTE_PREFIX)
 
     return app
