@@ -5,6 +5,8 @@ from pydantic.main import IncEx
 from tortoise.expressions import Q
 from tortoise.models import Model
 
+from chat2rag.exceptions import ValueNoExist
+
 ModelType = TypeVar("ModelType", bound=Model)
 CreateSchemaType = TypeVar("CreateSchemaType", bound=BaseModel)
 UpdateSchemaType = TypeVar("UpdateSchemaType", bound=BaseModel)
@@ -22,7 +24,10 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         Returns:
             单个数据
         """
-        return await self.model.get_or_none(id=id)
+        obj = await self.model.get_or_none(id=id)
+        if not obj:
+            raise ValueNoExist()
+        return obj
 
     async def get_list(
         self,

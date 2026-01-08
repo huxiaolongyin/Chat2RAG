@@ -103,8 +103,8 @@ class TimestampMixin(BaseModel):
         updated_at: 记录最后更新时间
     """
 
-    created_at: datetime = Field(..., description="创建时间")
-    updated_at: datetime = Field(..., description="更新时间")
+    create_time: datetime = Field(..., description="创建时间")
+    update_time: datetime = Field(..., description="更新时间")
 
 
 class StatusMixin(BaseModel):
@@ -150,7 +150,7 @@ class PaginationParams(BaseSchema):
 
     current: int = Field(default=1, ge=1, description="页码（从1开始）", examples=[1])
     size: int = Field(
-        default=20, ge=1, le=100, description="每页条数（最大100）", examples=[20]
+        default=10, ge=1, le=100, description="每页条数（最大100）", examples=[10]
     )
 
     @computed_field
@@ -296,7 +296,7 @@ class PaginatedData(BaseSchema, Generic[T]):
             items=users,
             total=100,
             current=1,
-            size=20
+            size=10
         )
         print(paginated.pages)     # 5
         print(paginated.has_next)  # True
@@ -305,7 +305,7 @@ class PaginatedData(BaseSchema, Generic[T]):
     list: List[T] = Field(default_factory=list, description="数据列表")
     total: int = Field(default=0, ge=0, description="总记录数", examples=[100])
     current: int = Field(default=1, ge=1, description="当前页码", examples=[1])
-    size: int = Field(default=20, ge=1, description="每页条数", examples=[20])
+    size: int = Field(default=10, ge=1, description="每页条数", examples=[10])
 
     @computed_field
     @property
@@ -326,7 +326,7 @@ class PaginatedData(BaseSchema, Generic[T]):
         items: List[T],
         total: int,
         current: int = 1,
-        size: int = 20,
+        size: int = 10,
     ) -> "PaginatedData[T]":
         """
         创建分页数据的工厂方法
@@ -352,7 +352,7 @@ class PaginatedResponse(BaseResponse[PaginatedData[T]], Generic[T]):
     Examples:
         @router.get("/users", response_model=PaginatedResponse[UserSchema])
         async def list_users(params: PaginationParams = Depends()):
-            users, total = await user_service.get_list(params)
+            total, users = await user_service.get_list(params)
             return PaginatedResponse.create(
                 items=users,
                 total=total,
@@ -384,7 +384,7 @@ class PaginatedResponse(BaseResponse[PaginatedData[T]], Generic[T]):
             PaginatedResponse 实例
         """
         return cls(
-            code=200,
+            code="0000",
             msg=msg,
             data=PaginatedData.create(items, total, current, size),
         )
