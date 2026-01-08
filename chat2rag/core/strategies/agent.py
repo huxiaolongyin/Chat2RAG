@@ -10,14 +10,13 @@ from chat2rag.core.pipelines.agent import AgentPipeline
 from chat2rag.logger import get_logger
 from chat2rag.models.models import ModelProvider, ModelSource
 from chat2rag.services.model_service import ModelSourceService
-from chat2rag.utils.chat_history import ChatHistory
+from chat2rag.utils.chat_history import chat_history
 from chat2rag.utils.merge_kwargs import merge_generation_kwargs
 from chat2rag.utils.pipeline_cache import create_pipeline
 
 from .base import ResponseStrategy
 
 logger = get_logger(__name__)
-chat_history = ChatHistory()
 model_source_service = ModelSourceService()
 
 
@@ -35,7 +34,6 @@ class AgentStrategy(ResponseStrategy):
             self.request.chat_rounds,
             image=self.request.content.get("image", ""),
         )
-
         asyncio.create_task(self._process_pipeline(query, history_messages))
 
         async for chunk in self.handler.get_stream(self.is_batch):
@@ -47,7 +45,7 @@ class AgentStrategy(ResponseStrategy):
         # 获取当前时间
         current_time = {"time": datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
         model_source: ModelSource = await model_source_service.get_best_source(
-            self.request.model
+            self.request.model, extra_log="Agent Stage"
         )
         model_provider: ModelProvider = await model_source.provider
         generation_kwargs = merge_generation_kwargs(
@@ -84,8 +82,7 @@ class AgentStrategy(ResponseStrategy):
                 chat_history.add_message(self.request.chat_id, messages=new_messages)
 
                 logger.info(
-                    f"Agent pipeline processed successfully. "
-                    f"Answer:({new_messages[-1].text}) Cost: %.2fs",
+                    f"Agent pipeline processed successfully. " f"Answer:({new_messages[-1].text}) Cost: %.2fs",
                     perf_counter() - self.start_time,
                 )
 
