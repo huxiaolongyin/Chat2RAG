@@ -57,6 +57,7 @@ content: {{{{ doc.content }}}} score: {{{{ doc.score }}}}
 {{% else %}}
     None
 {{% endif %}}
+若存在图片链接，请根据问题内容判断是否进行输出
 """
 
 EXTRA_PROMPT = """
@@ -66,7 +67,6 @@ EXTRA_PROMPT = """
 - 表情：[EMOJI:emoji名称]，示例: [EMOJI:{emoji0}]，可选表情：可选表情：{emojis}
 - 图片: `[IMAGE:图片地址]`，以 png、jpg、jpeg、gif 结尾的链接，示例：[IMAGE:https://pic.nximg.cn/file/20200430/24969966_224422361084_2.jpg]
 - 链接：`[LINK:URL]`，示例：[LINK:https://example.com]，确保 URL 完整且以 http:// 或 https:// 开头
-
 
 上述标记请在文本回复前提前合理地使用，以增强交互表现力。仅输出与问题相关的标记和回答内容，避免冗余解释。
 回答：
@@ -81,29 +81,36 @@ async def get_prompt_template(prompt_name: str) -> Optional[str]:
         return None
     prompt = await prompt_service.get_by_prompt_name(prompt_name)
 
-    # 没找到提示词则使用默认或创建
+    # 没找到提示词则使用默认
     if not prompt:
         logger.warning("Prompt with name '%s' not found", prompt_name)
-        try:
+        prompt = await prompt_service.get_by_prompt_name("默认")
 
-            prompt = await prompt_service.model.filter(
-                prompt_name__in=["默认", "default"]
-            ).first()
-            if not prompt:
-                logger.debug("Create default prompt '%s'", prompt_name)
-                prompt = await prompt_service.create(
-                    PromptCreate(
-                        promptName="默认",
-                        promptDesc=f"默认",
-                        promptText=CONFIG.RAG_PROMPT_TEMPLATE,
-                    )
-                )
-            return prompt.get("promptText")
+        return prompt.prompt_text
+    else:
+        return prompt.prompt_text
+    #     try:
 
-        except Exception as e:
-            logger.error("Error retrieving prompt '%s': %s", prompt_name, str(e))
-            return None
-    return prompt.get("promptText")
+    #         prompt = await prompt_service.model.filter(
+    #             prompt_name__in=["默认", "default"]
+    #         ).first()
+    #         if not prompt:
+    #             # 创建默认提示词
+    #             # await prompt_service.ensure_default_prompt()
+    #             # logger.debug("Create default prompt '%s'", prompt_name)
+    #             # prompt = await prompt_service.create(
+    #             #     PromptCreate(
+    #             #         promptName="默认",
+    #             #         promptDesc=f"默认",
+    #             #         promptText=CONFIG.RAG_PROMPT_TEMPLATE,
+    #             #     )
+    #             # )
+    #         return prompt
+
+    #     except Exception as e:
+    #         logger.error("Error retrieving prompt '%s': %s", prompt_name, str(e))
+    #         return None
+    # return prompt.get("promptText")
 
 
 class ChatHistory:
@@ -138,9 +145,7 @@ class ChatHistory:
             if role == ChatRole.USER:
                 self.message_cache[chat_id].append(ChatMessage.from_user(text))
             elif role == ChatRole.TOOL:
-                self.message_cache[chat_id].append(
-                    ChatMessage.from_tool(tool_result, tool_call)
-                )
+                self.message_cache[chat_id].append(ChatMessage.from_tool(tool_result, tool_call))
             elif role == ChatRole.ASSISTANT:
                 self.message_cache[chat_id].append(ChatMessage.from_assistant(text))
             else:
@@ -217,9 +222,9 @@ class ChatHistory:
             action_list = await action_service.get_active_action_list()
             emoji_list = await expression_service.get_active_expression_list()
             formatted_prompt = EXTRA_PROMPT.format(
-                action0=action_list[0],
+                action0=next(iter(action_list), ""),
                 actions="、".join(action_list),
-                emoji0=emoji_list[0],
+                emoji0=next(iter(emoji_list), ""),
                 emojis="、".join(emoji_list),
             )
             user_msg += formatted_prompt
@@ -229,3 +234,6 @@ class ChatHistory:
             contents.append(ImageContent.from_url(image))
         messages.append(ChatMessage.from_user(content_parts=contents))
         return messages
+
+
+chat_history = ChatHistory()

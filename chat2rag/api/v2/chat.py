@@ -1,25 +1,28 @@
+import json
 from time import perf_counter
 from typing import AsyncIterator
 
 from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
+from pyinstrument import Profiler
 
 from chat2rag.core.strategies import (
     AgentStrategy,
     CommandStrategy,
     ExactMatchStrategy,
     FlowStrategy,
+    MultiModalStrategy,
+    SensitiveWordStrategy,
     StrategyChain,
 )
 from chat2rag.enums import ProcessType
-from chat2rag.logger import auto_log, get_logger
+from chat2rag.exceptions import ValueNoExist
+from chat2rag.logger import get_logger
 from chat2rag.schemas.chat import ChatRequest
-from chat2rag.utils.chat_history import ChatHistory
 from chat2rag.utils.stream import StreamHandler
 
 logger = get_logger(__name__)
 router = APIRouter()
-chat_history = ChatHistory()
 
 
 class ChatProcessor:
@@ -34,30 +37,40 @@ class ChatProcessor:
 
     async def process(self) -> AsyncIterator[str]:
         """处理聊天请求"""
+        # profiler = Profiler()
+        # profiler.start()
+        # once = True
         await self.handler.start()
         self._record_info()
 
         # 构建策略链并执行
         strategy_chain = self._build_strategy_chain()
         async for chunk in strategy_chain.execute(self.query):
+            # if once:
+
+            #     once = False
             yield chunk
+        # profiler.stop()
+        # print(
+        #     profiler.output_text(
+        #         unicode=True,
+        #         color=True,
+        #         show_all=False,
+        #         timeline=False,
+        #         short_mode=True,
+        #     )
+        # )
 
     def _build_strategy_chain(self) -> StrategyChain:
         """构建策略链"""
         return StrategyChain(
             [
-                CommandStrategy(
-                    self.request, self.handler, self.start_time, self.is_batch
-                ),
-                FlowStrategy(
-                    self.request, self.handler, self.start_time, self.is_batch
-                ),
-                ExactMatchStrategy(
-                    self.request, self.handler, self.start_time, self.is_batch
-                ),
-                AgentStrategy(
-                    self.request, self.handler, self.start_time, self.is_batch
-                ),
+                SensitiveWordStrategy(self.request, self.handler, self.start_time, self.is_batch),
+                CommandStrategy(self.request, self.handler, self.start_time, self.is_batch),
+                FlowStrategy(self.request, self.handler, self.start_time, self.is_batch),
+                ExactMatchStrategy(self.request, self.handler, self.start_time, self.is_batch),
+                MultiModalStrategy(self.request, self.handler, self.start_time, self.is_batch),
+                AgentStrategy(self.request, self.handler, self.start_time, self.is_batch),
             ]
         )
 
@@ -68,7 +81,7 @@ class ChatProcessor:
             "score_threshold": self.request.score_threshold,
         }
         self.handler.set_query_info(
-            question=self.query,
+            question=json.dumps(self.request.content, ensure_ascii=False),
             chat_id=self.request.chat_id,
             chat_rounds=self.request.chat_rounds,
             collections=self.request.collections,
@@ -82,25 +95,26 @@ class ChatProcessor:
 
 
 @router.post("/chat")
-@auto_log(level="info")
 async def chat(chat_request: ChatRequest):
     """聊天接口"""
+    if not (
+        chat_request.content.get("text")
+        and chat_request.content.get("image")
+        and chat_request.content.get("video")
+        and chat_request.content.get("audio")
+    ):
+        raise ValueNoExist("没有输入的内容")
 
     # TODO: 临时补丁
-    # chat_request.model = "qwen3-235b-a22b-instruct-2507"
-    # chat_request.model = "qwen3-vl-235b-a22b-instruct"
-    # chat_request.tools = [
-    #     "navigate_to_location",
-    #     "maps_weather",
-    #     "maps_geo",
-    #     "maps_direction_transit_integrated",
-    # ]
-    # chat_request.flows = ["点菜流程"]
-    # chat_request.chat_rounds = 5
-    # try:
-    #     chat_request.chat_id = chat_request.chat_id.split("_")[1]
-    # except:
-    #     pass
+    chat_request.tools = [
+        "navigate_to_location",
+        "maps_weather",
+        "maps_geo",
+        "maps_direction_transit_integrated",
+        "web_search",
+        "cart_manage",
+        "checkout",
+    ]
 
     processor = ChatProcessor(chat_request)
     return StreamingResponse(processor.process(), media_type="text/event-stream")

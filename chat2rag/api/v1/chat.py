@@ -8,12 +8,10 @@ from chat2rag.core.strategies import ExactMatchStrategy, RAGStrategy, StrategyCh
 from chat2rag.enums import ProcessType
 from chat2rag.logger import auto_log, get_logger
 from chat2rag.schemas.chat import ChatQueryParams
-from chat2rag.utils.chat_history import ChatHistory
 from chat2rag.utils.stream_v1 import StreamHandlerV1
 
 logger = get_logger(__name__)
 router = APIRouter()
-chat_history = ChatHistory()
 
 
 class ChatProcessor:

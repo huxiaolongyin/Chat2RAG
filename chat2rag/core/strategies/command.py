@@ -1,7 +1,5 @@
 from typing import AsyncIterator, Optional
 
-from tortoise.expressions import Q
-
 from chat2rag.logger import get_logger
 from chat2rag.services.command_service import CommandService
 
@@ -29,9 +27,7 @@ class CommandStrategy(ResponseStrategy):
         if command:
             logger.info(f"Command matched: {command.name} (code: {command.code})")
             reply = command.reply if command.reply else "."
-            async for item in self._yield_stream(
-                reply, "Command answer", command=command.code
-            ):
+            async for item in self._yield_stream(reply, "Command answer", command=command.code):
                 yield item
 
     async def _match_command(self, query: str) -> Optional[object]:
@@ -43,6 +39,9 @@ class CommandStrategy(ResponseStrategy):
         3. 检查命令名称、代码或变体是否包含用户输入
         """
         try:
+            if not query:
+                return None
+
             # 只查询启用的命令
             commands = (
                 await self.command_service.model.filter(is_active=True)
@@ -65,7 +64,7 @@ class CommandStrategy(ResponseStrategy):
                 # 匹配变体文本
                 variants = await command.variants.all()
                 for variant in variants:
-                    if query_lower in variant.text.lower():
+                    if variant.text.lower() in query_lower:
                         return command
 
             return None
