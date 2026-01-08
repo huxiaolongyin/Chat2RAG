@@ -6,6 +6,7 @@ from .command import router as command_router
 from .document import router as knowledge_router
 from .expression import router as expression_router
 from .flow import router as flow_router
+from .health import router as health_router
 from .metrics import router as metrics_router
 from .model import router as model_router
 from .prompt import router as prompt_router
@@ -29,3 +30,4 @@ v1_router.include_router(router=sensitive_router, prefix="/sensitive", tags=["�
 v1_router.include_router(router=command_router, prefix="/commands", tags=["命令词"])
 v1_router.include_router(router=expression_router, prefix="/expressions", tags=["表情"])
 v1_router.include_router(router=action_router, prefix="/actions", tags=["动作"])
+v1_router.include_router(router=health_router, prefix="/health", tags=["健康检查"])
