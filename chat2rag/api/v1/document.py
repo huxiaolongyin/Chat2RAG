@@ -1,4 +1,3 @@
-from enum import Enum
 from math import ceil
 from typing import Any, Dict, List, Optional
 
@@ -7,32 +6,20 @@ from fastapi import APIRouter, Body, Depends, HTTPException, Query
 from chat2rag.config import CONFIG
 from chat2rag.core.document.qdrant import QAQdrantDocumentStore
 from chat2rag.dataclass.document import QADocument
-from chat2rag.logger import auto_log, get_logger
+from chat2rag.enums import CollectionSortField, DocumentSortField, SortOrder
+from chat2rag.logger import get_logger
 from chat2rag.responses import Error, Success
+from chat2rag.schemas.base import BaseResponse
+from chat2rag.schemas.common import Current, Size
+from chat2rag.schemas.document import collectionPaginatedData
 from chat2rag.utils.monitoring import async_performance_logger
 
 logger = get_logger(__name__)
 router = APIRouter()
 
 
-class SortOrder(str, Enum):
-    ASC = "asc"
-    DESC = "desc"
-
-
-class CollectionSortField(str, Enum):
-    COLLECTION_NAME = "collection_name"
-    DOCUMENT_COUNT = "document_count"
-
-
-class DocumentSortField(str, Enum):
-    DOCUMENT_CONTENT = "content"
-
-
 # 依赖函数，用于检查集合是否存在
-async def validate_collection(
-    collection_name: str = Query(..., description="知识库名称", alias="collectionName")
-):
+async def validate_collection(collection_name: str = Query(..., description="知识库名称", alias="collectionName")):
     """验证知识库是否存在"""
     if collection_name not in QAQdrantDocumentStore().get_collection_names():
         logger.error(f"Knowledge collection <{collection_name}> does not exist.")
@@ -40,85 +27,56 @@ async def validate_collection(
     return collection_name
 
 
-@router.get("/collection", summary="获取知识库列表")
+@router.get("/collection", response_model=BaseResponse[collectionPaginatedData], summary="获取知识库列表")
 @async_performance_logger
-@auto_log(level="info")
 async def get_collections(
-    current: int = Query(1, ge=1, description="当前页码，默认1"),
-    size: int = Query(10, ge=1, le=100, description="每页数量(1-100)，默认10"),
-    collection_name: Optional[str] = Query(
-        None,
-        description="知识库名称",
-        alias="collectionName",
+    current: Current = 1,
+    size: Size = 10,
+    collection_name: str | None = Query(None, description="知识库名称", alias="collectionName"),
+    sort_by: CollectionSortField | None = Query(
+        CollectionSortField.COLLECTION_NAME, description="排序字段", alias="sortBy"
     ),
-    sort_by: Optional[CollectionSortField] = Query(
-        CollectionSortField.COLLECTION_NAME,
-        description="排序字段",
-        alias="sortBy",
-    ),
-    sort_order: Optional[SortOrder] = Query(
-        SortOrder.DESC,
-        description="排序方向",
-        alias="sortOrder",
-    ),
+    sort_order: SortOrder | None = Query(SortOrder.DESC, description="排序方向", alias="sortOrder"),
 ):
     """获取知识库列表，支持分页、搜索和排序"""
     logger.info(
         f"Getting the list of collections. Collection name: <{collection_name}>; Current: <{current}>; Page size: <{size}>"
     )
 
-    try:
-        # 获取所有数据
-        collection_list = QAQdrantDocumentStore().get_collections()
+    # 获取所有数据
+    collection_list = QAQdrantDocumentStore().get_collections()
 
-        # 如果有搜索条件则过滤
-        if collection_name:
-            collection_list = [
-                collection
-                for collection in collection_list
-                if collection_name.lower() in collection["collection_name"].lower()
-                or collection["collection_name"] != "None"
-            ]
-        else:
-            collection_list = [
-                collection
-                for collection in collection_list
-                if collection["collection_name"] != "None"
-            ]
+    # 如果有搜索条件则过滤
+    if collection_name:
+        collection_list = [
+            collection
+            for collection in collection_list
+            if collection_name.lower() in collection["collection_name"].lower()
+            or collection["collection_name"] != "None"
+        ]
+    else:
+        collection_list = [collection for collection in collection_list if collection["collection_name"] != "None"]
 
-        # 排序
-        collection_list.sort(
-            key=lambda x: x[sort_by], reverse=(sort_order == SortOrder.DESC)
-        )
+    # 排序
+    collection_list.sort(key=lambda x: x[sort_by], reverse=(sort_order == SortOrder.DESC))
 
-        # 计算分页
-        total = len(collection_list)
-        start_index = (current - 1) * size
-        end_index = start_index + size
-        paginated_collections = collection_list[start_index:end_index]
+    # 计算分页
+    total = len(collection_list)
+    start_index = (current - 1) * size
+    end_index = start_index + size
+    paginated_collections = collection_list[start_index:end_index]
 
-        logger.info(
-            f"The list of knowledge collections is successfully obtained. Collection name: <{collection_name}>; Total: <{total}>;"
-        )
+    logger.info(
+        f"The list of knowledge collections is successfully obtained. Collection name: <{collection_name}>; Total: <{total}>;"
+    )
+    data = collectionPaginatedData.create(items=paginated_collections, current=current, total=total, size=size)
 
-        # 返回分页数据
-        return Success(
-            data={
-                "collection_list": paginated_collections,
-                "current": current,
-                "size": size,
-                "total": total,
-                "pages": ceil(total / size),
-            },
-        )
-    except Exception as e:
-        logger.error(f"Failed to get collection list: {str(e)}")
-        return Error(msg=f"获取知识库列表失败: {str(e)}")
+    # 返回分页数据
+    return BaseResponse.success(data=data)
 
 
 @router.post("/collection", summary="创建新的知识库")
 @async_performance_logger
-@auto_log(level="info")
 async def create_collection(
     collection_name: str = Query(
         description="知识库名称",
@@ -126,80 +84,52 @@ async def create_collection(
     ),
 ):
     """创建新的知识库"""
-    logger.info(
-        f"Creating a knowledge collection. Collection name: <{collection_name}>"
-    )
+    logger.info(f"Creating a knowledge collection. Collection name: <{collection_name}>")
 
     try:
         if collection_name in QAQdrantDocumentStore().get_collection_names():
-            logger.error(
-                f"The knowledge collection <{collection_name}> already exists."
-            )
+            logger.error(f"The knowledge collection <{collection_name}> already exists.")
             return Error(msg="知识库已存在", data={"collection_name": collection_name})
 
         document_store = QAQdrantDocumentStore(collection_name)
         if document_store.create:
-            logger.info(
-                f"The knowledge collection <{collection_name}> is created successfully."
-            )
-            return Success(
-                msg="知识库创建成功", data={"collection_name": collection_name}
-            )
+            logger.info(f"The knowledge collection <{collection_name}> is created successfully.")
+            return Success(msg="知识库创建成功", data={"collection_name": collection_name})
         else:
-            logger.error(
-                f"Failed to create the knowledge collection <{collection_name}>."
-            )
-            return Error(
-                msg="知识库创建失败", data={"collection_name": collection_name}
-            )
+            logger.error(f"Failed to create the knowledge collection <{collection_name}>.")
+            return Error(msg="知识库创建失败", data={"collection_name": collection_name})
     except Exception as e:
         logger.error(f"Error creating collection {collection_name}: {str(e)}")
-        return Error(
-            msg=f"知识库创建失败: {str(e)}", data={"collection_name": collection_name}
-        )
+        return Error(msg=f"知识库创建失败: {str(e)}", data={"collection_name": collection_name})
 
 
 @router.delete("/collection", summary="删除知识库")
 @async_performance_logger
-@auto_log(level="info")
 async def delete_collection(collection_name: str = Depends(validate_collection)):
     """删除知识库"""
     logger.info(f"Deleting knowledge collection <{collection_name}>")
 
     try:
         QAQdrantDocumentStore(collection_name).delete_collection
-        logger.info(
-            f"The knowledge collection <{collection_name}> is deleted successfully."
-        )
+        logger.info(f"The knowledge collection <{collection_name}> is deleted successfully.")
         return Success(msg="删除知识库成功", data={"collection_name": collection_name})
     except Exception as e:
-        logger.error(
-            f"Failed to delete the knowledge collection <{collection_name}>. Error: {str(e)};"
-        )
+        logger.error(f"Failed to delete the knowledge collection <{collection_name}>. Error: {str(e)};")
         return Error(msg="删除知识库失败", data=str(e))
 
 
 @router.get("/collection/document", summary="获取知识库所有文档")
 @async_performance_logger
-@auto_log(level="info")
 async def get_documents(
     collection_name: str = Depends(validate_collection),
     current: int = Query(1, ge=1, description="当前页码，默认1"),
     size: int = Query(10, ge=1, le=10000, description="每页数量(1-10000)，默认10"),
-    document_content: Optional[str] = Query(
-        None,
-        description="文档内容",
-        alias="documentContent",
-    ),
+    document_content: Optional[str] = Query(None, description="文档内容", alias="documentContent"),
     sort_by: Optional[DocumentSortField] = Query(
-        DocumentSortField.DOCUMENT_CONTENT,
-        description="排序字段",
-        alias="sortBy",
+        DocumentSortField.DOCUMENT_CONTENT, description="排序字段", alias="sortBy"
     ),
     sort_order: Optional[SortOrder] = Query(
-        SortOrder.DESC,
-        description="排序方向(asc, desc)，默认 desc",
-        alias="sortOrder",
+        SortOrder.DESC, description="排序方向(asc, desc)，默认 desc", alias="sortOrder"
     ),
 ):
     """获取知识库中的所有文档，支持分页、过滤和排序"""
@@ -212,16 +142,10 @@ async def get_documents(
 
         # 内容过滤
         if document_content:
-            document_list = [
-                doc
-                for doc in document_list
-                if document_content.lower() in doc["content"].lower()
-            ]
+            document_list = [doc for doc in document_list if document_content.lower() in doc["content"].lower()]
 
         # 排序
-        document_list.sort(
-            key=lambda x: x[sort_by], reverse=(sort_order == SortOrder.DESC)
-        )
+        document_list.sort(key=lambda x: x[sort_by], reverse=(sort_order == SortOrder.DESC))
 
         # 计算分页
         total = len(document_list)
@@ -244,15 +168,12 @@ async def get_documents(
             },
         )
     except Exception as e:
-        logger.error(
-            f"Error getting documents from collection {collection_name}: {str(e)}"
-        )
+        logger.error(f"Error getting documents from collection {collection_name}: {str(e)}")
         return Error(msg=f"获取文档失败: {str(e)}")
 
 
 @router.post("/collection/document", summary="创建知识")
 @async_performance_logger
-@auto_log(level="info")
 async def create_documents(
     collection_name: str = Depends(validate_collection),
     doc_list: List[QADocument] = Body(description="知识内容", alias="docList"),
@@ -266,9 +187,7 @@ async def create_documents(
         return Error(msg="文档列表不能为空")
 
     try:
-        response = await QAQdrantDocumentStore(index=collection_name).write_documents(
-            qa_document_list=doc_list
-        )
+        response = await QAQdrantDocumentStore(index=collection_name).write_documents(qa_document_list=doc_list)
 
         write_docs_count = response.get("writer", {}).get("documents_written", 0) // 2
         logger.info(
@@ -283,23 +202,18 @@ async def create_documents(
             },
         )
     except Exception as e:
-        logger.error(
-            f"Document creation failed. Collection name: <{collection_name}>; Error: {str(e)}"
-        )
+        logger.error(f"Document creation failed. Collection name: <{collection_name}>; Error: {str(e)}")
         return Error(msg="知识创建失败", data=str(e))
 
 
 @router.delete("/collection/document", summary="删除知识")
 @async_performance_logger
-@auto_log(level="info")
 async def delete_documents(
     collection_name: str = Depends(validate_collection),
     doc_id_list: List[str] = Body(description="知识的id", alias="docIdList"),
 ):
     """删除知识库中的文档"""
-    logger.info(
-        f"Delete from documents. Collection name: <{collection_name}>; Document IDs: <{doc_id_list}>"
-    )
+    logger.info(f"Delete from documents. Collection name: <{collection_name}>; Document IDs: <{doc_id_list}>")
 
     if not doc_id_list:
         return Error(msg="文档ID列表不能为空")
@@ -311,35 +225,20 @@ async def delete_documents(
         )
         return Success(msg="删除知识成功", data=data)
     except Exception as e:
-        logger.error(
-            f"Documents deletion failed. Collection name: <{collection_name}>; Error: {str(e)}"
-        )
+        logger.error(f"Documents deletion failed. Collection name: <{collection_name}>; Error: {str(e)}")
         return Error(msg="删除知识失败", data=str(e))
 
 
 @router.get("/query", summary="知识内容查询")
 @async_performance_logger
-@auto_log(level="info")
 async def query_documents(
     collection_name: str = Depends(validate_collection),
     query: str = Query(description="查询内容", alias="query"),
-    top_k: int = Query(
-        default=5,
-        ge=1,
-        le=30,
-        description="返回数量(1-30), 默认5",
-        alias="topK",
-    ),
+    top_k: int = Query(default=5, ge=1, le=30, description="返回数量(1-30), 默认5", alias="topK"),
     score_threshold: float = Query(
-        default=None,
-        description="分数阈值(0-1.00)，question默认0.65，qa_pair默认0.88",
-        alias="scoreThreshold",
+        default=None, description="分数阈值(0-1.00)，question默认0.65，qa_pair默认0.88", alias="scoreThreshold"
     ),
-    doc_type: str = Query(
-        default="qa_pair",
-        description="查询类型(question, qa_pair)",
-        alias="type",
-    ),
+    doc_type: str = Query(default="qa_pair", description="查询类型(question, qa_pair)", alias="type"),
 ):
     """
     在知识库中查询文档
@@ -358,11 +257,7 @@ async def query_documents(
 
     # 设置默认检索阈值
     if not score_threshold:
-        score_threshold = (
-            CONFIG.PRECISION_THRESHOLD
-            if doc_type == "question"
-            else CONFIG.SCORE_THRESHOLD
-        )
+        score_threshold = CONFIG.PRECISION_THRESHOLD if doc_type == "question" else CONFIG.SCORE_THRESHOLD
 
     try:
         # start_time = time.perf_counter()
@@ -375,10 +270,7 @@ async def query_documents(
         )
         # query_time = time.perf_counter() - start_time
 
-        processed_docs = [
-            {"id": doc.id, "content": doc.content, "score": doc.score}
-            for doc in doc_list
-        ]
+        processed_docs = [{"id": doc.id, "content": doc.content, "score": doc.score} for doc in doc_list]
 
         data = {
             "collection_name": collection_name,
@@ -401,15 +293,12 @@ async def query_documents(
 
 @router.get("/exact-query", summary="精确知识查询")
 @async_performance_logger
-@auto_log(level="info")
 async def exact_query(
     collection_name: str = Depends(validate_collection),
     query: str = Query(description="查询内容", alias="query"),
 ):
     """执行精确查询，直接匹配问题后返回答案"""
-    logger.info(
-        f"Exact query of collection. Collection name: <{collection_name}>; Query: <{query}>"
-    )
+    logger.info(f"Exact query of collection. Collection name: <{collection_name}>; Query: <{query}>")
 
     try:
 
@@ -417,9 +306,7 @@ async def exact_query(
         answer = await doc_store.query_exact(query=query)
 
         if answer:
-            logger.info(
-                f"Exact query success. Collection name: <{collection_name}>; Found answer"
-            )
+            logger.info(f"Exact query success. Collection name: <{collection_name}>; Found answer")
             return Success(
                 data={
                     "collection_name": collection_name,
@@ -428,9 +315,7 @@ async def exact_query(
                 }
             )
         else:
-            logger.info(
-                f"Exact query found no results. Collection name: <{collection_name}>; Query: <{query}>"
-            )
+            logger.info(f"Exact query found no results. Collection name: <{collection_name}>; Query: <{query}>")
             return Success(
                 data={
                     "collection_name": collection_name,
@@ -439,18 +324,13 @@ async def exact_query(
                 }
             )
     except Exception as e:
-        logger.error(
-            f"Exact query failure. Collection name: <{collection_name}>; Query: <{query}>; Error: {str(e)}"
-        )
+        logger.error(f"Exact query failure. Collection name: <{collection_name}>; Query: <{query}>; Error: {str(e)}")
         return Error(msg="精确查询失败", data=str(e))
 
 
 @router.get("/collection/stats", summary="获取知识库统计信息")
 @async_performance_logger
-@auto_log(level="info")
-async def get_collection_stats(
-    collection_name: str = Depends(validate_collection),
-):
+async def get_collection_stats(collection_name: str = Depends(validate_collection)):
     """获取知识库的统计信息"""
     logger.info(f"Getting stats for collection <{collection_name}>")
 
@@ -476,29 +356,22 @@ async def get_collection_stats(
         logger.info(f"Stats for collection <{collection_name}> retrieved successfully")
         return Success(data=stats)
     except Exception as e:
-        logger.error(
-            f"Failed to get stats for collection <{collection_name}>. Error: {str(e)}"
-        )
+        logger.error(f"Failed to get stats for collection <{collection_name}>. Error: {str(e)}")
         return Error(msg="获取知识库统计信息失败", data=str(e))
 
 
 @router.put("/collection/document", summary="更新知识")
 @async_performance_logger
-@auto_log(level="info")
 async def update_document(
     collection_name: str = Depends(validate_collection),
     doc_id: str = Query(description="知识ID", alias="docId"),
-    updated_content: Dict[str, Any] = Body(
-        description="更新的内容", alias="updatedContent"
-    ),
+    updated_content: Dict[str, Any] = Body(description="更新的内容", alias="updatedContent"),
 ):
     """
     更新文档内容
     注意：这需要在QAQdrantDocumentStore中实现update_document方法
     """
-    logger.info(
-        f"Updating document. Collection name: <{collection_name}>; Document ID: <{doc_id}>"
-    )
+    logger.info(f"Updating document. Collection name: <{collection_name}>; Document ID: <{doc_id}>")
 
     # 这里假设QAQdrantDocumentStore有一个update_document方法
     # 如果没有，需要先在qdrant.py中实现该方法
@@ -508,14 +381,10 @@ async def update_document(
         doc_store = QAQdrantDocumentStore(collection_name)
 
         # 先获取文档，确认存在
-        docs = doc_store.filter_documents(
-            {"field": "id", "operator": "==", "value": doc_id}
-        )
+        docs = doc_store.filter_documents({"field": "id", "operator": "==", "value": doc_id})
 
         if not docs:
-            logger.error(
-                f"Document <{doc_id}> not found in collection <{collection_name}>"
-            )
+            logger.error(f"Document <{doc_id}> not found in collection <{collection_name}>")
             return Error(msg="文档不存在")
 
         # 删除原文档
@@ -532,12 +401,8 @@ async def update_document(
         # 写入更新后的文档
         result = await doc_store.write_documents([updated_doc])
 
-        logger.info(
-            f"Document <{doc_id}> updated successfully in collection <{collection_name}>"
-        )
+        logger.info(f"Document <{doc_id}> updated successfully in collection <{collection_name}>")
         return Success(msg="文档更新成功", data={"doc_id": doc_id})
     except Exception as e:
-        logger.error(
-            f"Failed to update document <{doc_id}> in collection <{collection_name}>. Error: {str(e)}"
-        )
+        logger.error(f"Failed to update document <{doc_id}> in collection <{collection_name}>. Error: {str(e)}")
         return Error(msg="更新文档失败", data=str(e))

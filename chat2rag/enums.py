@@ -44,3 +44,17 @@ class ToolSortField(str, Enum):
     TOOL_NAME = "name"
     TOOL_DESC = "description"
     CREATE_TIME = "create_time"
+
+
+class SortOrder(str, Enum):
+    ASC = "asc"
+    DESC = "desc"
+
+
+class CollectionSortField(str, Enum):
+    COLLECTION_NAME = "collection_name"
+    DOCUMENT_COUNT = "document_count"
+
+
+class DocumentSortField(str, Enum):
+    DOCUMENT_CONTENT = "content"
