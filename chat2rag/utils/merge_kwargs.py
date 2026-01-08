@@ -1,4 +1,5 @@
 # chat2rag/utils/merge_kwargs.py
+import json
 from typing import Any, Dict, Optional
 
 
@@ -42,6 +43,8 @@ def merge_generation_kwargs(
         merged = deep_merge_dicts(merged, model_default_kwargs)
 
     # 最后用接口输入的覆盖（如果有）
+    if isinstance(interface_kwargs, str):
+        interface_kwargs = json.loads(interface_kwargs)
     if interface_kwargs:
         merged = deep_merge_dicts(merged, interface_kwargs)
 
