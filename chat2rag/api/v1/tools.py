@@ -5,7 +5,7 @@ from fastapi import APIRouter, Body, Query
 from tortoise.expressions import Q
 
 from chat2rag.enums import SortOrder, ToolSortField
-from chat2rag.logger import auto_log, get_logger
+from chat2rag.logger import get_logger
 from chat2rag.models import MCPTool
 from chat2rag.responses import Error, Success
 from chat2rag.schemas.common import Current, Size
@@ -25,19 +25,14 @@ router = APIRouter()
 
 @router.get("/", summary="获取工具列表")
 @router.get("/list", summary="获取工具列表")  # TODO: 将要移除
-@auto_log(level="info")
 async def get_tool_list(
     current: Current = 1,
     size: Size = 10,
-    tool_type: Optional[Literal["api", "mcp", "all"]] = Query(
-        "all", description="工具类型", alias="toolType"
-    ),
+    tool_type: Optional[Literal["api", "mcp", "all"]] = Query("all", description="工具类型", alias="toolType"),
     tool_name: Optional[str] = Query(None, description="工具名称", alias="toolName"),
     tool_desc: Optional[str] = Query(None, description="工具描述", alias="toolDesc"),
     is_active: Optional[bool] = Query(None, description="是否启用", alias="isActive"),
-    sort_by: Optional[ToolSortField] = Query(
-        ToolSortField.CREATE_TIME, description="排序字段", alias="sortBy"
-    ),
+    sort_by: Optional[ToolSortField] = Query(ToolSortField.CREATE_TIME, description="排序字段", alias="sortBy"),
     sort_order: Optional[SortOrder] = Query(
         SortOrder.DESC, description="排序方向(asc, desc)，默认 desc", alias="sortOrder"
     ),
@@ -61,26 +56,20 @@ async def get_tool_list(
     if tool_type in ["api", "all"]:
         # 获取API工具
         api_total, api_tools = await api_service.get_list(1, 999, q, order)
-        tool_list.extend(
-            [{**await tool.to_dict(), "tool_type": "api"} for tool in api_tools]
-        )
+        tool_list.extend([{**await tool.to_dict(), "tool_type": "api"} for tool in api_tools])
         total += api_total
 
     if tool_type in ["mcp", "all"]:
         # 获取MCP工具
         mcp_total, mcp_tools = await mcp_service.get_mcp_tool_list(1, 999, q, order)
-        tool_list.extend(
-            [{**await tool.to_dict(), "tool_type": "mcp"} for tool in mcp_tools]
-        )
+        tool_list.extend([{**await tool.to_dict(), "tool_type": "mcp"} for tool in mcp_tools])
         total += mcp_total
 
     # 如果是获取全部工具，需要重新排序和分页
     if tool_type == "all":
         # 合并后重新排序
         sort_key = sort_by.value
-        tool_list.sort(
-            key=lambda x: x.get(sort_key, ""), reverse=(sort_order == SortOrder.DESC)
-        )
+        tool_list.sort(key=lambda x: x.get(sort_key, ""), reverse=(sort_order == SortOrder.DESC))
 
         # 重新分页
         start_idx = (current - 1) * size
@@ -100,12 +89,9 @@ async def get_tool_list(
 
 @router.post("/", summary="创建工具")
 @router.post("/add", summary="创建工具")  # TODO: 将要移除
-@auto_log(level="info")
 async def create_tool(request: CombinedCreateRequest):
     if isinstance(request, APIToolCreateRequest):
-        existing_api_tool = await api_service.model.filter(
-            name=request.data.name
-        ).first()
+        existing_api_tool = await api_service.model.filter(name=request.data.name).first()
         if existing_api_tool:
             msg = "工具名已存在"
             logger.warning(msg)
@@ -115,9 +101,7 @@ async def create_tool(request: CombinedCreateRequest):
         return Success(msg="API工具创建成功", data=await api_tool.to_dict())
 
     elif isinstance(request, MCPServerCreateRequest):
-        existing_mcp_tool = await mcp_service.model.filter(
-            name=request.data.name
-        ).first()
+        existing_mcp_tool = await mcp_service.model.filter(name=request.data.name).first()
         if existing_mcp_tool:
             msg = "工具名已存在"
             logger.warning(msg)
@@ -131,12 +115,9 @@ async def create_tool(request: CombinedCreateRequest):
 
 @router.put("/{tool_id}", summary="更新工具")
 @router.put("/update/{tool_id}", summary="更新工具")  # TODO: 将要移除
-@auto_log(level="info")
 async def update_tool(
     tool_id: int,
-    tool_type: Literal["api", "mcp"] = Query(
-        ..., alias="toolType", description="工具类型"
-    ),
+    tool_type: Literal["api", "mcp"] = Query(..., alias="toolType", description="工具类型"),
     request: CombinedUpdateRequest = Body(...),
 ):
     """更新工具信息"""
@@ -149,11 +130,7 @@ async def update_tool(
             return Error(msg="工具不存在")
         # 检查名称是否已被其他工具使用
         if request.data.name:
-            existing = (
-                await api_service.model.filter(name=request.data.name)
-                .exclude(id=tool_id)
-                .first()
-            )
+            existing = await api_service.model.filter(name=request.data.name).exclude(id=tool_id).first()
             if existing:
                 return Error(msg="工具名已存在")
 
@@ -172,11 +149,7 @@ async def update_tool(
             return Error(msg="工具不存在")
         # 检查名称是否已被其他工具使用
         if request.data.name:
-            existing = (
-                await mcp_service.model.filter(name=request.data.name)
-                .exclude(id=tool_id)
-                .first()
-            )
+            existing = await mcp_service.model.filter(name=request.data.name).exclude(id=tool_id).first()
             if existing:
                 return Error(msg="工具名已存在")
 
@@ -191,12 +164,9 @@ async def update_tool(
 
 @router.get("/{tool_id}", summary="获取工具详情")
 @router.get("/detail/{tool_id}", summary="获取工具详情")
-@auto_log(level="info")
 async def get_tool_detail(
     tool_id: int,
-    tool_type: Literal["api", "mcp"] = Query(
-        ..., alias="toolType", description="工具类型"
-    ),
+    tool_type: Literal["api", "mcp"] = Query(..., alias="toolType", description="工具类型"),
 ):
     """获取工具详细信息"""
     if tool_type == "api":
@@ -225,12 +195,9 @@ async def get_tool_detail(
 
 @router.delete("/{tool_id}", summary="删除工具")
 @router.delete("/remove/{tool_id}", summary="删除工具")
-@auto_log(level="info")
 async def remove_tool(
     tool_id: int,
-    tool_type: Literal["api", "mcp"] = Query(
-        ..., alias="toolType", description="工具类型"
-    ),
+    tool_type: Literal["api", "mcp"] = Query(..., alias="toolType", description="工具类型"),
 ):
     if tool_type == "api":
         if not await api_service.get(tool_id):
@@ -244,7 +211,6 @@ async def remove_tool(
 
 
 @router.post("/{server_id}/sync", summary="同步MCP工具")
-@auto_log(level="info")
 async def sync_mcp_tools(server_id: int):
     """手动同步MCP服务器的工具列表"""
     try:

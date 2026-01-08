@@ -6,7 +6,7 @@ from fastapi.responses import StreamingResponse
 
 from chat2rag.core.strategies import ExactMatchStrategy, RAGStrategy, StrategyChain
 from chat2rag.enums import ProcessType
-from chat2rag.logger import auto_log, get_logger
+from chat2rag.logger import get_logger
 from chat2rag.schemas.chat import ChatQueryParams
 from chat2rag.utils.stream_v1 import StreamHandlerV1
 
@@ -65,7 +65,6 @@ class ChatProcessor:
 
 
 @router.get("/query-stream", summary="大模型交互V1", deprecated=True)
-@auto_log(level="info")
 async def chat(
     params: ChatQueryParams = Depends(),
     batch_or_stream: ProcessType = Query(ProcessType.BATCH, alias="batchOrStream"),

@@ -3,7 +3,7 @@ from typing import Any, Dict, Optional
 from fastapi import APIRouter
 from tortoise.expressions import Q
 
-from chat2rag.logger import auto_log, get_logger
+from chat2rag.logger import get_logger
 from chat2rag.responses import Error, Success
 from chat2rag.schemas.common import Current, Size
 from chat2rag.schemas.flow_data import FlowDataCreate, FlowDataUpdate
@@ -15,7 +15,6 @@ flow_service = FlowDataService()
 
 
 @router.post("", summary="创建流程")
-@auto_log(level="info")
 async def create_flow(*, flow_in: FlowDataCreate) -> Dict[str, Any]:
     try:
         exist_flow = await flow_service.model.filter(name=flow_in.name).first()
@@ -30,7 +29,6 @@ async def create_flow(*, flow_in: FlowDataCreate) -> Dict[str, Any]:
 
 
 @router.get("", response_model=Dict[str, Any], summary="获取流程列表")
-@auto_log(level="info")
 async def get_flow_list(
     *,
     current: Current = 1,
@@ -59,7 +57,6 @@ async def get_flow_list(
 
 
 @router.get("/{id}", summary="获取流程明细")
-@auto_log(level="info")
 async def get_flow_detail(*, id: int) -> Dict[str, Any]:
     try:
         flow = await flow_service.get(id)
@@ -73,7 +70,6 @@ async def get_flow_detail(*, id: int) -> Dict[str, Any]:
 
 
 @router.put("/{id}", response_model=Dict[str, Any], summary="更新流程")
-@auto_log(level="info")
 async def update_flow(*, id: int, flow_in: FlowDataUpdate) -> Dict[str, Any]:
     try:
         flow = await flow_service.get(id)
@@ -91,7 +87,6 @@ async def update_flow(*, id: int, flow_in: FlowDataUpdate) -> Dict[str, Any]:
 
 
 @router.delete("/{id}", response_model=Dict[str, Any], summary="删除流程")
-@auto_log(level="info")
 async def delete_flow(*, id: int) -> Dict[str, Any]:
     try:
         flow = await flow_service.get(id)

@@ -4,8 +4,6 @@ from typing import Dict, List
 
 from fastapi import APIRouter
 
-from chat2rag.logger import auto_log
-
 router = APIRouter()
 
 CHANGELOG_PATH = Path(__file__).parents[3] / "CHANGELOG.md"
@@ -53,7 +51,6 @@ def parse_changelog(content: str) -> List[Dict[str, str]]:
 
 
 @router.get("/raw")
-@auto_log(level="info")
 async def get_changelog_raw():
     """返回原始 CHANGELOG.md 内容"""
     if not CHANGELOG_PATH.exists():
@@ -62,7 +59,6 @@ async def get_changelog_raw():
 
 
 @router.get("/parsed")
-@auto_log(level="info")
 async def get_changelog_parsed():
     """返回结构化解析后的版本信息"""
     if not CHANGELOG_PATH.exists():
