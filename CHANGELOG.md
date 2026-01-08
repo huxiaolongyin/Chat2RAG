@@ -19,6 +19,7 @@
 - 模型源和模型渠道商的接口改进，将模型列表同步和模型延迟计算放到后台，新增接口的响应值和 example，优化 model_service 的代码，优化接口的异常处理，优化接口的 pytest 测试代码
 - 固定命令的接口改进，新增接口的响应值和 example，优化 command_service 的代码，优化接口的异常处理，优化接口的 pytest 测试代码
 - 动作 action 的接口改进，新增接口的响应值和 example，优化 action_service 的代码，优化接口的异常处理，优化接口的 pytest 测试代码
+- 表情 expression 的接口改进，新增接口的响应值和 example，优化 expression_service 的代码，优化接口的异常处理，优化接口的 pytest 测试代码
 - 使用日志中间件和异常处理中间件替代日志和异常处理装饰器
 - 添加敏感词策略和多模态处理策略
 

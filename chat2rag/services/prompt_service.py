@@ -1,4 +1,4 @@
-from typing import Any, Dict, List
+from typing import List
 
 from tortoise.expressions import Q
 from tortoise.transactions import in_transaction
@@ -8,16 +8,14 @@ from chat2rag.core.crud import CRUDBase
 from chat2rag.exceptions import ValueAlreadyExist, ValueNoExist
 from chat2rag.logger import get_logger
 from chat2rag.models import Prompt, PromptVersion
-from chat2rag.schemas.prompt import PromptCreate, PromptItemResponse, PromptUpdate
+from chat2rag.schemas.prompt import PromptCreate, PromptData, PromptUpdate
 
 logger = get_logger(__name__)
 
 
-def _merge_prompt_version_data(
-    prompt: Prompt, version: PromptVersion
-) -> PromptItemResponse:
+def _merge_prompt_version_data(prompt: Prompt, version: PromptVersion) -> PromptData:
     """合并提示词和版本数据的公共方法"""
-    return PromptItemResponse(
+    return PromptData(
         id=prompt.id,
         prompt_name=prompt.prompt_name,
         current_version=prompt.current_version,
@@ -46,7 +44,7 @@ class PromptService(CRUDBase[Prompt, PromptCreate, PromptUpdate]):
             )
             logger.info("已创建默认提示词")
 
-    async def create(self, obj_in: PromptCreate):
+    async def create(self, obj_in: PromptCreate) -> PromptVersion:
         """创建提示词"""
 
         # 查看是否已存在该名称
@@ -71,7 +69,7 @@ class PromptService(CRUDBase[Prompt, PromptCreate, PromptUpdate]):
 
         return _merge_prompt_version_data(prompt, prompt_version)
 
-    async def update(self, id: int, obj_in: PromptUpdate):
+    async def update(self, id: int, obj_in: PromptUpdate) -> PromptVersion:
         """更新提示词"""
 
         # 查看提示词是否不存在
@@ -81,17 +79,11 @@ class PromptService(CRUDBase[Prompt, PromptCreate, PromptUpdate]):
 
         # 查看是否已存在该名称
         if obj_in.prompt_name:
-            exist_prompt = (
-                await self.model.filter(prompt_name=obj_in.prompt_name)
-                .exclude(id=id)
-                .first()
-            )
+            exist_prompt = await self.model.filter(prompt_name=obj_in.prompt_name).exclude(id=id).first()
             if exist_prompt:
                 raise ValueAlreadyExist(msg=f"提示词名称:{obj_in.prompt_name} 已存在")
 
-        latest_version_obj = (
-            await PromptVersion.filter(prompt=prompt).order_by("-version").first()
-        )
+        latest_version_obj = await PromptVersion.filter(prompt=prompt).order_by("-version").first()
         new_version = latest_version_obj.version + 1 if latest_version_obj else 1
 
         # 使用事务确保数据一致性
@@ -107,26 +99,20 @@ class PromptService(CRUDBase[Prompt, PromptCreate, PromptUpdate]):
 
         return _merge_prompt_version_data(prompt, prompt_version)
 
-    async def set_version(
-        self, id: int, version: int | None = None
-    ) -> PromptItemResponse:
+    async def set_version(self, id: int, version: int | None = None) -> PromptData:
         """设定当前使用版本"""
         prompt = await self.get(id)
         if not prompt:
             raise ValueNoExist(f"提示词ID {id} 不存在")
 
         if version is None:
-            latest_version_obj = (
-                await PromptVersion.filter(prompt=prompt).order_by("-version").first()
-            )
+            latest_version_obj = await PromptVersion.filter(prompt=prompt).order_by("-version").first()
             if not latest_version_obj:
                 raise ValueNoExist(f"版本 {version} 不存在")
             version = latest_version_obj.version
 
         else:
-            version_obj = await PromptVersion.filter(
-                prompt=prompt, version=version
-            ).first()
+            version_obj = await PromptVersion.filter(prompt=prompt, version=version).first()
             if not version_obj:
                 raise ValueNoExist(f"版本 {version} 不存在")
 
@@ -134,9 +120,7 @@ class PromptService(CRUDBase[Prompt, PromptCreate, PromptUpdate]):
         await prompt.save(update_fields=["current_version"])
 
         # 返回当前生效版本的数据
-        current_version_obj = await PromptVersion.filter(
-            prompt=prompt, version=version
-        ).first()
+        current_version_obj = await PromptVersion.filter(prompt=prompt, version=version).first()
 
         return _merge_prompt_version_data(prompt, current_version_obj)
 
@@ -170,7 +154,7 @@ class PromptService(CRUDBase[Prompt, PromptCreate, PromptUpdate]):
         order: list[str] | None = None,
         prefetch: List[str] | None = None,
         distinct: bool = False,
-    ) -> tuple[int, List[PromptItemResponse]]:
+    ) -> tuple[int, List[PromptData]]:
         """优化后的列表查询"""
 
         # 使用select_related和prefetch_related优化查询
@@ -181,11 +165,7 @@ class PromptService(CRUDBase[Prompt, PromptCreate, PromptUpdate]):
         total = await queryset.count()
 
         # 一次性获取所有需要的数据
-        prompts = (
-            await queryset.offset((page - 1) * page_size)
-            .limit(page_size)
-            .prefetch_related("versions")
-        )
+        prompts = await queryset.offset((page - 1) * page_size).limit(page_size).prefetch_related("versions")
 
         results = []
         for prompt in prompts:
@@ -200,19 +180,15 @@ class PromptService(CRUDBase[Prompt, PromptCreate, PromptUpdate]):
 
         return total, results
 
-    async def get_by_prompt_name(self, prompt_name: str) -> PromptItemResponse:
+    async def get_by_prompt_name(self, prompt_name: str) -> PromptData:
         prompt = await self.model.filter(prompt_name=prompt_name).first()
         if not prompt:
             raise ValueNoExist(msg="提示词不存在")
         version = prompt.current_version
         if version:
-            version_obj = await PromptVersion.filter(
-                prompt=prompt, version=version
-            ).first()
+            version_obj = await PromptVersion.filter(prompt=prompt, version=version).first()
         else:
-            version_obj = (
-                await PromptVersion.filter(prompt=prompt).order_by("-version").first()
-            )
+            version_obj = await PromptVersion.filter(prompt=prompt).order_by("-version").first()
         return _merge_prompt_version_data(prompt, version_obj)
 
 
