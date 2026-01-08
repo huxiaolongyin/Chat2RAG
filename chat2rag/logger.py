@@ -50,9 +50,7 @@ def initialize_logging():
     config = {
         "version": 1,
         "formatters": {
-            "standard": {
-                "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-            },
+            "standard": {"format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s"},
         },
         "handlers": {
             "console": {
@@ -86,6 +84,7 @@ def initialize_logging():
             "asyncio": {"level": "ERROR", "propagate": True},
             "openai": {"level": "ERROR", "propagate": True},
             "tortoise": {"level": "WARNING", "propagate": True},
+            "aiosqlite": {"level": "WARNING", "propagate": True},
             # 可以在这里添加其他logger的配置
         },
         # 根logger设置
@@ -139,11 +138,7 @@ def auto_log(level="info", log_success: bool = False):
 
             # 记录参数信息
             params_str = ", ".join(
-                [
-                    f"{k}={v}"
-                    for k, v in bound_args.arguments.items()
-                    if k not in ["request"]  # 排除request参数
-                ]
+                [f"{k}={v}" for k, v in bound_args.arguments.items() if k not in ["request"]]  # 排除request参数
             )
             msg = f"{func.__name__} - params: {params_str}"
 
