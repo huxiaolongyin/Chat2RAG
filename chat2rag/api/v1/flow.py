@@ -14,7 +14,7 @@ router = APIRouter()
 flow_service = FlowDataService()
 
 
-@router.post("/", summary="创建流程")
+@router.post("", summary="创建流程")
 @auto_log(level="info")
 async def create_flow(*, flow_in: FlowDataCreate) -> Dict[str, Any]:
     try:
@@ -29,7 +29,7 @@ async def create_flow(*, flow_in: FlowDataCreate) -> Dict[str, Any]:
         return Error(msg)
 
 
-@router.get("/", response_model=Dict[str, Any], summary="获取流程列表")
+@router.get("", response_model=Dict[str, Any], summary="获取流程列表")
 @auto_log(level="info")
 async def get_flow_list(
     *,
@@ -42,9 +42,7 @@ async def get_flow_list(
         q = Q()
         if name:
             q &= Q(name__icontains=name)
-        total, flows = await flow_service.get_list(
-            page=current, page_size=size, search=q
-        )
+        total, flows = await flow_service.get_list(page=current, page_size=size, search=q)
 
         return Success(
             data={

@@ -2,7 +2,7 @@ import pytest
 from httpx import AsyncClient
 
 # API 的基础路径
-ACTION_BASE_URL = "/api/v1/action"
+ACTION_BASE_URL = "/api/v1/actions"
 
 
 @pytest.fixture
@@ -107,7 +107,7 @@ class TestRobotAction:
         assert response.status_code == 200
         data = response.json()["data"]
         # 应该能搜到 A，但搜不到 B
-        names = [item["name"] for item in data["list"]]
+        names = [item["name"] for item in data["items"]]
         assert "搜索测试A" in names
         assert "搜索测试B" not in names
 
@@ -115,13 +115,13 @@ class TestRobotAction:
         response_active = await client.get(ACTION_BASE_URL, params={"isActive": False, "nameOrCode": "Search"})
         data_active = response_active.json()["data"]
         # 应该只返回 SearchB (isActive=False)
-        assert len(data_active["list"]) >= 1
-        assert all(item["isActive"] is False for item in data_active["list"])
+        assert len(data_active["items"]) >= 1
+        assert all(item["isActive"] is False for item in data_active["items"])
 
         # 4. 测试分页
         # 假设至少有2条数据，每页取1条
         response_page = await client.get(ACTION_BASE_URL, params={"current": 1, "size": 1})
         data_page = response_page.json()["data"]
-        assert len(data_page["list"]) == 1
+        assert len(data_page["items"]) == 1
         assert data_page["total"] >= 2
         assert data_page["size"] == 1

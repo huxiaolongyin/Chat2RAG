@@ -149,9 +149,7 @@ class PaginationParams(BaseSchema):
     """
 
     current: int = Field(default=1, ge=1, description="页码（从1开始）", examples=[1])
-    size: int = Field(
-        default=10, ge=1, le=100, description="每页条数（最大100）", examples=[10]
-    )
+    size: int = Field(default=10, ge=1, le=100, description="每页条数（最大100）", examples=[10])
 
     @computed_field
     @property
@@ -196,12 +194,8 @@ class SortParams(BaseSchema):
             ...
     """
 
-    sort_by: str | None = Field(
-        default=None, description="排序字段", examples=["created_at"]
-    )
-    sort_order: str | None = Field(
-        default="desc", description="排序方向: asc-升序, desc-降序", examples=["desc"]
-    )
+    sort_by: str | None = Field(default=None, description="排序字段", examples=["created_at"])
+    sort_order: str | None = Field(default="desc", description="排序方向: asc-升序, desc-降序", examples=["desc"])
 
     @field_validator("sort_order")
     @classmethod
@@ -248,9 +242,7 @@ class BaseResponse(BaseSchema, Generic[T]):
         return BaseResponse[UserSchema](data=user)
     """
 
-    code: str = Field(
-        default="0000", description="业务状态码: '0000'-成功", examples=["0000"]
-    )
+    code: str = Field(default="0000", description="业务状态码: '0000'-成功", examples=["0000"])
     msg: str = Field(default="OK", description="响应消息", examples=["OK"])
     version: str = CONFIG.VERSION
     response_time: str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -281,7 +273,7 @@ class PaginatedData(BaseSchema, Generic[T]):
     用于包装分页查询结果，包含数据列表和分页元信息。
 
     Attributes:
-        list: 当前页的数据列表
+        items: 当前页的数据列表
         total: 符合条件的总记录数
         current: 当前页码
         size: 每页条数
@@ -302,7 +294,7 @@ class PaginatedData(BaseSchema, Generic[T]):
         print(paginated.has_next)  # True
     """
 
-    list: List[T] = Field(default_factory=list, description="数据列表")
+    items: List[T] = Field(default_factory=list, description="数据列表")
     total: int = Field(default=0, ge=0, description="总记录数", examples=[100])
     current: int = Field(default=1, ge=1, description="当前页码", examples=[1])
     size: int = Field(default=10, ge=1, description="每页条数", examples=[10])
@@ -340,7 +332,7 @@ class PaginatedData(BaseSchema, Generic[T]):
         Returns:
             PaginatedData 实例
         """
-        return cls(list=items, total=total, current=current, size=size)
+        return cls(items=items, total=total, current=current, size=size)
 
 
 class PaginatedResponse(BaseResponse[PaginatedData[T]], Generic[T]):

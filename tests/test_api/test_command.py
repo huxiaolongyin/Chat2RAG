@@ -1,12 +1,14 @@
 import pytest
 from httpx import AsyncClient
 
+COMMAND_BASE_URL = "/api/v1/commands"
+
 
 @pytest.fixture
 async def test_category(client: AsyncClient):
     """创建测试用指令分类"""
     response = await client.post(
-        "/api/v1/command/category",
+        f"{COMMAND_BASE_URL}/category",
         json={"name": "测试分类", "description": "测试分类描述"},
     )
     assert response.status_code == 200
@@ -19,7 +21,7 @@ async def test_category(client: AsyncClient):
 async def test_command(client: AsyncClient, test_category):
     """创建测试用指令"""
     response = await client.post(
-        "/api/v1/command",
+        COMMAND_BASE_URL,
         json={
             "name": "测试指令",
             "code": "test_command",
@@ -42,7 +44,7 @@ class TestCommandCategory:
     async def test_create_category_success(self, client: AsyncClient):
         """测试创建分类成功"""
         response = await client.post(
-            "/api/v1/command/category",
+            f"{COMMAND_BASE_URL}/category",
             json={"name": "系统指令", "description": "系统指令分类"},
         )
         assert response.status_code == 200
@@ -54,7 +56,7 @@ class TestCommandCategory:
     async def test_create_category_duplicate(self, client: AsyncClient, test_category):
         """测试创建重复分类"""
         response = await client.post(
-            "/api/v1/command/category",
+            f"{COMMAND_BASE_URL}/category",
             json={"name": test_category["name"], "description": "重复描述"},
         )
         assert response.status_code == 409
@@ -63,17 +65,17 @@ class TestCommandCategory:
 
     async def test_get_category_list(self, client: AsyncClient, test_category):
         """测试获取分类列表"""
-        response = await client.get("/api/v1/command/category")
+        response = await client.get(f"{COMMAND_BASE_URL}/category")
         assert response.status_code == 200
         data = response.json()
         assert data["code"] == "0000"
-        assert "list" in data["data"]
+        assert "items" in data["data"]
         assert data["data"]["total"] >= 1
-        assert len(data["data"]["list"]) >= 1
+        assert len(data["data"]["items"]) >= 1
 
     async def test_get_category_list_with_search(self, client: AsyncClient, test_category):
         """测试搜索分类列表"""
-        response = await client.get("/api/v1/command/category", params={"nameOrDesc": "测试"})
+        response = await client.get(f"{COMMAND_BASE_URL}/category", params={"nameOrDesc": "测试"})
         assert response.status_code == 200
         data = response.json()
         assert data["code"] == "0000"
@@ -84,22 +86,22 @@ class TestCommandCategory:
         # 创建多个分类
         for i in range(5):
             await client.post(
-                "/api/v1/command/category",
+                f"{COMMAND_BASE_URL}/category",
                 json={"name": f"分类{i}", "description": f"描述{i}"},
             )
 
         # 测试分页
-        response = await client.get("/api/v1/command/category", params={"current": 1, "size": 3})
+        response = await client.get(f"{COMMAND_BASE_URL}/category", params={"current": 1, "size": 3})
         assert response.status_code == 200
         data = response.json()
         assert data["code"] == "0000"
-        assert len(data["data"]["list"]) <= 3
+        assert len(data["data"]["items"]) <= 3
         assert data["data"]["current"] == 1
         assert data["data"]["size"] == 3
 
     async def test_get_category_detail(self, client: AsyncClient, test_category):
         """测试获取分类详情"""
-        response = await client.get(f"/api/v1/command/category/{test_category['id']}")
+        response = await client.get(f"{COMMAND_BASE_URL}/category/{test_category['id']}")
         assert response.status_code == 200
         data = response.json()
         assert data["code"] == "0000"
@@ -108,7 +110,7 @@ class TestCommandCategory:
 
     async def test_get_category_detail_not_found(self, client: AsyncClient):
         """测试获取不存在的分类"""
-        response = await client.get("/api/v1/command/category/99999")
+        response = await client.get(f"{COMMAND_BASE_URL}/category/99999")
         assert response.status_code == 404
         data = response.json()
         assert "不存在" in data["detail"]
@@ -116,7 +118,7 @@ class TestCommandCategory:
     async def test_update_category_success(self, client: AsyncClient, test_category):
         """测试更新分类成功"""
         response = await client.put(
-            f"/api/v1/command/category/{test_category['id']}",
+            f"{COMMAND_BASE_URL}/category/{test_category['id']}",
             json={"name": "更新后的分类", "description": "更新后的描述"},
         )
         assert response.status_code == 200
@@ -128,14 +130,14 @@ class TestCommandCategory:
         """测试更新分类为重复名称"""
         # 创建两个分类
         cat1 = await client.post(
-            "/api/v1/command/category",
+            f"{COMMAND_BASE_URL}/category",
             json={"name": "分类A", "description": "描述A"},
         )
         assert cat1.status_code == 200
         cat1_data = cat1.json()["data"]
 
         cat2 = await client.post(
-            "/api/v1/command/category",
+            f"{COMMAND_BASE_URL}/category",
             json={"name": "分类B", "description": "描述B"},
         )
         assert cat2.status_code == 200
@@ -143,7 +145,7 @@ class TestCommandCategory:
 
         # 尝试将分类B更新为分类A的名称
         response = await client.put(
-            f"/api/v1/command/category/{cat2_data['id']}",
+            f"{COMMAND_BASE_URL}/category/{cat2_data['id']}",
             json={"name": "分类A", "description": "新描述"},
         )
         assert response.status_code == 409
@@ -153,7 +155,7 @@ class TestCommandCategory:
     async def test_update_category_not_found(self, client: AsyncClient):
         """测试更新不存在的分类"""
         response = await client.put(
-            "/api/v1/command/category/99999",
+            f"{COMMAND_BASE_URL}/category/99999",
             json={"name": "不存在", "description": "不存在"},
         )
         assert response.status_code == 404
@@ -164,13 +166,13 @@ class TestCommandCategory:
         """测试删除分类成功"""
         # 创建分类
         create_response = await client.post(
-            "/api/v1/command/category",
+            f"{COMMAND_BASE_URL}/category",
             json={"name": "待删除分类", "description": "待删除"},
         )
         category_id = create_response.json()["data"]["id"]
 
         # 删除分类
-        response = await client.delete(f"/api/v1/command/category/{category_id}")
+        response = await client.delete(f"{COMMAND_BASE_URL}/category/{category_id}")
         assert response.status_code == 200
         data = response.json()
         assert data["code"] == "0000"
@@ -178,14 +180,14 @@ class TestCommandCategory:
 
     async def test_delete_category_not_found(self, client: AsyncClient):
         """测试删除不存在的分类"""
-        response = await client.delete("/api/v1/command/category/99999")
+        response = await client.delete(f"{COMMAND_BASE_URL}/category/99999")
         assert response.status_code == 404
         data = response.json()
         assert "不存在" in data["detail"]
 
     async def test_delete_category_with_commands(self, client: AsyncClient, test_category, test_command):
         """测试删除有关联指令的分类"""
-        response = await client.delete(f"/api/v1/command/category/{test_category['id']}")
+        response = await client.delete(f"{COMMAND_BASE_URL}/category/{test_category['id']}")
         assert response.status_code == 400
         data = response.json()
         assert "无法删除" in data["detail"]
@@ -197,7 +199,7 @@ class TestCommand:
     async def test_create_command_success(self, client: AsyncClient, test_category):
         """测试创建指令成功"""
         response = await client.post(
-            "/api/v1/command",
+            COMMAND_BASE_URL,
             json={
                 "name": "帮助指令",
                 "code": "help",
@@ -218,7 +220,7 @@ class TestCommand:
     async def test_create_command_duplicate_name(self, client: AsyncClient, test_command):
         """测试创建重复名称的指令"""
         response = await client.post(
-            "/api/v1/command",
+            COMMAND_BASE_URL,
             json={
                 "name": test_command["name"],
                 "code": "another_code",
@@ -233,7 +235,7 @@ class TestCommand:
     async def test_create_command_duplicate_code(self, client: AsyncClient, test_command, test_category):
         """测试创建重复代码的指令"""
         response = await client.post(
-            "/api/v1/command",
+            COMMAND_BASE_URL,
             json={
                 "name": "另一个指令",
                 "code": test_command["code"],
@@ -248,7 +250,7 @@ class TestCommand:
     async def test_create_command_invalid_category(self, client: AsyncClient):
         """测试创建指令时指定不存在的分类"""
         response = await client.post(
-            "/api/v1/command",
+            COMMAND_BASE_URL,
             json={
                 "name": "测试指令",
                 "code": "test",
@@ -263,24 +265,24 @@ class TestCommand:
 
     async def test_get_command_list(self, client: AsyncClient, test_command):
         """测试获取指令列表"""
-        response = await client.get("/api/v1/command")
+        response = await client.get(COMMAND_BASE_URL)
         assert response.status_code == 200
         data = response.json()
         assert data["code"] == "0000"
-        assert "list" in data["data"]
+        assert "items" in data["data"]
         assert data["data"]["total"] >= 1
 
     async def test_get_command_list_with_keyword(self, client: AsyncClient, test_command):
         """测试按关键词搜索指令"""
         # 按名称搜索
-        response = await client.get("/api/v1/command", params={"keyword": "测试"})
+        response = await client.get(COMMAND_BASE_URL, params={"keyword": "测试"})
         assert response.status_code == 200
         data = response.json()
         assert data["code"] == "0000"
         assert data["data"]["total"] >= 1
 
         # 按代码搜索
-        response = await client.get("/api/v1/command", params={"keyword": test_command["code"]})
+        response = await client.get(COMMAND_BASE_URL, params={"keyword": test_command["code"]})
         assert response.status_code == 200
         data = response.json()
         assert data["code"] == "0000"
@@ -288,7 +290,7 @@ class TestCommand:
 
     async def test_get_command_list_with_category(self, client: AsyncClient, test_command):
         """测试按分类过滤指令"""
-        response = await client.get("/api/v1/command", params={"categoryId": test_command["categoryId"]})
+        response = await client.get(COMMAND_BASE_URL, params={"categoryId": test_command["categoryId"]})
         assert response.status_code == 200
         data = response.json()
         assert data["code"] == "0000"
@@ -298,7 +300,7 @@ class TestCommand:
         """测试按启用状态过滤指令"""
         # 创建启用和禁用的指令
         await client.post(
-            "/api/v1/command",
+            COMMAND_BASE_URL,
             json={
                 "name": "启用指令",
                 "code": "active_cmd",
@@ -308,7 +310,7 @@ class TestCommand:
             },
         )
         await client.post(
-            "/api/v1/command",
+            COMMAND_BASE_URL,
             json={
                 "name": "禁用指令",
                 "code": "inactive_cmd",
@@ -319,14 +321,14 @@ class TestCommand:
         )
 
         # 测试过滤启用的指令
-        response = await client.get("/api/v1/command", params={"isActive": True})
+        response = await client.get(COMMAND_BASE_URL, params={"isActive": True})
         assert response.status_code == 200
         data = response.json()
         assert data["code"] == "0000"
         assert data["data"]["total"] >= 1
 
         # 测试过滤禁用的指令
-        response = await client.get("/api/v1/command", params={"isActive": False})
+        response = await client.get(COMMAND_BASE_URL, params={"isActive": False})
         assert response.status_code == 200
         data = response.json()
         assert data["code"] == "0000"
@@ -337,7 +339,7 @@ class TestCommand:
         # 创建多个指令
         for i in range(5):
             await client.post(
-                "/api/v1/command",
+                COMMAND_BASE_URL,
                 json={
                     "name": f"指令{i}",
                     "code": f"cmd_{i}",
@@ -347,11 +349,11 @@ class TestCommand:
             )
 
         # 测试分页
-        response = await client.get("/api/v1/command", params={"current": 1, "size": 3})
+        response = await client.get(COMMAND_BASE_URL, params={"current": 1, "size": 3})
         assert response.status_code == 200
         data = response.json()
         assert data["code"] == "0000"
-        assert len(data["data"]["list"]) <= 3
+        assert len(data["data"]["items"]) <= 3
         assert data["data"]["current"] == 1
         assert data["data"]["size"] == 3
 
@@ -359,7 +361,7 @@ class TestCommand:
         """测试指令列表按优先级排序"""
         # 创建不同优先级的指令
         cmd_low = await client.post(
-            "/api/v1/command",
+            COMMAND_BASE_URL,
             json={
                 "name": "低优先级",
                 "code": "low_priority",
@@ -369,7 +371,7 @@ class TestCommand:
             },
         )
         cmd_high = await client.post(
-            "/api/v1/command",
+            COMMAND_BASE_URL,
             json={
                 "name": "高优先级",
                 "code": "high_priority",
@@ -379,20 +381,20 @@ class TestCommand:
             },
         )
 
-        response = await client.get("/api/v1/command")
+        response = await client.get(COMMAND_BASE_URL)
         assert response.status_code == 200
         data = response.json()
         assert data["code"] == "0000"
 
         # 验证高优先级在前
-        command_list = data["data"]["list"]
+        command_list = data["data"]["items"]
         high_index = next(i for i, cmd in enumerate(command_list) if cmd["code"] == "high_priority")
         low_index = next(i for i, cmd in enumerate(command_list) if cmd["code"] == "low_priority")
         assert high_index < low_index
 
     async def test_get_command_detail(self, client: AsyncClient, test_command):
         """测试获取指令详情"""
-        response = await client.get(f"/api/v1/command/{test_command['id']}")
+        response = await client.get(f"{COMMAND_BASE_URL}/{test_command['id']}")
         assert response.status_code == 200
         data = response.json()
         assert data["code"] == "0000"
@@ -402,7 +404,7 @@ class TestCommand:
 
     async def test_get_command_detail_not_found(self, client: AsyncClient):
         """测试获取不存在的指令"""
-        response = await client.get("/api/v1/command/99999")
+        response = await client.get(f"{COMMAND_BASE_URL}/99999")
         assert response.status_code == 404
         data = response.json()
         assert "不存在" in data["detail"]
@@ -410,7 +412,7 @@ class TestCommand:
     async def test_update_command_success(self, client: AsyncClient, test_command):
         """测试更新指令成功"""
         response = await client.put(
-            f"/api/v1/command/{test_command['id']}",
+            f"{COMMAND_BASE_URL}/{test_command['id']}",
             json={
                 "name": "更新后的指令",
                 "code": "updated_command",
@@ -429,7 +431,7 @@ class TestCommand:
     async def test_update_command_not_found(self, client: AsyncClient):
         """测试更新不存在的指令"""
         response = await client.put(
-            "/api/v1/command/99999",
+            f"{COMMAND_BASE_URL}/99999",
             json={"name": "不存在的指令"},
         )
         assert response.status_code == 404
@@ -440,7 +442,7 @@ class TestCommand:
         """测试更新指令为重复名称"""
         # 创建两个指令
         cmd1 = await client.post(
-            "/api/v1/command",
+            COMMAND_BASE_URL,
             json={
                 "name": "指令A",
                 "code": "cmd_a",
@@ -451,7 +453,7 @@ class TestCommand:
         cmd1_data = cmd1.json()["data"]
 
         cmd2 = await client.post(
-            "/api/v1/command",
+            COMMAND_BASE_URL,
             json={
                 "name": "指令B",
                 "code": "cmd_b",
@@ -463,7 +465,7 @@ class TestCommand:
 
         # 尝试将指令B更新为指令A的名称
         response = await client.put(
-            f"/api/v1/command/{cmd2_data['id']}",
+            f"{COMMAND_BASE_URL}/{cmd2_data['id']}",
             json={"name": "指令A"},
         )
         assert response.status_code == 409
@@ -474,7 +476,7 @@ class TestCommand:
         """测试更新指令为重复代码"""
         # 创建两个指令
         cmd1 = await client.post(
-            "/api/v1/command",
+            COMMAND_BASE_URL,
             json={
                 "name": "指令A",
                 "code": "cmd_a",
@@ -485,7 +487,7 @@ class TestCommand:
         cmd1_data = cmd1.json()["data"]
 
         cmd2 = await client.post(
-            "/api/v1/command",
+            COMMAND_BASE_URL,
             json={
                 "name": "指令B",
                 "code": "cmd_b",
@@ -497,7 +499,7 @@ class TestCommand:
 
         # 尝试将指令B更新为指令A的代码
         response = await client.put(
-            f"/api/v1/command/{cmd2_data['id']}",
+            f"{COMMAND_BASE_URL}/{cmd2_data['id']}",
             json={"code": "cmd_a"},
         )
         assert response.status_code == 409
@@ -507,7 +509,7 @@ class TestCommand:
     async def test_update_command_invalid_category(self, client: AsyncClient, test_command):
         """测试更新指令时指定不存在的分类"""
         response = await client.put(
-            f"/api/v1/command/{test_command['id']}",
+            f"{COMMAND_BASE_URL}/{test_command['id']}",
             json={"categoryId": 99999},
         )
         assert response.status_code == 404
@@ -518,7 +520,7 @@ class TestCommand:
         """测试删除指令成功"""
         # 创建指令
         create_response = await client.post(
-            "/api/v1/command",
+            COMMAND_BASE_URL,
             json={
                 "name": "待删除指令",
                 "code": "to_delete",
@@ -529,7 +531,7 @@ class TestCommand:
         command_id = create_response.json()["data"]["id"]
 
         # 删除指令
-        response = await client.delete(f"/api/v1/command/{command_id}")
+        response = await client.delete(f"{COMMAND_BASE_URL}/{command_id}")
         assert response.status_code == 200
         data = response.json()
         assert data["code"] == "0000"
@@ -537,7 +539,7 @@ class TestCommand:
 
     async def test_delete_command_not_found(self, client: AsyncClient):
         """测试删除不存在的指令"""
-        response = await client.delete("/api/v1/command/99999")
+        response = await client.delete(f"{COMMAND_BASE_URL}/99999")
         assert response.status_code == 404
         data = response.json()
         assert "不存在" in data["detail"]
@@ -548,30 +550,30 @@ class TestEdgeCases:
 
     async def test_category_name_max_length(self, client: AsyncClient):
         """测试分类名称长度限制"""
-        response = await client.get("/api/v1/command/category", params={"nameOrDesc": "a" * 51})
+        response = await client.get(f"{COMMAND_BASE_URL}/category", params={"nameOrDesc": "a" * 51})
         # 应该会因为验证失败返回422
         assert response.status_code == 422
 
     async def test_keyword_max_length(self, client: AsyncClient):
         """测试关键词长度限制"""
-        response = await client.get("/api/v1/command", params={"keyword": "a" * 51})
+        response = await client.get(COMMAND_BASE_URL, params={"keyword": "a" * 51})
         # 应该会因为验证失败返回422
         assert response.status_code == 422
 
     async def test_empty_list(self, client: AsyncClient):
         """测试空列表"""
-        response = await client.get("/api/v1/command/category", params={"nameOrDesc": "不存在的搜索词xyz123"})
+        response = await client.get(f"{COMMAND_BASE_URL}/category", params={"nameOrDesc": "不存在的搜索词xyz123"})
         assert response.status_code == 200
         data = response.json()
         assert data["code"] == "0000"
         assert data["data"]["total"] == 0
-        assert len(data["data"]["list"]) == 0
+        assert len(data["data"]["items"]) == 0
 
     async def test_command_variants(self, client: AsyncClient, test_category):
         """测试指令变体"""
         # 创建带有多个变体的指令
         response = await client.post(
-            "/api/v1/command",
+            COMMAND_BASE_URL,
             json={
                 "name": "多变体指令",
                 "code": "multi_variant",
@@ -586,7 +588,7 @@ class TestEdgeCases:
 
         # 获取指令详情，验证变体
         command_id = data["data"]["id"]
-        detail_response = await client.get(f"/api/v1/command/{command_id}")
+        detail_response = await client.get(f"{COMMAND_BASE_URL}/{command_id}")
         assert detail_response.status_code == 200
         detail_data = detail_response.json()
         assert "commands" in detail_data["data"]
@@ -596,7 +598,7 @@ class TestEdgeCases:
     async def test_command_without_category(self, client: AsyncClient):
         """测试创建不指定分类的指令"""
         response = await client.post(
-            "/api/v1/command",
+            COMMAND_BASE_URL,
             json={
                 "name": "无分类指令",
                 "code": "no_category",
@@ -614,7 +616,7 @@ class TestEdgeCases:
         """测试部分更新指令"""
         # 只更新描述
         response = await client.put(
-            f"/api/v1/command/{test_command['id']}",
+            f"{COMMAND_BASE_URL}/{test_command['id']}",
             json={"description": "仅更新描述"},
         )
         assert response.status_code == 200

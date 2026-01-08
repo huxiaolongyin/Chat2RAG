@@ -24,10 +24,10 @@ from httpx import AsyncClient
 async def test_prompt(client: AsyncClient):
     """创建测试用提示词"""
     response = await client.post(
-        "/api/v1/prompt",
+        "/api/v1/prompts",
         json={
             "promptName": "测试提示词",
-            "promptIntro": "测试提示词",
+            "promptDesc": "测试提示词",
             "promptText": "你是一个智能助手，请回答用户的问题。",
         },
     )
@@ -68,7 +68,7 @@ async def test_command_with_category(client: AsyncClient):
 async def test_flow(client: AsyncClient):
     """创建测试用流程"""
     response = await client.post(
-        "/api/v1/flow",
+        "/api/v1/flows",
         json={
             "name": "点餐流程",
             "desc": "用于麦当劳入门时的点餐流程",
@@ -325,7 +325,7 @@ class TestChatBasic:
                 "collections": ["测试数据"],
             },
         )
-        assert response.status_code in [200, 422]
+        assert response.status_code == 404
 
     async def test_chat_batch_mode(self, client: AsyncClient):
         """测试批处理模式"""
@@ -417,9 +417,7 @@ class TestChatBasic:
 class TestChatWithCollection:
     """知识库聊天测试"""
 
-    async def test_chat_with_single_collection(
-        self, client: AsyncClient, test_collection
-    ):
+    async def test_chat_with_single_collection(self, client: AsyncClient, test_collection):
         """测试使用单个知识库聊天"""
         response = await client.post(
             "/api/v2/chat",
@@ -481,6 +479,7 @@ class TestChatWithPrompt:
 
     async def test_chat_with_prompt(self, client: AsyncClient, test_prompt):
         """测试使用提示词聊天"""
+        print(test_prompt)
         response = await client.post(
             "/api/v2/chat",
             json={
@@ -489,7 +488,7 @@ class TestChatWithPrompt:
                 "content": {"text": "使用自定义提示词"},
                 "batchOrStream": "stream",
                 "collections": ["测试数据"],
-                "promptName": test_prompt["name"],
+                "promptName": test_prompt["promptName"],
             },
         )
         assert response.status_code == 200
@@ -514,9 +513,7 @@ class TestChatWithPrompt:
 class TestChatWithCommand:
     """指令聊天测试"""
 
-    async def test_chat_trigger_command(
-        self, client: AsyncClient, test_command_with_category
-    ):
+    async def test_chat_trigger_command(self, client: AsyncClient, test_command_with_category):
         """测试触发指令"""
         command = test_command_with_category["command"]
         response = await client.post(
@@ -531,9 +528,7 @@ class TestChatWithCommand:
         )
         assert response.status_code == 200
 
-    async def test_chat_trigger_command_variant(
-        self, client: AsyncClient, test_command_with_category
-    ):
+    async def test_chat_trigger_command_variant(self, client: AsyncClient, test_command_with_category):
         """测试触发指令变体"""
         response = await client.post(
             "/api/v2/chat",
@@ -655,9 +650,7 @@ class TestChatWithExactMatch:
         )
         assert response.status_code == 200
 
-    async def test_chat_exact_match_case_insensitive(
-        self, client: AsyncClient, test_exact_match
-    ):
+    async def test_chat_exact_match_case_insensitive(self, client: AsyncClient, test_exact_match):
         """测试精确匹配大小写不敏感"""
         response = await client.post(
             "/api/v2/chat",
@@ -671,9 +664,7 @@ class TestChatWithExactMatch:
         )
         assert response.status_code == 200
 
-    async def test_chat_exact_match_with_whitespace(
-        self, client: AsyncClient, test_exact_match
-    ):
+    async def test_chat_exact_match_with_whitespace(self, client: AsyncClient, test_exact_match):
         """测试精确匹配忽略空白字符"""
         response = await client.post(
             "/api/v2/chat",

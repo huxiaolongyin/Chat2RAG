@@ -29,6 +29,7 @@
 ### Changed
 
 - `app.py` 文件从 chat2rag/api 移动至 chat2rag 目录下
+- 更改 API 端点为复数形式，保留旧的 API 端点，打上 deprecated=True
 
 ### Removed
 

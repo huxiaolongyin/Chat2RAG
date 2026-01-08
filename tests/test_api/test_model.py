@@ -1,12 +1,14 @@
 import pytest
 from httpx import AsyncClient
 
+MODEL_BASE_URL = "/api/v1/models"
+
 
 @pytest.fixture
 async def test_provider(client: AsyncClient):
     """创建测试用模型渠道商"""
     response = await client.post(
-        "/api/v1/model/provider",
+        f"{MODEL_BASE_URL}/provider",
         json={
             "name": "测试渠道商",
             "baseUrl": "https://api.test.com",
@@ -25,7 +27,7 @@ async def test_provider(client: AsyncClient):
 async def test_provider_disabled(client: AsyncClient):
     """创建测试用禁用的模型渠道商"""
     response = await client.post(
-        "/api/v1/model/provider",
+        f"{MODEL_BASE_URL}/provider",
         json={
             "name": "禁用渠道商",
             "baseUrl": "https://api.disabled.com",
@@ -44,7 +46,7 @@ async def test_provider_disabled(client: AsyncClient):
 async def test_source(client: AsyncClient, test_provider):
     """创建测试用模型源"""
     response = await client.post(
-        "/api/v1/model/source",
+        f"{MODEL_BASE_URL}/source",
         json={
             "name": "gpt-4",
             "alias": "test-model",
@@ -65,7 +67,7 @@ async def test_source(client: AsyncClient, test_provider):
 async def test_source_unhealthy(client: AsyncClient, test_provider):
     """创建测试用不健康的模型源"""
     response = await client.post(
-        "/api/v1/model/source",
+        f"{MODEL_BASE_URL}/source",
         json={
             "name": "gpt-3.5-turbo",
             "alias": "unhealthy-model",
@@ -86,7 +88,7 @@ async def test_provider_with_sources(client: AsyncClient):
     """创建带有多个模型源的渠道商"""
     # 创建渠道商
     provider_response = await client.post(
-        "/api/v1/model/provider",
+        f"{MODEL_BASE_URL}/provider",
         json={
             "name": "多源渠道商",
             "baseUrl": "https://api.multi.com",
@@ -101,7 +103,7 @@ async def test_provider_with_sources(client: AsyncClient):
     sources = []
     for i in range(3):
         source_response = await client.post(
-            "/api/v1/model/source",
+            f"{MODEL_BASE_URL}/source",
             json={
                 "name": f"model-{i}",
                 "alias": f"模型源{i}",
@@ -121,7 +123,7 @@ class TestModelList:
 
     async def test_get_model_option_success(self, client: AsyncClient, test_source):
         """测试获取模型选项列表成功"""
-        response = await client.get("/api/v1/model/option")
+        response = await client.get(f"{MODEL_BASE_URL}/option")
         assert response.status_code == 200
         data = response.json()
         assert data["code"] == "0000"
@@ -133,7 +135,7 @@ class TestModelList:
 
     async def test_get_model_list_deprecated(self, client: AsyncClient, test_source):
         """测试废弃的模型列表端点"""
-        response = await client.get("/api/v1/model/list")
+        response = await client.get(f"{MODEL_BASE_URL}/list")
         assert response.status_code == 200
         data = response.json()
         assert data["code"] == "0000"
@@ -141,7 +143,7 @@ class TestModelList:
 
     async def test_model_list_only_healthy_enabled(self, client: AsyncClient, test_source, test_source_unhealthy):
         """测试模型列表只返回健康且启用的模型"""
-        response = await client.get("/api/v1/model/option")
+        response = await client.get(f"{MODEL_BASE_URL}/option")
         assert response.status_code == 200
         data = response.json()
         assert data["code"] == "0000"
@@ -157,7 +159,7 @@ class TestModelProvider:
     async def test_create_provider_success(self, client: AsyncClient):
         """测试创建模型渠道商成功"""
         response = await client.post(
-            "/api/v1/model/provider",
+            f"{MODEL_BASE_URL}/provider",
             json={
                 "name": "OpenAI",
                 "baseUrl": "https://api.openai.com/v1",
@@ -177,7 +179,7 @@ class TestModelProvider:
     async def test_create_provider_duplicate(self, client: AsyncClient, test_provider):
         """测试创建重复名称的渠道商"""
         response = await client.post(
-            "/api/v1/model/provider",
+            f"{MODEL_BASE_URL}/provider",
             json={
                 "name": "测试渠道商",
                 "baseUrl": "https://api.openai.com/v1",
@@ -193,7 +195,7 @@ class TestModelProvider:
     async def test_get_provider_detail_success(self, client: AsyncClient, test_provider):
         """测试获取渠道商详情成功"""
         provider_id = test_provider["id"]
-        response = await client.get(f"/api/v1/model/provider/{provider_id}")
+        response = await client.get(f"{MODEL_BASE_URL}/provider/{provider_id}")
         assert response.status_code == 200
         data = response.json()
         assert data["code"] == "0000"
@@ -203,32 +205,32 @@ class TestModelProvider:
 
     async def test_get_provider_detail_not_found(self, client: AsyncClient):
         """测试获取不存在的渠道商详情"""
-        response = await client.get("/api/v1/model/provider/99999")
+        response = await client.get(f"{MODEL_BASE_URL}/provider/99999")
         assert response.status_code == 404
         data = response.json()
         assert "不存在" in data["detail"]
 
     async def test_get_provider_list(self, client: AsyncClient, test_provider):
         """测试获取渠道商列表"""
-        response = await client.get("/api/v1/model/provider")
+        response = await client.get(f"{MODEL_BASE_URL}/provider")
         assert response.status_code == 200
         data = response.json()
         assert data["code"] == "0000"
-        assert "list" in data["data"]
+        assert "items" in data["data"]
         assert data["data"]["total"] >= 1
-        assert len(data["data"]["list"]) >= 1
+        assert len(data["data"]["items"]) >= 1
 
     async def test_get_provider_list_with_search(self, client: AsyncClient, test_provider):
         """测试搜索渠道商列表"""
         # 按名称或描述搜索
-        response = await client.get("/api/v1/model/provider", params={"nameOrDesc": "测试"})
+        response = await client.get(f"{MODEL_BASE_URL}/provider", params={"nameOrDesc": "测试"})
         assert response.status_code == 200
         data = response.json()
         assert data["code"] == "0000"
         assert data["data"]["total"] >= 1
 
         # 按启用状态搜索
-        response = await client.get("/api/v1/model/provider", params={"enabled": True})
+        response = await client.get(f"{MODEL_BASE_URL}/provider", params={"enabled": True})
         assert response.status_code == 200
         data = response.json()
         assert data["code"] == "0000"
@@ -238,7 +240,7 @@ class TestModelProvider:
         # 创建多个渠道商
         for i in range(5):
             await client.post(
-                "/api/v1/model/provider",
+                f"{MODEL_BASE_URL}/provider",
                 json={
                     "name": f"渠道商{i}",
                     "baseUrl": f"https://api{i}.com",
@@ -248,11 +250,11 @@ class TestModelProvider:
             )
 
         # 测试分页
-        response = await client.get("/api/v1/model/provider", params={"current": 1, "size": 3})
+        response = await client.get(f"{MODEL_BASE_URL}/provider", params={"current": 1, "size": 3})
         assert response.status_code == 200
         data = response.json()
         assert data["code"] == "0000"
-        assert len(data["data"]["list"]) <= 3
+        assert len(data["data"]["items"]) <= 3
         assert data["data"]["current"] == 1
         assert data["data"]["size"] == 3
 
@@ -260,7 +262,7 @@ class TestModelProvider:
         """测试更新渠道商成功"""
         provider_id = test_provider["id"]
         response = await client.put(
-            f"/api/v1/model/provider/{provider_id}",
+            f"{MODEL_BASE_URL}/provider/{provider_id}",
             json={
                 "name": "更新后的渠道商",
                 "baseUrl": "https://api.updated.com",
@@ -278,7 +280,7 @@ class TestModelProvider:
         """测试部分更新渠道商"""
         provider_id = test_provider["id"]
         response = await client.put(
-            f"/api/v1/model/provider/{provider_id}",
+            f"{MODEL_BASE_URL}/provider/{provider_id}",
             json={
                 "description": "只更新描述",
                 "enabled": False,
@@ -292,7 +294,7 @@ class TestModelProvider:
     async def test_update_provider_not_found(self, client: AsyncClient):
         """测试更新不存在的渠道商"""
         response = await client.put(
-            "/api/v1/model/provider/99999",
+            f"{MODEL_BASE_URL}/provider/99999",
             json={
                 "name": "不存在的渠道商",
                 "description": "不存在",
@@ -307,7 +309,7 @@ class TestModelProvider:
         """测试更新渠道商为重复名称"""
         # 创建两个渠道商
         provider1 = await client.post(
-            "/api/v1/model/provider",
+            f"{MODEL_BASE_URL}/provider",
             json={
                 "name": "渠道商A",
                 "baseUrl": "https://api.openai.com/v1",
@@ -320,7 +322,7 @@ class TestModelProvider:
         provider1_data = provider1.json()["data"]
 
         provider2 = await client.post(
-            "/api/v1/model/provider",
+            f"{MODEL_BASE_URL}/provider",
             json={
                 "name": "渠道商B",
                 "baseUrl": "https://api.openai.com/v1",
@@ -334,7 +336,7 @@ class TestModelProvider:
 
         # 尝试将渠道商B更新为渠道商A的名称
         response = await client.put(
-            f"/api/v1/model/provider/{provider2_data['id']}",
+            f"{MODEL_BASE_URL}/provider/{provider2_data['id']}",
             json={
                 "name": "渠道商A",
                 "baseUrl": "https://api.openai.com/v1",
@@ -351,7 +353,7 @@ class TestModelProvider:
         """测试删除渠道商成功"""
         # 创建渠道商
         create_response = await client.post(
-            "/api/v1/model/provider",
+            f"{MODEL_BASE_URL}/provider",
             json={
                 "name": "待删除渠道商",
                 "baseUrl": "https://api.openai.com/v1",
@@ -364,7 +366,7 @@ class TestModelProvider:
         provider_id = create_response.json()["data"]["id"]
 
         # 删除渠道商
-        response = await client.delete(f"/api/v1/model/provider/{provider_id}")
+        response = await client.delete(f"{MODEL_BASE_URL}/provider/{provider_id}")
         assert response.status_code == 200
         data = response.json()
         assert data["code"] == "0000"
@@ -372,7 +374,7 @@ class TestModelProvider:
 
     async def test_delete_provider_not_found(self, client: AsyncClient):
         """测试删除不存在的渠道商"""
-        response = await client.delete("/api/v1/model/provider/99999")
+        response = await client.delete(f"{MODEL_BASE_URL}/provider/99999")
         assert response.status_code == 404
         data = response.json()
         assert "不存在" in data["detail"]
@@ -382,7 +384,7 @@ class TestModelProvider:
         provider_id = test_provider_with_sources["provider"]["id"]
 
         # 应该能够删除（或根据业务逻辑返回相应错误）
-        response = await client.delete(f"/api/v1/model/provider/{provider_id}")
+        response = await client.delete(f"{MODEL_BASE_URL}/provider/{provider_id}")
         # 根据实际业务逻辑调整断言
         assert response.status_code in [200, 400, 409]
 
@@ -393,7 +395,7 @@ class TestModelSource:
     async def test_create_source_success(self, client: AsyncClient, test_provider):
         """测试创建模型源成功"""
         response = await client.post(
-            "/api/v1/model/source",
+            f"{MODEL_BASE_URL}/source",
             json={
                 "name": "gpt-4-turbo",
                 "alias": "gpt-4",
@@ -419,7 +421,7 @@ class TestModelSource:
     async def test_create_source_duplicate_name(self, client: AsyncClient, test_source):
         """测试创建重复别名的模型源"""
         response = await client.post(
-            "/api/v1/model/source",
+            f"{MODEL_BASE_URL}/source",
             json={
                 "name": "gpt-4",
                 "alias": "test-model",
@@ -434,7 +436,7 @@ class TestModelSource:
     async def test_create_source_invalid_provider(self, client: AsyncClient):
         """测试创建模型源时使用无效的渠道商ID"""
         response = await client.post(
-            "/api/v1/model/source",
+            f"{MODEL_BASE_URL}/source",
             json={
                 "name": "invalid-provider-model",
                 "alias": "invalid-model",
@@ -449,7 +451,7 @@ class TestModelSource:
     async def test_get_source_detail_success(self, client: AsyncClient, test_source):
         """测试获取模型源详情成功"""
         source_id = test_source["id"]
-        response = await client.get(f"/api/v1/model/source/{source_id}")
+        response = await client.get(f"{MODEL_BASE_URL}/source/{source_id}")
         assert response.status_code == 200
         data = response.json()
         assert data["code"] == "0000"
@@ -463,18 +465,18 @@ class TestModelSource:
 
     async def test_get_source_detail_not_found(self, client: AsyncClient):
         """测试获取不存在的模型源详情"""
-        response = await client.get("/api/v1/model/source/99999")
+        response = await client.get(f"{MODEL_BASE_URL}/source/99999")
         assert response.status_code == 404
         data = response.json()
         assert "不存在" in data["detail"]
 
     async def test_get_source_list(self, client: AsyncClient, test_source):
         """测试获取模型源列表"""
-        response = await client.get("/api/v1/model/source")
+        response = await client.get(f"{MODEL_BASE_URL}/source")
         assert response.status_code == 200
         data = response.json()
         assert data["code"] == "0000"
-        assert "list" in data["data"]
+        assert "items" in data["data"]
         assert data["data"]["total"] >= 1
 
     async def test_get_source_list_with_filters(self, client: AsyncClient, test_provider_with_sources):
@@ -482,27 +484,27 @@ class TestModelSource:
         provider_id = test_provider_with_sources["provider"]["id"]
 
         # 按名称或别名搜索
-        response = await client.get("/api/v1/model/source", params={"nameOrAlias": "模型源"})
+        response = await client.get(f"{MODEL_BASE_URL}/source", params={"nameOrAlias": "模型源"})
         assert response.status_code == 200
         data = response.json()
         assert data["code"] == "0000"
         assert data["data"]["total"] >= 3
 
         # 按渠道商ID过滤
-        response = await client.get("/api/v1/model/source", params={"providerId": provider_id})
+        response = await client.get(f"{MODEL_BASE_URL}/source", params={"providerId": provider_id})
         assert response.status_code == 200
         data = response.json()
         assert data["code"] == "0000"
         assert data["data"]["total"] == 3
 
         # 按启用状态过滤
-        response = await client.get("/api/v1/model/source", params={"enabled": True})
+        response = await client.get(f"{MODEL_BASE_URL}/source", params={"enabled": True})
         assert response.status_code == 200
         data = response.json()
         assert data["code"] == "0000"
 
         # 按健康状态过滤
-        response = await client.get("/api/v1/model/source", params={"healthy": True})
+        response = await client.get(f"{MODEL_BASE_URL}/source", params={"healthy": True})
         assert response.status_code == 200
         data = response.json()
         assert data["code"] == "0000"
@@ -512,7 +514,7 @@ class TestModelSource:
         # 创建多个模型源
         for i in range(5):
             await client.post(
-                "/api/v1/model/source",
+                f"{MODEL_BASE_URL}/source",
                 json={
                     "name": f"page-model-{i}",
                     "alias": f"分页模型{i}",
@@ -523,11 +525,11 @@ class TestModelSource:
             )
 
         # 测试分页
-        response = await client.get("/api/v1/model/source", params={"current": 1, "size": 3})
+        response = await client.get(f"{MODEL_BASE_URL}/source", params={"current": 1, "size": 3})
         assert response.status_code == 200
         data = response.json()
         assert data["code"] == "0000"
-        assert len(data["data"]["list"]) <= 3
+        assert len(data["data"]["items"]) <= 3
         assert data["data"]["current"] == 1
         assert data["data"]["size"] == 3
 
@@ -535,7 +537,7 @@ class TestModelSource:
         """测试更新模型源成功"""
         source_id = test_source["id"]
         response = await client.put(
-            f"/api/v1/model/source/{source_id}",
+            f"{MODEL_BASE_URL}/source/{source_id}",
             json={
                 "alias": "updated-model",
                 "enabled": False,
@@ -554,7 +556,7 @@ class TestModelSource:
         """测试部分更新模型源"""
         source_id = test_source["id"]
         response = await client.put(
-            f"/api/v1/model/source/{source_id}",
+            f"{MODEL_BASE_URL}/source/{source_id}",
             json={
                 "priority": 200,
             },
@@ -567,7 +569,7 @@ class TestModelSource:
     async def test_update_source_not_found(self, client: AsyncClient):
         """测试更新不存在的模型源"""
         response = await client.put(
-            "/api/v1/model/source/99999",
+            f"{MODEL_BASE_URL}/source/99999",
             json={
                 "alias": "not-exist",
                 "enabled": True,
@@ -581,7 +583,7 @@ class TestModelSource:
         """测试更新模型源为重复别名"""
         # 创建两个模型源
         source1 = await client.post(
-            "/api/v1/model/source",
+            f"{MODEL_BASE_URL}/source",
             json={
                 "name": "model-a",
                 "alias": "模型源A",
@@ -593,7 +595,7 @@ class TestModelSource:
         source1_data = source1.json()["data"]
 
         source2 = await client.post(
-            "/api/v1/model/source",
+            f"{MODEL_BASE_URL}/source",
             json={
                 "name": "model-b",
                 "alias": "模型源B",
@@ -606,7 +608,7 @@ class TestModelSource:
 
         # 尝试将模型源B更新为模型源A的别名
         response = await client.put(
-            f"/api/v1/model/source/{source2_data['id']}",
+            f"{MODEL_BASE_URL}/source/{source2_data['id']}",
             json={
                 "name": "model-a",
                 "enabled": True,
@@ -620,7 +622,7 @@ class TestModelSource:
         """测试删除模型源成功"""
         # 创建模型源
         create_response = await client.post(
-            "/api/v1/model/source",
+            f"{MODEL_BASE_URL}/source",
             json={
                 "name": "to-delete-model",
                 "alias": "待删除模型源",
@@ -631,7 +633,7 @@ class TestModelSource:
         source_id = create_response.json()["data"]["id"]
 
         # 删除模型源
-        response = await client.delete(f"/api/v1/model/source/{source_id}")
+        response = await client.delete(f"{MODEL_BASE_URL}/source/{source_id}")
         assert response.status_code == 200
         data = response.json()
         assert data["code"] == "0000"
@@ -639,7 +641,7 @@ class TestModelSource:
 
     async def test_delete_source_not_found(self, client: AsyncClient):
         """测试删除不存在的模型源"""
-        response = await client.delete("/api/v1/model/source/99999")
+        response = await client.delete(f"{MODEL_BASE_URL}/source/99999")
         assert response.status_code == 404
         data = response.json()
         assert "不存在" in data["detail"]
@@ -652,7 +654,7 @@ class TestValidation:
         """测试渠道商名称验证"""
         # 测试空名称
         response = await client.post(
-            "/api/v1/model/provider",
+            f"{MODEL_BASE_URL}/provider",
             json={
                 "name": "",
                 "description": "描述",
@@ -663,7 +665,7 @@ class TestValidation:
 
         # 测试名称过长
         response = await client.post(
-            "/api/v1/model/provider",
+            f"{MODEL_BASE_URL}/provider",
             json={
                 "name": "a" * 101,  # 超过100字符限制
                 "description": "描述",
@@ -676,7 +678,7 @@ class TestValidation:
         """测试渠道商描述验证"""
         # 测试描述过长
         response = await client.post(
-            "/api/v1/model/provider",
+            f"{MODEL_BASE_URL}/provider",
             json={
                 "name": "测试渠道商",
                 "description": "a" * 256,  # 超过255字符限制
@@ -689,7 +691,7 @@ class TestValidation:
         """测试模型源名称验证"""
         # 测试空名称
         response = await client.post(
-            "/api/v1/model/source",
+            f"{MODEL_BASE_URL}/source",
             json={
                 "name": "",
                 "alias": "test-alias",
@@ -701,7 +703,7 @@ class TestValidation:
 
         # 测试名称过长
         response = await client.post(
-            "/api/v1/model/source",
+            f"{MODEL_BASE_URL}/source",
             json={
                 "name": "a" * 101,  # 超过100字符限制
                 "alias": "test-alias",
@@ -715,7 +717,7 @@ class TestValidation:
         """测试模型源别名验证"""
         # 测试别名过长
         response = await client.post(
-            "/api/v1/model/source",
+            f"{MODEL_BASE_URL}/source",
             json={
                 "name": "测试模型",
                 "alias": "a" * 101,  # 超过100字符限制
@@ -728,30 +730,30 @@ class TestValidation:
     async def test_search_parameter_validation(self, client: AsyncClient):
         """测试搜索参数验证"""
         # 测试搜索参数过长
-        response = await client.get("/api/v1/model/provider", params={"nameOrDesc": "a" * 51})
+        response = await client.get(f"{MODEL_BASE_URL}/provider", params={"nameOrDesc": "a" * 51})
         assert response.status_code == 422
 
-        response = await client.get("/api/v1/model/source", params={"nameOrAlias": "a" * 51})
+        response = await client.get(f"{MODEL_BASE_URL}/source", params={"nameOrAlias": "a" * 51})
         assert response.status_code == 422
 
     async def test_pagination_validation(self, client: AsyncClient):
         """测试分页参数验证"""
         # 测试无效的 current 值
-        response = await client.get("/api/v1/model/provider", params={"current": 0})
+        response = await client.get(f"{MODEL_BASE_URL}/provider", params={"current": 0})
         assert response.status_code == 422
 
         # 测试无效的 size 值
-        response = await client.get("/api/v1/model/provider", params={"size": 0})
+        response = await client.get(f"{MODEL_BASE_URL}/provider", params={"size": 0})
         assert response.status_code == 422
 
-        response = await client.get("/api/v1/model/provider", params={"size": 101})
+        response = await client.get(f"{MODEL_BASE_URL}/provider", params={"size": 101})
         assert response.status_code == 422
 
     async def test_missing_required_fields(self, client: AsyncClient):
         """测试缺少必需字段"""
         # 创建渠道商时缺少必需字段
         response = await client.post(
-            "/api/v1/model/provider",
+            f"{MODEL_BASE_URL}/provider",
             json={
                 "description": "只有描述",
                 # 缺少 name
@@ -761,7 +763,7 @@ class TestValidation:
 
         # 创建模型源时缺少必需字段
         response = await client.post(
-            "/api/v1/model/source",
+            f"{MODEL_BASE_URL}/source",
             json={
                 "alias": "只有别名",
                 # 缺少 name 和 provider_id
@@ -773,7 +775,7 @@ class TestValidation:
         """测试生成参数验证"""
         # 测试有效的生成参数
         response = await client.post(
-            "/api/v1/model/source",
+            f"{MODEL_BASE_URL}/source",
             json={
                 "name": "test-kwargs-model",
                 "alias": "kwargs-model",
@@ -796,7 +798,7 @@ class TestValidation:
         """测试优先级参数验证"""
         # 测试负数优先级
         response = await client.post(
-            "/api/v1/model/source",
+            f"{MODEL_BASE_URL}/source",
             json={
                 "name": "negative-priority-model",
                 "alias": "neg-priority",
@@ -818,32 +820,32 @@ class TestEdgeCases:
         """测试空列表"""
         # 搜索不存在的内容
         response = await client.get(
-            "/api/v1/model/provider",
+            f"{MODEL_BASE_URL}/provider",
             params={"nameOrDesc": "不存在的搜索词xyz123"},
         )
         assert response.status_code == 200
         data = response.json()
         assert data["code"] == "0000"
         assert data["data"]["total"] == 0
-        assert len(data["data"]["list"]) == 0
+        assert len(data["data"]["items"]) == 0
 
         response = await client.get(
-            "/api/v1/model/source",
+            f"{MODEL_BASE_URL}/source",
             params={"nameOrAlias": "不存在的搜索词xyz123"},
         )
         assert response.status_code == 200
         data = response.json()
         assert data["code"] == "0000"
         assert data["data"]["total"] == 0
-        assert len(data["data"]["list"]) == 0
+        assert len(data["data"]["items"]) == 0
 
     async def test_large_page_number(self, client: AsyncClient):
         """测试超大页码"""
-        response = await client.get("/api/v1/model/provider", params={"current": 9999, "size": 10})
+        response = await client.get(f"{MODEL_BASE_URL}/provider", params={"current": 9999, "size": 10})
         assert response.status_code == 200
         data = response.json()
         assert data["code"] == "0000"
-        assert len(data["data"]["list"]) == 0
+        assert len(data["data"]["items"]) == 0
 
     async def test_filter_combinations(self, client: AsyncClient, test_provider_with_sources):
         """测试过滤条件组合"""
@@ -851,7 +853,7 @@ class TestEdgeCases:
 
         # 组合多个过滤条件
         response = await client.get(
-            "/api/v1/model/source",
+            f"{MODEL_BASE_URL}/source",
             params={
                 "providerId": provider_id,
                 "enabled": True,
@@ -870,7 +872,7 @@ class TestEdgeCases:
         # 并发创建多个渠道商
         async def create_provider(i):
             return await client.post(
-                "/api/v1/model/provider",
+                f"{MODEL_BASE_URL}/provider",
                 json={
                     "name": f"并发渠道商{i}",
                     "baseUrl": f"https://api{i}.concurrent.com",
@@ -896,7 +898,7 @@ class TestEdgeCases:
 
         # 获取该渠道商的所有模型源
         response = await client.get(
-            "/api/v1/model/source",
+            f"{MODEL_BASE_URL}/source",
             params={"providerId": provider_id},
         )
         assert response.status_code == 200
@@ -905,7 +907,7 @@ class TestEdgeCases:
         assert data["data"]["total"] == 3
 
         # 验证所有模型源都属于该渠道商
-        for source in data["data"]["list"]:
+        for source in data["data"]["items"]:
             assert source["providerId"] == provider_id
 
     async def test_model_list_deduplication(self, client: AsyncClient, test_provider):
@@ -913,7 +915,7 @@ class TestEdgeCases:
         # 创建多个相同别名的模型源（如果业务允许）
         for i in range(3):
             await client.post(
-                "/api/v1/model/source",
+                f"{MODEL_BASE_URL}/source",
                 json={
                     "name": f"重复别名模型{i}",
                     "alias": "duplicate-alias",
@@ -923,7 +925,7 @@ class TestEdgeCases:
                 },
             )
 
-        response = await client.get("/api/v1/model/option")
+        response = await client.get(f"{MODEL_BASE_URL}/option")
         assert response.status_code == 200
         data = response.json()
         assert data["code"] == "0000"
@@ -937,7 +939,7 @@ class TestEdgeCases:
         """测试字段中的特殊字符"""
         # 测试包含特殊字符的渠道商名称
         response = await client.post(
-            "/api/v1/model/provider",
+            f"{MODEL_BASE_URL}/provider",
             json={
                 "name": "特殊字符_测试-123",
                 "baseUrl": "https://api.special-chars.com/v1",
@@ -953,7 +955,7 @@ class TestEdgeCases:
 
         # 测试包含特殊字符的模型源
         response = await client.post(
-            "/api/v1/model/source",
+            f"{MODEL_BASE_URL}/source",
             json={
                 "name": "gpt-4-turbo-preview",
                 "alias": "GPT4_Turbo中文版",
@@ -973,7 +975,7 @@ class TestEdgeCases:
         """测试可选字段为null的情况"""
         # 创建渠道商，可选字段为null
         response = await client.post(
-            "/api/v1/model/provider",
+            f"{MODEL_BASE_URL}/provider",
             json={
                 "name": "Null字段测试",
                 "baseUrl": None,
@@ -985,7 +987,7 @@ class TestEdgeCases:
         assert response.status_code == 422
 
         response = await client.post(
-            "/api/v1/model/provider",
+            f"{MODEL_BASE_URL}/provider",
             json={
                 "name": "Null字段测试",
                 "baseUrl": "https://api.special-chars.com/v1",
@@ -1001,7 +1003,7 @@ class TestEdgeCases:
 
         # 创建模型源，可选字段为null
         response = await client.post(
-            "/api/v1/model/source",
+            f"{MODEL_BASE_URL}/source",
             json={
                 "name": "null-fields-model",
                 "alias": None,
@@ -1022,7 +1024,7 @@ class TestErrorHandling:
     async def test_invalid_json_payload(self, client: AsyncClient):
         """测试无效的JSON载荷"""
         response = await client.post(
-            "/api/v1/model/provider",
+            f"{MODEL_BASE_URL}/provider",
             content="invalid json",
             headers={"Content-Type": "application/json"},
         )
@@ -1032,21 +1034,21 @@ class TestErrorHandling:
         """测试无效的参数类型"""
         # 测试 enabled 参数类型错误
         response = await client.get(
-            "/api/v1/model/provider",
+            f"{MODEL_BASE_URL}/provider",
             params={"enabled": "invalid_boolean"},
         )
         assert response.status_code == 422
 
         # 测试 providerId 参数类型错误
         response = await client.get(
-            "/api/v1/model/source",
+            f"{MODEL_BASE_URL}/source",
             params={"providerId": "invalid_integer"},
         )
         assert response.status_code == 422
 
         # 测试创建时字段类型错误
         response = await client.post(
-            "/api/v1/model/provider",
+            f"{MODEL_BASE_URL}/provider",
             json={
                 "name": "测试渠道商",
                 "enabled": "not_boolean",  # 应该是布尔值
@@ -1058,7 +1060,7 @@ class TestErrorHandling:
         """测试无效的生成参数"""
         # generation_kwargs 应该是字典类型
         response = await client.post(
-            "/api/v1/model/source",
+            f"{MODEL_BASE_URL}/source",
             json={
                 "name": "invalid-kwargs-model",
                 "alias": "invalid-kwargs",
@@ -1074,7 +1076,7 @@ class TestErrorHandling:
         provider_id = test_provider_with_sources["provider"]["id"]
 
         # 如果业务逻辑不允许删除有关联模型源的渠道商
-        response = await client.delete(f"/api/v1/model/provider/{provider_id}")
+        response = await client.delete(f"{MODEL_BASE_URL}/provider/{provider_id}")
 
         # 根据实际业务逻辑调整断言
         if response.status_code == 400:
@@ -1096,7 +1098,7 @@ class TestErrorHandling:
         large_kwargs = {f"param_{i}": f"value_{i}" * 100 for i in range(100)}
 
         response = await client.post(
-            "/api/v1/model/provider",
+            f"{MODEL_BASE_URL}/provider",
             json={
                 "name": "大载荷测试",
                 "description": "x" * 255,  # 最大长度
@@ -1109,7 +1111,7 @@ class TestErrorHandling:
         provider_id = response.json()["data"]["id"]
 
         response = await client.post(
-            "/api/v1/model/source",
+            f"{MODEL_BASE_URL}/source",
             json={
                 "name": "large-payload-model",
                 "alias": "large-payload",
