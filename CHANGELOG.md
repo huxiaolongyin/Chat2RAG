@@ -36,6 +36,7 @@
 
 - 将 chatv1 的接口 /query-stream 标记为待移除
 - 临时去除不成熟的 websocket 接口
+- 移除 auto_log 的装饰器，使用中间件替代
 
 ## [V0.3.0rc2] - 2025-11-07
 

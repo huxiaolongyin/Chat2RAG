@@ -12,6 +12,7 @@ temp*
 .pytest_cache
 model
 audio_chat
+.continue
 
 #=======================#
 #       Logs file       #
@@ -30,4 +31,4 @@ deploy/
 #=======================#
 data/
 **/versions
-migrations
+migrations**
