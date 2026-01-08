@@ -16,18 +16,15 @@
 - 新增响应的 schemas，并在 prompt 接口中使用
 - 优化 prompt 的测试代码
 - 优化健康检测接口的响应、接口测试
-- 模型源和模型渠道商的接口改进
-  - 将模型列表同步和模型延迟计算放到后台
-  - 新增接口的响应值和 example
-  - 优化 model_service 的代码
-  - 优化接口的异常处理
-  - 优化接口的 pytest 测试代码
-- 固定命令的接口改进
-  - 新增接口的响应值和 example
-  - 优化 command_service 的代码
-  - 优化接口的异常处理
-  - 优化接口的 pytest 测试代码
+- 模型源和模型渠道商的接口改进，将模型列表同步和模型延迟计算放到后台，新增接口的响应值和 example，优化 model_service 的代码，优化接口的异常处理，优化接口的 pytest 测试代码
+- 固定命令的接口改进，新增接口的响应值和 example，优化 command_service 的代码，优化接口的异常处理，优化接口的 pytest 测试代码
+- 动作 action 的接口改进，新增接口的响应值和 example，优化 action_service 的代码，优化接口的异常处理，优化接口的 pytest 测试代码
 - 使用日志中间件和异常处理中间件替代日志和异常处理装饰器
+- 添加敏感词策略和多模态处理策略
+
+### Fixed
+
+- 处理 chat 接口 query 内容为空的问题
 
 ### Changed
 
@@ -36,6 +33,7 @@
 ### Removed
 
 - 将 chatv1 的接口 /query-stream 标记为待移除
+- 临时去除不成熟的 websocket 接口
 
 ## [V0.3.0rc2] - 2025-11-07
 
@@ -46,8 +44,6 @@
 - 新增定时 1 小时刷新模型延迟
 - 新增动作和表情配置的 Model、Service、Schema 及 API
 - 优化 `flow.py` 变量命名及日志打印
-
-### Fixed
 
 ### Fixed
 
