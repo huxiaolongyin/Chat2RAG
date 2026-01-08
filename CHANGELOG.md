@@ -33,6 +33,10 @@
 
 - `app.py` 文件从 chat2rag/api 移动至 chat2rag 目录下
 
+### Removed
+
+- 将 chatv1 的接口 /query-stream 标记为待移除
+
 ## [V0.3.0rc2] - 2025-11-07
 
 ### Added
@@ -42,6 +46,8 @@
 - 新增定时 1 小时刷新模型延迟
 - 新增动作和表情配置的 Model、Service、Schema 及 API
 - 优化 `flow.py` 变量命名及日志打印
+
+### Fixed
 
 ### Fixed
 

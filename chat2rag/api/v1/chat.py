@@ -8,14 +8,12 @@ from chat2rag.core.strategies import ExactMatchStrategy, RAGStrategy, StrategyCh
 from chat2rag.enums import ProcessType
 from chat2rag.logger import auto_log, get_logger
 from chat2rag.schemas.chat import ChatQueryParams
-from chat2rag.services.prompt_service import PromptService
 from chat2rag.utils.chat_history import ChatHistory
 from chat2rag.utils.stream_v1 import StreamHandlerV1
 
 logger = get_logger(__name__)
 router = APIRouter()
 chat_history = ChatHistory()
-prompt_service = PromptService()
 
 
 class ChatProcessor:
@@ -68,7 +66,7 @@ class ChatProcessor:
         self.handler.set_collection_info(self.params.collection_name)
 
 
-@router.get("/query-stream", summary="大模型交互V1")
+@router.get("/query-stream", summary="大模型交互V1", deprecated=True)
 @auto_log(level="info")
 async def chat(
     params: ChatQueryParams = Depends(),
