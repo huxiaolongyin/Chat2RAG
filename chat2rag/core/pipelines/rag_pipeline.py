@@ -28,14 +28,13 @@ class RAGPipeline(BasePipeline[AsyncPipeline]):
         generator_model: str = "Qwen/Qwen2.5-32B-Instruct",
         api_base_url: str = "",
         api_key: str = "",
-        generation_kwargs: Dict[str, Any] = {},
     ):
 
         self._intention_model = intention_model
         self._generator_model = generator_model
         self._api_base_url = api_base_url
         self._api_key = api_key
-        self._generation_kwargs = recursive_tuple_to_dict(generation_kwargs)
+
         super().__init__()
 
     def _initialize_pipeline(self):

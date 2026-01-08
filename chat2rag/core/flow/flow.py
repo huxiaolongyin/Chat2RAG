@@ -24,7 +24,7 @@ class UserFlowState:
 
 logger = get_logger(__name__)
 flow_service = FlowDataService()
-user_states: TTLCache = TTLCache(maxsize=100, ttl=180)  # 用户状态缓存（TTL: 3分钟）
+user_states: TTLCache = TTLCache(maxsize=100, ttl=300)  # 用户状态缓存（TTL: 5分钟）
 llm_client = LLMClient()
 
 

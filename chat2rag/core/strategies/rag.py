@@ -8,7 +8,7 @@ from chat2rag.core.pipelines.rag_pipeline import RAGPipeline
 from chat2rag.logger import get_logger
 from chat2rag.models.models import ModelProvider, ModelSource
 from chat2rag.services.model_service import ModelSourceService
-from chat2rag.utils.chat_history import ChatHistory
+from chat2rag.utils.chat_history import chat_history
 from chat2rag.utils.merge_kwargs import merge_generation_kwargs
 from chat2rag.utils.pipeline_cache import create_pipeline
 
@@ -16,7 +16,6 @@ from .base import ResponseStrategy
 
 logger = get_logger(__name__)
 model_source_service = ModelSourceService()
-chat_history = ChatHistory()
 
 
 class RAGStrategy(ResponseStrategy):
@@ -38,9 +37,7 @@ class RAGStrategy(ResponseStrategy):
             yield chunk
 
     async def _process_pipeline(self, query: str, history_messages: list):
-        model_source: ModelSource = await model_source_service.get_best_source(
-            self.request.model
-        )
+        model_source: ModelSource = await model_source_service.get_best_source(self.request.model)
         model_provider: ModelProvider = await model_source.provider
         generation_kwargs = merge_generation_kwargs(
             self.request.generation_kwargs,
@@ -54,7 +51,6 @@ class RAGStrategy(ResponseStrategy):
                 generator_model=model_source.name,
                 api_base_url=model_provider.base_url,
                 api_key=model_provider.api_key,
-                generation_kwargs=generation_kwargs,
             )
 
             result = await pipeline.run(
@@ -62,7 +58,7 @@ class RAGStrategy(ResponseStrategy):
                 top_k=self.request.top_k,
                 score_threshold=self.request.score_threshold,
                 messages=history_messages,
-                generation_kwargs=self.request.generation_kwargs,
+                generation_kwargs=generation_kwargs,
                 streaming_callback=self.handler.callback,
                 start_time=self.start_time,
                 qdrant_index=self.request.collections[0],
@@ -85,16 +81,15 @@ class RAGStrategy(ResponseStrategy):
             latest_messages = result["generator"]["replies"][0]
             input_tokens = 0
             output_tokens = 0
-            input_tokens += int(
-                latest_messages.meta.get("usage", {}).get("prompt_tokens", 0)
-            )
-            output_tokens += int(
-                latest_messages.meta.get("usage", {}).get("completion_tokens", 0)
-            )
-            self.handler.set_token_info(input_tokens, output_tokens)
+            usage = latest_messages.meta.get("usage", {})
+            if usage:
+                input_tokens += int(usage.get("prompt_tokens", 0))
+                output_tokens += int(usage.get("completion_tokens", 0))
+                self.handler.set_token_info(input_tokens, output_tokens)
 
         except Exception as e:
             logger.error("Error in exact query processing: %s", str(e))
+            raise e
             await self.handler.callback(
                 StreamingChunk(
                     content=f"精确查询处理错误: {str(e)}",

@@ -1,5 +1,6 @@
 from typing import AsyncIterator
 
+from chat2rag.config import CONFIG
 from chat2rag.core.flow.flow import handle_flow
 
 from .base import ResponseStrategy
@@ -9,7 +10,7 @@ class FlowStrategy(ResponseStrategy):
     """流程处理策略"""
 
     async def can_handle(self, query: str) -> bool:
-        return bool(self.request.flows)
+        return CONFIG.IS_FLOW and bool(self.request.flows)
 
     async def execute(self, query: str) -> AsyncIterator[str]:
         chunks = []
