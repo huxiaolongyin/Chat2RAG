@@ -88,7 +88,7 @@ packages = ["chat2rag"]
 "GitHub: repo" = "https://github.com/huxiaolongyin/Chat2RAG"
 
 [tool.black]
-line-length = 88
+line-length = 150
 target-version = ["py39"]
 
 [tool.isort]
