@@ -3,6 +3,7 @@ from typing import List, Optional
 from tortoise.expressions import Q
 
 from chat2rag.core.crud import CRUDBase
+from chat2rag.core.tools import web_search
 from chat2rag.core.tools.mcp import MCPConnectionManager
 from chat2rag.logger import get_logger
 from chat2rag.models import APITool, MCPServer, MCPTool
@@ -42,6 +43,8 @@ class MCPService(CRUDBase[MCPServer, MCPServerCreate, MCPServerUpdate]):
 
         # 收集所有工具
         all_mcp_tools = []
+        if "web_search" in names:
+            all_mcp_tools = [web_search]
 
         # 为每个服务器创建 toolset 并收集工具
         for server in mcp_servers:
