@@ -43,6 +43,8 @@ class Settings(BaseSettings):
                         "chat2rag.mcp.models.scene",
                         "chat2rag.mcp.models.entity",
                         "chat2rag.mcp.models.device",
+                        "chat2rag.mcp.models.item",
+                        "chat2rag.mcp.models.cart",
                     ],
                     "default_connection": "default",
                 },
