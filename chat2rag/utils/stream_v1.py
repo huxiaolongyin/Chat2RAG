@@ -10,6 +10,7 @@ from typing import List, Optional
 from haystack.dataclasses import StreamingChunk
 
 from chat2rag.logger import logger
+from chat2rag.schemas.chat import StreamChunkV1
 from chat2rag.services.metric_service import MetricCreate, MetricService
 
 
@@ -139,7 +140,7 @@ class StreamHandlerV1:
         meta: dict = None,
         is_start: int = 0,
         message_id: str = None,
-    ) -> dict:
+    ) -> StreamChunkV1:
         """创建消息格式"""
         if meta is None:
             meta = {"model": "None", "finish_reason": "none"}
@@ -153,15 +154,13 @@ class StreamHandlerV1:
         if content:
             self.metrics["answer"] += content
 
-        return {
-            "object": "message",
-            "content": content,
-            "model": meta["model"],
-            "status": status,
-            "documentCount": self.doc_length,
-            "createTime": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            "messageId": message_id,
-        }
+        return StreamChunkV1(
+            content=content,
+            model=meta["model"],
+            status=status,
+            document_count=self.doc_length,
+            message_id=message_id,
+        )
 
     def _should_flush_batch(self, chunk: str, batch_content: str) -> bool:
         """判断是否需要输出当前批次"""
@@ -185,7 +184,7 @@ class StreamHandlerV1:
     def __yield_data(self, content="", meta=None, **kwargs):
         """生成并发送数据"""
         data = self._create_message(content, meta, **kwargs)
-        return f"data: {json.dumps(data, ensure_ascii=False)}\n\n"
+        return f"data: {json.dumps(data.model_dump(by_alias=True), ensure_ascii=False)}\n\n"
 
     async def get_stream(self, is_batch: bool = False, **kwargs):
         first_response = True  # 添加标志位跟踪第一条响应
@@ -230,14 +229,10 @@ class StreamHandlerV1:
                 # 单条流式处理模式
                 if first_response:
                     first_response = self.__handle_first_response()
-                    yield self.__yield_data(
-                        chunk.content, chunk.meta, message_id=message_id
-                    )
+                    yield self.__yield_data(chunk.content, chunk.meta, message_id=message_id)
                     continue
                 if chunk.content or chunk.meta.get("finish_reason") == "stop":
-                    yield self.__yield_data(
-                        chunk.content, chunk.meta, message_id=message_id
-                    )
+                    yield self.__yield_data(chunk.content, chunk.meta, message_id=message_id)
             else:
                 # 批处理模式
                 content = chunk.content
@@ -248,18 +243,14 @@ class StreamHandlerV1:
                     if self._is_split_punctuation(char):
                         # 将分割点前的内容加入当前批次
                         split_chunk = copy.copy(chunk)
-                        split_chunk.content = content[
-                            last_split_pos : i + 1
-                        ]  # 包含分隔符
+                        split_chunk.content = content[last_split_pos : i + 1]  # 包含分隔符
                         current_batch.append(split_chunk)
 
                         # 合并并发送当前批次
                         batch_content = "".join([c.content for c in current_batch])
                         if first_response:
                             first_response = self.__handle_first_response()
-                        yield self.__yield_data(
-                            batch_content, chunk.meta, message_id=message_id
-                        )
+                        yield self.__yield_data(batch_content, chunk.meta, message_id=message_id)
 
                         # 重置批次
                         current_batch = []

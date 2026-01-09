@@ -1,92 +1,40 @@
-import ast
-from typing import List, Optional
+from datetime import datetime
+from typing import List
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import Field, field_validator
 
 from chat2rag.config import CONFIG
 from chat2rag.dataclass.strategy import StrategyRequest
 from chat2rag.enums import ProcessType
 
+from .base import BaseSchema
 
-class Audio(BaseModel):
+
+class Audio(BaseSchema):
     voice: str
     format: str
 
 
-class ChatQueryParams(BaseModel):
+class ChatQueryParams(BaseSchema):
     """旧版ChatV1 请求参数模型"""
 
-    collection_name: Optional[str] = Field(
-        None, alias="collectionName", description="知识库名称"
-    )
+    collection_name: str | None = Field(None, description="知识库名称")
     query: str = Field(..., description="查询内容")
-    top_k: int = Field(default=5, ge=0, le=30, alias="topK", description="返回数量")
+    top_k: int = Field(default=5, ge=0, le=30, description="返回数量")
     score_threshold: float = Field(
         default=0.65,
         ge=0.0,
         le=1.0,
-        alias="scoreThreshold",
         description="文档匹配分数阈值",
     )
-    precision_mode: int = Field(
-        default=0, alias="precisionMode", description="是否使用精确模式"
-    )
-    chat_id: Optional[str] = Field(None, alias="chatId", description="聊天的标识")
-    chat_rounds: int = Field(
-        default=1, ge=0, le=30, alias="chatRounds", description="聊天轮数"
-    )
-    prompt_name: str = Field("默认", alias="promptName", description="提示词名称选择")
-    intention_model: str = Field(
-        default=CONFIG.CHAT_V1_DEFAULT_MODELS["intention"],
-        alias="intentionModel",
-        description="意图模型",
-    )
-    generator_model: str = Field(
-        default=CONFIG.CHAT_V1_DEFAULT_MODELS["generator"],
-        alias="generatorModel",
-        description="生成模型",
-    )
-    generation_kwargs: str = Field(
-        default="{}",
-        alias="generationKwargs",
-        description="生成参数",
-    )
-    tool_list: List[str] = Field(default=[], alias="toolList", description="工具列表")
-
-    model_config = ConfigDict(populate_by_name=True)
-    # class Config:
-    #     populate_by_name = True
-
-    @field_validator("generation_kwargs", mode="after")
-    def parse_generation_kwargs(cls, generation_kwargs, info):
-        # Start with the default config
-        merged_kwargs = dict(CONFIG.GENERATION_KWARGS)
-
-        # 获取模型 id 或名称
-        model_id_or_name = info.data.get("generator_model")
-        if model_id_or_name:
-            # Find matching model in CONFIG.MODEL_LIST
-            for model_entry in CONFIG.MODEL_LIST:
-                if (
-                    model_entry.get("id") == model_id_or_name
-                    or model_entry.get("name") == model_id_or_name
-                ):
-                    model_gen_kwargs = model_entry.get("generation_kwargs")
-                    if model_gen_kwargs and isinstance(model_gen_kwargs, dict):
-                        merged_kwargs.update(model_gen_kwargs)
-                    break
-
-        # If user provided non-empty and non-"{}" string, parse and update
-        if generation_kwargs and generation_kwargs != "{}":
-            try:
-                user_kwargs = ast.literal_eval(generation_kwargs)
-                if not isinstance(user_kwargs, dict):
-                    raise ValueError("generation_kwargs must be a dictionary string.")
-                merged_kwargs.update(user_kwargs)
-            except (ValueError, SyntaxError) as e:
-                raise ValueError(f"Invalid generation_kwargs format: {e}")
-
-        return merged_kwargs
+    precision_mode: int = Field(default=0, description="是否使用精确模式")
+    chat_id: str | None = Field(None, description="聊天的标识")
+    chat_rounds: int = Field(default=1, ge=0, le=30, description="聊天轮数")
+    prompt_name: str = Field("默认", description="提示词名称选择")
+    intention_model: str = Field(default=CONFIG.CHAT_V1_DEFAULT_MODELS["intention"], description="意图模型")
+    generator_model: str = Field(default=CONFIG.CHAT_V1_DEFAULT_MODELS["generator"], description="生成模型")
+    generation_kwargs: str = Field(default="{}", description="生成参数")
+    tool_list: List[str] = Field(default=[], description="工具列表")
 
     def to_strategy_request(self) -> StrategyRequest:
         """转换为策略请求模型（V1）"""
@@ -106,74 +54,36 @@ class ChatQueryParams(BaseModel):
         )
 
 
-class ChatRequest(BaseModel):
+class ChatRequest(BaseSchema):
     """
     Request parameter model for chat
     """
 
-    model: str = Field(
-        default=CONFIG.MODEL,
-        description="模型名称，非必填，使用默认配置模型",
-    )
-    generation_kwargs: dict = Field(
-        default=CONFIG.GENERATION_KWARGS,
-        alias="generationKwargs",
-        description="模型采样参数，非必填，使用默认参数",
-    )
-    prompt_name: str = Field(
-        default=CONFIG.PROMPT_NAME,
-        alias="promptName",
-        description=f"角色名称，非必填，默认: {CONFIG.PROMPT_NAME}",
-    )
-    collections: Optional[list] = Field(
-        default=[],
-        description="知识库名称，非必填，支持多个，空值为不进行知识库检索",
-    )
+    model: str = Field(default=CONFIG.MODEL, description="模型名称，非必填，使用默认配置模型")
+    generation_kwargs: dict = Field(default=CONFIG.GENERATION_KWARGS, description="模型采样参数，非必填，使用默认参数")
+    prompt_name: str = Field(default=CONFIG.PROMPT_NAME, description=f"角色名称，非必填，默认: {CONFIG.PROMPT_NAME}")
+    collections: list = Field(default=[], description="知识库名称，非必填，支持多个，空值为不进行知识库检索")
     score_threshold: float = Field(
         default=CONFIG.SCORE_THRESHOLD,
         ge=0.0,
         le=1.0,
-        alias="scoreThreshold",
         description=f"文档匹配分数阈值，非必填，范围0-1.0，默认: {CONFIG.SCORE_THRESHOLD}",
     )
-    top_k: int = Field(
-        default=CONFIG.TOP_K,
-        ge=0,
-        le=30,
-        alias="topK",
-        description=f"  : {CONFIG.TOP_K}",
-    )
+    top_k: int = Field(default=CONFIG.TOP_K, ge=0, le=30, description=f"  : {CONFIG.TOP_K}")
     batch_or_stream: ProcessType = Field(
-        default=CONFIG.BATCH_OR_STREAM,
-        alias="batchOrStream",
-        description=f"接口的返回形式，batch 或 stream，默认: {CONFIG.BATCH_OR_STREAM}",
+        default=CONFIG.BATCH_OR_STREAM, description=f"接口的返回形式，batch 或 stream，默认: {CONFIG.BATCH_OR_STREAM}"
     )
     precision_mode: int = Field(
-        default=CONFIG.PRECISION_MODE,
-        alias="precisionMode",
-        description=f"精确模式，非必填，0-不使用，1-使用，默认: {CONFIG.PRECISION_MODE}",
+        default=CONFIG.PRECISION_MODE, description=f"精确模式，非必填，0-不使用，1-使用，默认: {CONFIG.PRECISION_MODE}"
     )
-    tools: Optional[list] = Field(
-        default=CONFIG.TOOLS,
-        description="工具列表，非必填，默认为空",
-    )
-    flows: Optional[list] = Field(
-        default=[], description="流程列表，非必填，选择调用的流程，默认为空"
-    )
-    content: dict = Field(
-        default={"text": ""},
-        description="交互内容，必填，支持类型：text、image、video、audio",
-    )
-    chat_id: Optional[str] = Field(
-        None,
-        alias="chatId",
-        description="会话标识，非必填，用于处理多轮聊天会话",
-    )
+    tools: list = Field(default=CONFIG.TOOLS, description="工具列表，非必填，默认为空")
+    flows: list = Field(default=[], description="流程列表，非必填，选择调用的流程，默认为空")
+    content: dict = Field(default={"text": ""}, description="交互内容，必填，支持类型：text、image、video、audio")
+    chat_id: str | None = Field(None, description="会话标识，非必填，用于处理多轮聊天会话")
     chat_rounds: int = Field(
         default=CONFIG.CHAT_ROUNDS,
         ge=0,
         le=30,
-        alias="chatRounds",
         description=f"会话轮数，非必填，多轮对话的轮数，0-30，默认: {CONFIG.CHAT_ROUNDS}",
     )
     modalities: list = Field(
@@ -181,41 +91,7 @@ class ChatRequest(BaseModel):
         description=f'支持输出的模态，如文本、图像等，非必填，支持["text","audio"]、["text"]，默认: {CONFIG.MODALITIES}',
     )
     audio: Audio = Field(default={}, description="声音输出配置, 非必填")
-    extra_params: dict = Field(
-        default={},
-        alias="extraParams",
-        description="额外参数，非必填，传入prompt提示词的参数",
-    )
-
-    model_config = ConfigDict(populate_by_name=True)
-    # class Config:
-    #     populate_by_name = True
-
-    # @field_validator("content", mode="after")
-    # def parse_content(cls, content: List[Dict[str, Any]]) -> Dict[str, Any]:
-    #     text_parts = []
-    #     images = []
-
-    #     for item in content:
-    #         if isinstance(item, dict):
-    #             if item.get("text"):
-    #                 text_parts.append(item["text"])
-    #             if item.get("image"):
-    #                 images.append(item["image"])
-
-    #     return {
-    #         "text": "\n".join(text_parts),  # 合并所有文本段落
-    #         "images": images,  # 保留图片列表
-    #     }
-
-    @field_validator("model", mode="after")
-    def parse_model(cls, v: str) -> str:
-        if not v:
-            return CONFIG.MODEL
-        for model in CONFIG.MODEL_LIST:
-            if model["name"] == v:
-                return model["id"]
-        return v
+    extra_params: dict = Field(default={}, description="额外参数，非必填，传入prompt提示词的参数")
 
     @field_validator("tools", mode="after")
     def parse_tool(cls, v: list) -> list:
@@ -235,3 +111,44 @@ class ChatRequest(BaseModel):
         if not v:
             return "默认"
         return v
+
+
+class StreamChunkV1(BaseSchema):
+    object: str = Field("message", description="数据类型", examples=["message"])
+    content: str = Field(..., description="响应消息内容", examples=["你好！有什么可以帮您的吗？"])
+    model: str = Field("None", description="调用模型名称", examples=["qwen-32b"])
+    status: int = Field(..., description="回复状态，0: 准备回复、1:回复开始、2:回复结束", examples=[0])
+    document_count: int = Field(..., description="文档的检索数量", examples=[5])
+    create_time: str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    message_id: str = Field(..., description="响应消息的唯一ID", examples=["9d0cc3bc43d845ef"])
+
+
+class ContentSchema(BaseSchema):
+    text: str = Field("", description="文本内容", examples=["这是回复的文本内容"])
+    image: str = Field("", description="图片内容或URL", examples=["image_url_or_base64"])
+
+
+class BehaviorSchema(BaseSchema):
+    emoji: str = Field("", description="表情", examples=["微笑"])
+    action: str = Field("", description="行为动作", examples=["抬手"])
+
+
+class ToolSchema(BaseSchema):
+    tool_name: str = Field("", description="工具名称", examples=["maps_weather"])
+    tool_type: str = Field("", description="工具类型")
+    arguments: dict = Field({}, description="工具参数")
+    tool_result: dict = Field({}, description="工具结果")
+
+
+class StreamChunkV2(BaseSchema):
+    object: str = Field("message", description="数据类型", examples=["message"])
+    input: dict = Field({}, description="用户输入内容", examples=["你好，请帮我查询天气"])
+    content: ContentSchema = Field(..., description="响应内容，包含文本和图片")
+    model: str = Field("None", description="调用模型名称", examples=["qwen-32b"])
+    status: int = Field(..., description="回复状态，0: 准备回复、1:回复开始、2:回复结束", examples=[0])
+    behavior: BehaviorSchema = Field(..., description="行为数据，包含表情和动作")
+    tool: ToolSchema = Field(..., description="工具调用内容")
+    link: str = Field("", description="相关链接信息")
+    document_count: int = Field(..., description="文档的检索数量", examples=[5])
+    create_time: str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    message_id: str = Field(..., description="响应消息的唯一ID", examples=["9d0cc3bc43d845ef"])

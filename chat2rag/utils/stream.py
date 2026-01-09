@@ -11,9 +11,19 @@ from haystack.dataclasses import StreamingChunk
 
 from chat2rag.dataclass.stream import StreamConfig
 from chat2rag.logger import get_logger
+from chat2rag.schemas.chat import (
+    BehaviorSchema,
+    ContentSchema,
+    StreamChunkV2,
+    ToolSchema,
+)
+from chat2rag.services.action_service import RobotActionService
+from chat2rag.services.expression_service import RobotExpressionService
 from chat2rag.services.metric_service import MetricCreate, MetricService
 
 logger = get_logger(__name__)
+expression_service = RobotExpressionService()
+action_service = RobotActionService()
 
 
 class StreamHandler:
@@ -118,14 +128,12 @@ class StreamHandler:
                 self.metrics["execute_tools"] = tools
 
             # TODO: 临时措施
-            self.metrics["tool_ms"] = round(
-                (perf_counter() - self.stream_start) * 1000, 2
-            )
+            self.metrics["tool_ms"] = round((perf_counter() - self.stream_start) * 1000, 2)
 
     def set_token_info(self, input_tokens: int = 0, output_tokens: int = 0):
         """设置Token信息"""
-        self.metrics["input_tokens"] = input_tokens
-        self.metrics["output_tokens"] = output_tokens
+        self.metrics["input_tokens"] += input_tokens
+        self.metrics["output_tokens"] += output_tokens
 
     def set_error(self, error_message: str):
         """设置错误信息"""
@@ -146,7 +154,7 @@ class StreamHandler:
         except Exception as e:
             logger.error(f"Failed to save metrics: {str(e)}")
 
-    def _parse_behavior_tags(self, text: str):
+    async def _parse_behavior_tags(self, text: str):
         """
         Extract behavioral labels from the text and return the cleaned text
         TODO: 处理流式返回
@@ -158,16 +166,18 @@ class StreamHandler:
 
         # 移除所有标记，保留纯文本
         clean_text = re.sub(r"\[(EMOJI|ACTION|LINK|IMAGE):.*?\]", "", text).strip()
+        emoji_code = await expression_service.get_code_by_name(next(iter(emojis), ""))
+        action_code = await action_service.get_code_by_name(next(iter(actions), ""))
 
         return {
-            "emoji": next(iter(emojis), ""),
-            "action": next(iter(actions), ""),
+            "emoji": emoji_code,
+            "action": action_code,
             "link": next(iter(links), ""),
             "image": next(iter(images), ""),
             "clean_text": clean_text,
         }
 
-    def _create_message(
+    async def _create_message(
         self,
         content: str,
         meta: dict = None,
@@ -176,7 +186,7 @@ class StreamHandler:
         tool_result: dict = {},
         is_start: int = 0,
         query: dict = {},
-    ) -> dict:
+    ) -> StreamChunkV2:
         """创建消息格式"""
         if meta is None:
             meta = {"model": "None", "finish_reason": "none"}
@@ -195,7 +205,7 @@ class StreamHandler:
 
         # 解析行为标签
         behavior_data = (
-            self._parse_behavior_tags(content)
+            await self._parse_behavior_tags(content)
             if content
             else {"clean_text": "", "emoji": "", "action": "", "link": "", "image": ""}
         )
@@ -206,34 +216,47 @@ class StreamHandler:
             self.metrics["answer"] += clean_content
 
         if tool:
-            tool_content = {
-                "toolName": tool,
-                "toolType": tool_type,
-                "arguments": arguments,
-                "toolResult": tool_result,
-            }
+            tool_content = ToolSchema(tool_name=tool, tool_type=tool_type, arguments=arguments, tool_result=tool_result)
+            # {
+            #     "toolName": tool,
+            #     "toolType": tool_type,
+            #     "arguments": arguments,
+            #     "toolResult": tool_result,
+            # }
 
         else:
             tool_content = {}
-        return {
-            "object": "message",
-            "input": query,
-            "content": {
-                "text": behavior_data["clean_text"],
-                "image": behavior_data["image"],
-            },
-            "model": self.model,
-            "status": status,
-            "behavior": {
-                "emoji": behavior_data["emoji"],
-                "action": behavior_data["action"],
-            },
-            "tool": tool_content,
-            "link": behavior_data["link"],
-            "documentCount": self.doc_length,
-            "createTime": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            "messageId": self.message_id,
-        }
+        return StreamChunkV2(
+            input=query,
+            content=ContentSchema(text=behavior_data["clean_text"], image=behavior_data["image"]),
+            model=self.model,
+            status=status,
+            behavior=BehaviorSchema(emoji=behavior_data["emoji"], action=behavior_data["action"]),
+            tool=tool_content,
+            link=behavior_data["link"],
+            document_count=self.doc_length,
+            message_id=self.message_id,
+        )
+
+    # {
+    #         "object": "message",
+    #         "input": query,
+    #         "content": {
+    #             "text": behavior_data["clean_text"],
+    #             "image": behavior_data["image"],
+    #         },
+    #         "model": self.model,
+    #         "status": status,
+    #         "behavior": {
+    #             "emoji": behavior_data["emoji"],
+    #             "action": behavior_data["action"],
+    #         },
+    #         "tool": tool_content,
+    #         "link": behavior_data["link"],
+    #         "documentCount": self.doc_length,
+    #         "createTime": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+    #         "messageId": self.message_id,
+    #     }
 
     def _should_flush_batch(self, chunk: str, batch_content: str) -> bool:
         """判断是否需要输出当前批次"""
@@ -254,12 +277,12 @@ class StreamHandler:
         logger.info(f"The first reply time of the Agent pipeline. Cost: {elapsed:.3f}s")
         return False
 
-    def __yield_data(self, content="", meta=None, **kwargs):
+    async def __yield_data(self, content="", meta=None, **kwargs):
         """生成并发送数据"""
-        data = self._create_message(content, meta, **kwargs)
-        return f"data: {json.dumps(data, ensure_ascii=False)}\n\n"
+        data = await self._create_message(content, meta, **kwargs)
+        yield f"data: {json.dumps(data.model_dump(by_alias=True), ensure_ascii=False)}\n\n"
 
-    def __handle_tool_call(self, chunk):
+    async def __handle_tool_call(self, chunk):
         """处理工具调用信息"""
         tool_call = chunk.meta.get("tool_call", {})
         tool_result = chunk.meta.get("tool_result", {})
@@ -276,24 +299,22 @@ class StreamHandler:
         if tool_result:
             try:
                 tool_result = json.loads(str(tool_result))
-                tool_result.get("content")[0]["text"] = json.loads(
-                    tool_result.get("content")[0]["text"]
-                )
+                tool_result.get("content")[0]["text"] = json.loads(tool_result.get("content")[0]["text"])
                 tool_result["content"] = tool_result.get("content")[0]
 
             except Exception:
-                logger.warning(
-                    "The call result of the json parsing tool failed. Use the original result"
-                )
+                logger.warning("The call result of the json parsing tool failed. Use the original result")
 
             # 记录工具结果
-            self.metrics["tool_result"] = (
-                tool_result if isinstance(tool_result, dict) else {}
-            )
+            self.metrics["tool_result"] = tool_result if isinstance(tool_result, dict) else {}
 
-        yield self.__yield_data(
+        # yield self.__yield_data(
+        #     "", chunk.meta, tool=tool_name, arguments=arguments, tool_result=tool_result
+        # )
+        async for data_str in self.__yield_data(
             "", chunk.meta, tool=tool_name, arguments=arguments, tool_result=tool_result
-        )
+        ):
+            yield data_str
 
     async def get_stream(self, is_batch: bool = False, query: dict = {}):
         first_response = True  # 添加标志位跟踪第一条响应
@@ -308,20 +329,25 @@ class StreamHandler:
                 continue
 
             if chunk == "[START]":
-                yield self.__yield_data("", is_start=1, query=query)
+                async for data_str in self.__yield_data("", is_start=1, query=query):
+                    yield data_str
                 continue
 
             if chunk == "[END]":
                 # 批处理模式下，处理最后一批数据
                 if is_batch and current_batch:
                     combined_content = "".join([c.content for c in current_batch])
-                    yield self.__yield_data(combined_content, current_batch[-1].meta)
+                    # yield self.__yield_data(combined_content, current_batch[-1].meta)
+                    async for data_str in self.__yield_data(combined_content, current_batch[-1].meta):
+                        yield data_str
 
                 # 发送结束消息
                 if is_batch:
-                    yield self.__yield_data(
-                        "", meta={"finish_reason": "stop", "model": ""}
-                    )
+                    async for data_str in self.__yield_data("", meta={"finish_reason": "stop", "model": ""}):
+                        yield data_str
+                    # yield self.__yield_data(
+                    #     "", meta={"finish_reason": "stop", "model": ""}
+                    # )
                 # 保存指标
                 await self.save_metrics()
                 break
@@ -331,7 +357,7 @@ class StreamHandler:
                 self.metrics["model"] = self.model
 
             if chunk.meta.get("tool_call") or chunk.meta.get("tool_result"):
-                for item in self.__handle_tool_call(chunk):
+                async for item in self.__handle_tool_call(chunk):
                     yield item
                 continue
 
@@ -340,10 +366,14 @@ class StreamHandler:
                 # 单条流式处理模式
                 if first_response:
                     first_response = self.__handle_first_response()
-                    yield self.__yield_data(chunk.content, chunk.meta)
+                    # yield self.__yield_data(chunk.content, chunk.meta)
+                    async for data_str in self.__yield_data(chunk.content, chunk.meta):
+                        yield data_str
                     continue
                 if chunk.content or chunk.meta.get("finish_reason") == "stop":
-                    yield self.__yield_data(chunk.content, chunk.meta)
+                    async for data_str in self.__yield_data(chunk.content, chunk.meta):
+                        yield data_str
+                    # yield self.__yield_data(chunk.content, chunk.meta)
             else:
                 # 批处理模式
                 content = chunk.content
@@ -354,16 +384,16 @@ class StreamHandler:
                     if self._is_split_punctuation(char):
                         # 将分割点前的内容加入当前批次
                         split_chunk = copy.copy(chunk)
-                        split_chunk.content = content[
-                            last_split_pos : i + 1
-                        ]  # 包含分隔符
+                        split_chunk.content = content[last_split_pos : i + 1]  # 包含分隔符
                         current_batch.append(split_chunk)
 
                         # 合并并发送当前批次
                         batch_content = "".join([c.content for c in current_batch])
                         if first_response:
                             first_response = self.__handle_first_response()
-                        yield self.__yield_data(batch_content, chunk.meta)
+                        # yield self.__yield_data(batch_content, chunk.meta)
+                        async for data_str in self.__yield_data(batch_content, chunk.meta):
+                            yield data_str
 
                         # 重置批次
                         current_batch = []

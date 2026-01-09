@@ -99,9 +99,9 @@ async def chat(chat_request: ChatRequest):
     """聊天接口"""
     if not (
         chat_request.content.get("text")
-        and chat_request.content.get("image")
-        and chat_request.content.get("video")
-        and chat_request.content.get("audio")
+        or chat_request.content.get("image")
+        or chat_request.content.get("video")
+        or chat_request.content.get("audio")
     ):
         raise ValueNoExist("没有输入的内容")
 
