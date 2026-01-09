@@ -61,4 +61,4 @@ class ModelSourceOption(BaseSchema):
     """模型源的选项"""
 
     name: str = Field(..., description="模型别名", examples=["Qwen3-32B"])
-    alias: str = Field(..., description="模型别名", examples=["Qwen3-32B"])
+    id: str = Field(..., description="模型别名", examples=["Qwen3-32B"])

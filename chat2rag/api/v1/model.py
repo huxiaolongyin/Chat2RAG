@@ -28,7 +28,7 @@ router = APIRouter()
 async def get_model_list():
     q = Q(healthy=True) & Q(enabled=True)
     _, sources = await source_service.get_list(1, 999, q)
-    data = list({item.alias: ModelSourceOption(name=item.alias, alias=item.alias) for item in sources}.values())
+    data = list({item.alias: ModelSourceOption(name=item.alias, id=item.alias) for item in sources}.values())
     return BaseResponse.success(data=data)
 
 

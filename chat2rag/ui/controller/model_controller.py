@@ -12,7 +12,7 @@ class ModelController:
         response = requests.get(self.model_base_url)
         if response.status_code == 200:
             data = response.json()["data"]
-            return [d["alias"] for d in data]
+            return [d["id"] for d in data]
 
         else:
             return []
