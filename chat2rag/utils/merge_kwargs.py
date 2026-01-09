@@ -1,4 +1,5 @@
 # chat2rag/utils/merge_kwargs.py
+import ast
 import json
 from typing import Any, Dict, Optional
 
@@ -44,7 +45,16 @@ def merge_generation_kwargs(
 
     # 最后用接口输入的覆盖（如果有）
     if isinstance(interface_kwargs, str):
-        interface_kwargs = json.loads(interface_kwargs)
+        try:
+            # 先尝试JSON格式
+            interface_kwargs = json.loads(interface_kwargs)
+        except json.JSONDecodeError:
+            try:
+                # 如果JSON解析失败，尝试Python字面量格式
+                interface_kwargs = ast.literal_eval(interface_kwargs)
+            except (ValueError, SyntaxError) as e:
+                raise ValueError(f"无法解析 interface_kwargs 字符串: {interface_kwargs}") from e
+
     if interface_kwargs:
         merged = deep_merge_dicts(merged, interface_kwargs)
 
