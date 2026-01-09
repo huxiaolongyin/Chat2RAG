@@ -10,7 +10,7 @@ from dataclass.document import QADocument
 KNOWLEDGE_BASE_URL = f"{CONFIG.BASE_URL}/api/v1/knowledge"
 
 
-class KnowledgeController:
+class KnowledgeService:
     def __init__(self):
         self.collect_base_url = f"{KNOWLEDGE_BASE_URL}/collection"
         self.doc_base_url = f"{KNOWLEDGE_BASE_URL}/collection/document"
@@ -117,4 +117,4 @@ class KnowledgeController:
             return []
 
 
-knowledge_controller = KnowledgeController()
+knowledge_service = KnowledgeService()

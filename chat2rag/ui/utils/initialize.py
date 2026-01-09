@@ -1,9 +1,11 @@
 import random
 
 import streamlit as st
-from controller.knowledge_controller import knowledge_controller
 from controller.model_controller import model_controller
 from controller.prompt_controller import prompt_controller
+from dataclass.chat import ChatMessage
+from haystack.dataclasses import ChatRole
+from service.knowledge import knowledge_service
 from streamlit_cookie import EncryptedCookieManager
 from utils.version import version_list
 
@@ -55,9 +57,7 @@ def init_welcome_page():
 
 
 def initilize_messages():
-    st.session_state["messages"] = [
-        {"role": "assistant", "content": "你好，有什么可以帮你的吗？"}
-    ]
+    st.session_state["messages"] = [ChatMessage(role=ChatRole.ASSISTANT, content="你好，有什么可以帮你的吗？")]
     st.session_state["message_id"] = random.randint(100000, 9000000)
 
 
@@ -69,13 +69,11 @@ def initialize_session():
     if "model_list" not in st.session_state:
         st.session_state["model_list"] = model_controller.get_model_list()
     if "model_select" not in st.session_state:
-        st.session_state["model_select"] = "Qwen2.5-32B"
+        st.session_state["model_select"] = "Qwen3-32B"
 
     # 知识库
     if "collections_list" not in st.session_state:
-        st.session_state["collections_list"] = (
-            knowledge_controller.get_collection_list()
-        )
+        st.session_state["collections_list"] = knowledge_service.get_collection_list()
 
     # 提示词
     if "prompt_list" not in st.session_state:

@@ -20,7 +20,7 @@ def prompt_manage(id):
             st.error("未找到提示词")
             return
         prompt_name = st.text_input("助手名称", prompt["promptName"])
-        prompt_intro = st.text_input("描述", value=prompt["promptIntro"])
+        prompt_intro = st.text_input("描述", value=prompt["promptDesc"])
         prompt_text = st.text_area("提示词", value=prompt["promptText"], height=280)
         if st.button("更新", width="stretch", key="prompt_update"):
             prompt_controller.update_prompt(id, prompt_name, prompt_intro, prompt_text)
@@ -45,7 +45,7 @@ def prompt_page():
         if i < len(st.session_state.prompt_list):
             with col.container(height=160):
                 st.markdown(f'###### {st.session_state.prompt_list[i]["promptName"]}')
-                st.write(st.session_state.prompt_list[i]["promptIntro"])
+                st.write(st.session_state.prompt_list[i]["promptDesc"])
                 st.button(
                     "查看",
                     width="stretch",

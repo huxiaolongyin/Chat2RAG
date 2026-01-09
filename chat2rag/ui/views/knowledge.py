@@ -5,8 +5,8 @@ from typing import List
 import pandas as pd
 import streamlit as st
 import streamlit_antd_components as sac
-from controller.knowledge_controller import knowledge_controller
 from dataclass.document import QADocument
+from service.knowledge import knowledge_service
 from utils.sidebar import render_sidebar
 
 
@@ -26,7 +26,7 @@ def create_knowledge_template():
 
 
 def export_documents():
-    doc_list, _ = knowledge_controller.get_documents(
+    doc_list, _ = knowledge_service.get_documents(
         collection_name=st.session_state["collection_select"],
         current=st.session_state["current"],
         size=9999,
@@ -88,9 +88,7 @@ def del_knowledge_dialog(data):
     st.write([item["content"] for item in data])
     data_id = [item["id"] for item in data]
     if st.button("确认删除", width="stretch", type="primary"):
-        knowledge_controller.delete_documents(
-            st.session_state["collection_select"], data_id
-        )
+        knowledge_service.delete_documents(st.session_state["collection_select"], data_id)
         st.rerun()
 
 
@@ -109,12 +107,10 @@ def get_documents_list():
     """
     获取知识库文档数据到session
     """
-    st.session_state["doc_list"], st.session_state["doc_total"] = (
-        knowledge_controller.get_documents(
-            collection_name=st.session_state["collection_select"],
-            current=st.session_state["current"],
-            document_content=st.session_state["document_content"],
-        )
+    st.session_state["doc_list"], st.session_state["doc_total"] = knowledge_service.get_documents(
+        collection_name=st.session_state["collection_select"],
+        current=st.session_state["current"],
+        document_content=st.session_state["document_content"],
     )
     st.session_state["current"] = 1
 
@@ -134,9 +130,7 @@ def render_upload_view():
         type="primary",
     )
 
-    uploaded_file = st.file_uploader(
-        "上传知识", type=["xlsx", "xls", "csv"], label_visibility="collapsed"
-    )
+    uploaded_file = st.file_uploader("上传知识", type=["xlsx", "xls", "csv"], label_visibility="collapsed")
 
     if uploaded_file:
         process_document_list = process_uploaded_file(uploaded_file)
@@ -199,14 +193,10 @@ def render_upload_view():
                 # 更新进度
                 progress = int((batch_num + 1) / total_batches * 100)
                 progress_bar.progress(progress)
-                status_text.text(
-                    f"正在上传第{start_idx+1}-{end_idx}条数据... {progress}% | {time_str}"
-                )
+                status_text.text(f"正在上传第{start_idx+1}-{end_idx}条数据... {progress}% | {time_str}")
 
                 # 上传当前批次
-                knowledge_controller.add_document(
-                    st.session_state["collection_select"], batch_data
-                )
+                knowledge_service.add_document(st.session_state["collection_select"], batch_data)
 
             total_time = time.time() - start_time
             progress_bar.progress(100)
@@ -250,16 +240,12 @@ def render_knowledge_view():
 
     get_documents_list()
 
-    data_with_select = [
-        {"select": False, **item} for item in st.session_state["doc_list"]
-    ]
+    data_with_select = [{"select": False, **item} for item in st.session_state["doc_list"]]
 
     knowledge_table = st.data_editor(
         data_with_select,
         column_config={
-            "select": st.column_config.CheckboxColumn(
-                "选择", help="选择要操作的知识", width="small"
-            ),
+            "select": st.column_config.CheckboxColumn("选择", help="选择要操作的知识", width="small"),
             "id": st.column_config.TextColumn("ID", width="small"),
             "content": st.column_config.TextColumn("内容", width="large"),
         },

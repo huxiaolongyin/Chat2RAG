@@ -21,4 +21,31 @@ class ValueNoExist(BaseException):
         super().__init__(msg)
 
 
-class BusinessException(BaseException): ...
+class BusinessException(BaseException):
+    """业务相关的异常"""
+
+    ...
+
+
+class ChatServiceError(Exception):
+    """聊天服务基础异常"""
+
+    pass
+
+
+class NetworkError(ChatServiceError):
+    """网络相关异常"""
+
+    pass
+
+
+class ParseError(ChatServiceError):
+    """解析相关异常"""
+
+    pass
+
+
+class KnowledgeServiceError(Exception):
+    """知识库服务异常"""
+
+    pass

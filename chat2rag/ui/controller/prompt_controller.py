@@ -34,7 +34,7 @@ class PromptController:
         """创建提示词"""
         data = {
             "promptName": prompt_name,
-            "promptIntro": prompt_intro,
+            "promptDesc": prompt_intro,
             "promptText": prompt_text,
         }
         response = requests.post(self.prompt_create_url, json=data)
@@ -49,7 +49,7 @@ class PromptController:
         """更新提示词"""
         data = {
             "promptName": prompt_name,
-            "promptIntro": prompt_intro,
+            "promptDesc": prompt_intro,
             "promptText": prompt_text,
         }
         response = requests.put(
