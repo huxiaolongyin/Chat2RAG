@@ -1,7 +1,7 @@
 #!/bin/bash
 cd /code
 
-uvicorn chat2rag.api.app:app \
+uvicorn chat2rag.app:app \
     --host 0.0.0.0 \
     --port 8000 \
     --limit-concurrency 500 \

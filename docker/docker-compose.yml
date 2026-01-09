@@ -9,9 +9,8 @@ services:
     volumes:
       - ${DATA_PATH}/phoenix:/.phoenix
       - ${LOG_PATH}:/code/logs
+      - ${MIGRATIONS_PATH}:/code/migrations
     depends_on:
-      postgresql:
-        condition: service_healthy
       qdrant:
         condition: service_healthy
     environment:
@@ -28,7 +27,7 @@ services:
       start_period: 30s
     networks:
       - chat2rag-network
-    restart: always
+    # restart: always
 
   qdrant:
     image: qdrant/qdrant
@@ -76,23 +75,6 @@ services:
       - chat2rag-network
     restart: always
     
-  # mysql:
-  #   # image: registry.cn-hangzhou.aliyuncs.com/fastgpt/mysql:8.0.36 # 阿里云
-  #   image: mysql:8.0.36
-  #   container_name: mysql
-  #   restart: always
-  #   ports:
-  #     - 7586:3306
-  #   networks:
-  #     - chat2rag-network
-  #   command: --default-authentication-plugin=mysql_native_password
-  #   environment:
-  #     # 默认root密码，仅首次运行有效
-  #     MYSQL_ROOT_PASSWORD: Aa@123123
-  #     MYSQL_DATABASE: oneapi
-  #   volumes:
-  #     - ${DATA_PATH}/mysql:/var/lib/mysql
-
 networks:
   chat2rag-network:
     driver: bridge
