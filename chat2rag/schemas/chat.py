@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Any, List
+from typing import Any
 
 from pydantic import Field, field_validator
 
@@ -31,10 +31,10 @@ class ChatQueryParams(BaseSchema):
     chat_id: str | None = Field(None, description="聊天的标识")
     chat_rounds: int = Field(default=1, ge=0, le=30, description="聊天轮数")
     prompt_name: str = Field("默认", description="提示词名称选择")
-    intention_model: str = Field(default=CONFIG.CHAT_V1_DEFAULT_MODELS["intention"], description="意图模型")
+    # intention_model: str = Field(default=CONFIG.CHAT_V1_DEFAULT_MODELS["intention"], description="意图模型")
     generator_model: str = Field(default=CONFIG.CHAT_V1_DEFAULT_MODELS["generator"], description="生成模型")
     generation_kwargs: str = Field(default="{}", description="生成参数")
-    tool_list: List[str] = Field(default=[], description="工具列表")
+    tool_list: str = Field(default="[]", description="工具列表，JSON字符串格式")
 
     def to_strategy_request(self) -> StrategyRequest:
         """转换为策略请求模型（V1）"""
@@ -50,7 +50,7 @@ class ChatQueryParams(BaseSchema):
             model=self.generator_model,
             generation_kwargs=self.generation_kwargs,
             tools=self.tool_list,
-            intention_model=self.intention_model,
+            # intention_model=self.intention_model,
         )
 
 

@@ -4,7 +4,12 @@ from typing import AsyncIterator
 from fastapi import APIRouter, Depends, Query
 from fastapi.responses import StreamingResponse
 
-from chat2rag.core.strategies import ExactMatchStrategy, RAGStrategy, StrategyChain
+from chat2rag.core.strategies import (
+    AgentStrategy,
+    ExactMatchStrategy,
+    RAGStrategy,
+    StrategyChain,
+)
 from chat2rag.enums import ProcessType
 from chat2rag.logger import get_logger
 from chat2rag.schemas.chat import ChatQueryParams
@@ -35,20 +40,20 @@ class ChatProcessor:
 
     def _build_strategy_chain(self) -> StrategyChain:
         """构建策略链"""
+        # TODO: 定制化需求
+        if "福州火车南站" == self.params.collection_name:
+            self.params.tool_list = ["get_train_info"]
+            return StrategyChain(
+                [
+                    ExactMatchStrategy(self.params.to_strategy_request(), self.handler, self.start_time, self.is_batch),
+                    AgentStrategy(self.params.to_strategy_request(), self.handler, self.start_time, self.is_batch),
+                ]
+            )
+
         return StrategyChain(
             [
-                ExactMatchStrategy(
-                    self.params.to_strategy_request(),
-                    self.handler,
-                    self.start_time,
-                    self.is_batch,
-                ),
-                RAGStrategy(
-                    self.params.to_strategy_request(),
-                    self.handler,
-                    self.start_time,
-                    self.is_batch,
-                ),
+                ExactMatchStrategy(self.params.to_strategy_request(), self.handler, self.start_time, self.is_batch),
+                RAGStrategy(self.params.to_strategy_request(), self.handler, self.start_time, self.is_batch),
             ]
         )
 

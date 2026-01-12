@@ -2,6 +2,7 @@ import asyncio
 import copy
 import datetime
 import json
+import re
 import uuid
 from dataclasses import dataclass
 from time import perf_counter
@@ -151,11 +152,13 @@ class StreamHandlerV1:
         else:
             status = 1
 
+        parse_content = ""
         if content:
-            self.metrics["answer"] += content
+            parse_content = re.sub(r"\[(EMOJI|ACTION|LINK|IMAGE):.*?\]", "", content).strip()
+            self.metrics["answer"] += parse_content
 
         return StreamChunkV1(
-            content=content,
+            content=parse_content,
             model=meta["model"],
             status=status,
             document_count=self.doc_length,

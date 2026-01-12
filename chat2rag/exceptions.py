@@ -49,3 +49,21 @@ class KnowledgeServiceError(Exception):
     """知识库服务异常"""
 
     pass
+
+
+class ToolServiceError(Exception):
+    """工具服务基础异常"""
+
+    pass
+
+
+class MCPConnectionError(ToolServiceError):
+    """MCP连接异常"""
+
+    pass
+
+
+class ToolSyncError(ToolServiceError):
+    """工具同步异常"""
+
+    pass
