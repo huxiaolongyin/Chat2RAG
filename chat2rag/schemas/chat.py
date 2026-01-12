@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import List
+from typing import Any, List
 
 from pydantic import Field, field_validator
 
@@ -137,7 +137,7 @@ class ToolSchema(BaseSchema):
     tool_name: str = Field("", description="工具名称", examples=["maps_weather"])
     tool_type: str = Field("", description="工具类型")
     arguments: dict = Field({}, description="工具参数")
-    tool_result: dict = Field({}, description="工具结果")
+    tool_result: Any = Field("", description="工具结果")
 
 
 class StreamChunkV2(BaseSchema):
