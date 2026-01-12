@@ -26,9 +26,9 @@ dependencies = [
     "streamlit_cookie==0.1.0",
 
     # 核心RAG组件
-    "haystack-ai==2.19.0",
+    "haystack-ai==2.22.0",
     "qdrant-haystack==9.2.0",
-    "mcp-haystack==0.8.0",
+    "mcp-haystack==1.1.0",
 
     # 监控和性能
     "openinference-instrumentation-haystack==0.1.27",
