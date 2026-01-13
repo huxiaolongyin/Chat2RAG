@@ -10,6 +10,7 @@ services:
       - ${DATA_PATH}/phoenix:/.phoenix
       - ${LOG_PATH}:/code/logs
       - ${MIGRATIONS_PATH}:/code/migrations
+      - ${UPLOADS_PATH}:/code/uploads
     depends_on:
       qdrant:
         condition: service_healthy

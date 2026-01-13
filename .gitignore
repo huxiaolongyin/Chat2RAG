@@ -32,3 +32,4 @@ deploy/
 data/
 **/versions
 migrations**
+uploads

@@ -12,6 +12,7 @@ from .model import router as model_router
 from .prompt import router as prompt_router
 from .sensitive import router as sensitive_router
 from .tools import router as tools_router
+from .uploads import router as uploads_router
 from .version import router as version_router
 
 v1_router = APIRouter()
@@ -31,3 +32,4 @@ v1_router.include_router(router=command_router, prefix="/commands", tags=["命�
 v1_router.include_router(router=expression_router, prefix="/expressions", tags=["表情"])
 v1_router.include_router(router=action_router, prefix="/actions", tags=["动作"])
 v1_router.include_router(router=health_router, prefix="/health", tags=["健康检查"])
+v1_router.include_router(router=uploads_router, prefix="/upload", tags=["文件上传"])

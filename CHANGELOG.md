@@ -4,39 +4,70 @@
 
 这个格式基于 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)，还有这个原则遵循 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [V0.3.0] - unreleased
+## unreleased
 
 ### Added
 
-- 将服务健康接口提到单独的文件下管理
-- 新增 BaseResponse，替代 Success 响应
-- 新增数据处理异常类
-- 在 prompt service 中添加异常 raise
-- 新增异常处理装饰器，并在 prompt 接口中使用
-- 新增响应的 schemas，并在 prompt 接口中使用
-- 优化 prompt 的测试代码
-- 优化健康检测接口的响应、接口测试
-- 模型源和模型渠道商的接口改进，将模型列表同步和模型延迟计算放到后台，新增接口的响应值和 example，优化 model_service 的代码，优化接口的异常处理，优化接口的 pytest 测试代码
-- 固定命令的接口改进，新增接口的响应值和 example，优化 command_service 的代码，优化接口的异常处理，优化接口的 pytest 测试代码
-- 动作 action 的接口改进，新增接口的响应值和 example，优化 action_service 的代码，优化接口的异常处理，优化接口的 pytest 测试代码
-- 表情 expression 的接口改进，新增接口的响应值和 example，优化 expression_service 的代码，优化接口的异常处理，优化接口的 pytest 测试代码
-- 使用日志中间件和异常处理中间件替代日志和异常处理装饰器
-- 添加敏感词策略和多模态处理策略
+- 针对福州南站的作业记录表新增文件上传功能，容器挂载 uploads 目录
 
 ### Fixed
 
-- 处理 chat 接口 query 内容为空的问题
-
 ### Changed
 
-- `app.py` 文件从 chat2rag/api 移动至 chat2rag 目录下
-- 更改 API 端点为复数形式，保留旧的 API 端点，打上 deprecated=True
+### Deprecated
 
 ### Removed
 
-- 将 chatv1 的接口 /query-stream 标记为待移除
-- 临时去除不成熟的 websocket 接口
-- 移除 auto_log 的装饰器，使用中间件替代
+## [V0.3.0rc3] - 2026-01-09
+
+### Added
+
+#### API 架构改进
+
+- **新增统一响应格式**: 引入 BaseResponse 替代 Success 响应，提供更一致的 API 体验
+- **新增异常处理中间件**: 替代装饰器方式，提供全局统一的错误处理
+- **新增日志中间件**: 统一请求日志记录和追踪
+- **新增响应 Schema**: 为所有接口添加标准化的响应格式和示例
+
+#### 核心功能增强
+
+- **Prompt 服务优化**:
+  - 新增数据处理异常类和异常处理
+  - 优化测试代码覆盖率
+- **模型管理改进**:
+  - 模型列表同步和延迟计算移至后台处理
+  - 优化模型源和渠道商接口性能
+- **Chat 功能优化**:
+  - 优化 Chat 接口 Schema 设计
+  - ChatUI 方法抽象化，提升可维护性
+- **内容策略**: 新增敏感词过滤和多模态内容处理策略
+
+#### 新增接口和功能
+
+- **独立健康检查**: 将服务健康接口提取到单独文件管理
+- **固定命令接口**: 完善响应格式和异常处理
+- **动作 Action 接口**: 标准化接口设计和测试
+- **表情 Expression 接口**: 完整的接口实现和文档
+- **点餐 MCP Demo**: 新增演示用例
+
+### Fixed
+
+- **Chat 接口**: 修复 query 内容为空时的处理逻辑
+
+### Changed
+
+- **项目结构**: `app.py` 从 `chat2rag/api` 移动至 `chat2rag` 根目录
+- **API 端点**: 更新为复数形式（如 `/users` 而非 `/user`），旧端点保留但标记为废弃
+
+### Deprecated
+
+- **ChatV1 接口**: `/query-stream` 端点标记为待移除
+- **旧 API 端点**: 单数形式的端点将在下个主版本中移除
+
+### Removed
+
+- **WebSocket 接口**: 临时移除不成熟的 WebSocket 功能
+- **auto_log 装饰器**: 已被中间件方案替代
 
 ## [V0.3.0rc2] - 2025-11-07
 
