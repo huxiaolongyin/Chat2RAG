@@ -95,10 +95,10 @@ def find_today_sheet(excel_file):
         # 从右到左遍历工作表
         for sheet_name in reversed(sheet_names):
             try:
-                # 读取工作表，只读取前几行来获取Q2单元格
+                # 读取工作表，只读取前几行来获取R2单元格
                 df_header = pd.read_excel(excel_file, sheet_name=sheet_name, header=None, nrows=5)
 
-                # Q2单元格对应第2行第17列（R列，索引从0开始所以是16）
+                # R2单元格对应第2行第17列（R列，索引从0开始所以是17）
                 if len(df_header.columns) > 17 and len(df_header) > 1:
                     q2_value = df_header.iloc[1, 17]  # 第2行第17列
 
@@ -170,9 +170,14 @@ def find_today_sheet(excel_file):
 
 
 @tool
-def get_train_info(train_number: Annotated[str, "动车的车次号，例如：G1644, D3333, C9585, 高1670，动3308"]) -> str:
+def get_train_info(
+    train_number: Annotated[
+        str,
+        "动车的车次号, 兼容中英文，例如：9872, G1644, D3333, C9585, 高1670, 动3308, 动车3218, 高铁1670, 城9585, 城际9585",
+    ],
+) -> str:
     """
-    根据车次号查询列车信息，包括开车时间、检票口，并根据时间差提供相应建议
+    根据车次号查询列车信息，包括开车时间、检票口，并根据时间差提供相应建议。
     """
     try:
         # 标准化车次号
@@ -227,19 +232,39 @@ def get_train_info(train_number: Annotated[str, "动车的车次号，例如：G
 
         # 查找对应车次
         train_row = None
+        potential_matches = []  # 存储可能的匹配车次
+
         for idx, row in df.iterrows():
             if pd.notna(row.get(train_col)):
                 # 清理数据中的车次号（去除★◆等符号）
                 db_train_number = str(row[train_col]).strip().replace("★", "").replace("◆", "").upper()
+                db_train_only_number = db_train_number.replace("G", "").replace("C", "").replace("D", "")
+
+                # 精确匹配完整车次号
                 if db_train_number == normalized_train_number:
                     train_row = row
                     break
+
+                # 如果输入的是纯数字，收集所有可能的匹配
+                elif db_train_only_number == normalized_train_number:
+                    potential_matches.append((db_train_number, row))
+
+        # 如果没有精确匹配，处理数字匹配的情况
+        if train_row is None and potential_matches:
+            if len(potential_matches) == 1:
+                # 只有一条匹配，直接使用
+                train_row = potential_matches[0][1]
+            else:
+                # 多条匹配，询问用户选择
+                train_options = [match[0] for match in potential_matches]
+                return f"找到多个车次包含号码 {normalized_train_number}：{', '.join(train_options)}，请指定具体车次号"
 
         if train_row is None:
             return f"未找到车次 {normalized_train_number} 的信息，请确认车次号是否正确"
 
         # 获取开车时间和检票口
         departure_time_str = str(train_row.get(departure_col, "")).strip()
+        train_number_formated = str(train_row.get(train_col, "")).strip().replace("★", "").replace("◆", "").upper()
         gate_info = str(train_row.get(gate_col, "")).strip()
 
         if not departure_time_str or departure_time_str == "nan":
@@ -265,34 +290,38 @@ def get_train_info(train_number: Annotated[str, "动车的车次号，例如：G
         # 格式化检票口信息
         gate_text = f"检票口：{gate_info}" if gate_info and gate_info != "nan" else "检票口信息暂未更新"
 
+        #
+
         # 根据时间差返回不同建议
         if time_diff < 0:
-            return f"""车次 {normalized_train_number} 开车时间：{departure_time_str}
+            return f"""车次 {train_number_formated} 开车时间：{departure_time_str}
 {gate_text}
 
 ❌ 很抱歉：该列车已于{departure_time_str}开出，列车已经开走，请您前往服务台办理退票或改签手续。
 """
 
         elif time_diff <= 5:
-            return f"""车次 {normalized_train_number} 开车时间：{departure_time_str}
+            return f"""车次 {train_number_formated} 开车时间：{departure_time_str}
 {gate_text}
 
-⚠️ 紧急提醒：距离开车时间不足5分钟！，您可能来不及赶上这趟列车，建议您立即前往服务台办理改签手续。
+⚠️ 紧急提醒：距离开车时间不足5分钟！您可能来不及赶上这趟列车，建议您立即前往服务台办理改签手续。
 """
 
         elif 5 < time_diff <= 10:
-            return f"""车次 {normalized_train_number} 开车时间：{departure_time_str}
+            return f"""车次 {train_number_formated} 开车时间：{departure_time_str}
 {gate_text}
 
 ⏰ 时间紧急：距离开车还有约{int(time_diff)}分钟，离开车时间很近了，请您尽快前往检票口检票上车！
 """
 
         else:
-            return f"""车次 {normalized_train_number} 开车时间：{departure_time_str}
+            gates = gate_info.split("、")
+            gate_options = "或".join(gates)
+            return f"""车次 {train_number_formated} 开车时间：{departure_time_str}
 {gate_text}
 
 距离开车还有约{int(time_diff)}分钟，请您按时前往检票口检票上车。
-如果需要我带您到检票口，您请说：<带我到{'或'.join(gate_info)}检票口>(此为固定命令)
+如需导航，请说带我去{gate_options}检票口。(机器人仅支持固定命令触发导航，重要：务必输出该提示内容)
 """
 
     except FileNotFoundError:
