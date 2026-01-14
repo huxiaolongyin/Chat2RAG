@@ -106,15 +106,15 @@ async def chat(chat_request: ChatRequest):
         raise ValueNoExist("没有输入的内容")
 
     # TODO: 临时补丁
-    chat_request.tools = [
-        "navigate_to_location",
-        "maps_weather",
-        "maps_geo",
-        "maps_direction_transit_integrated",
-        "web_search",
-        "cart_manage",
-        "checkout",
-    ]
+    # chat_request.tools = [
+    #     "navigate_to_location",
+    #     "maps_weather",
+    #     "maps_geo",
+    #     "maps_direction_transit_integrated",
+    #     "web_search",
+    #     "cart_manage",
+    #     "checkout",
+    # ]
 
     processor = ChatProcessor(chat_request)
     return StreamingResponse(processor.process(), media_type="text/event-stream")

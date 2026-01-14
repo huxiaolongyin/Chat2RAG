@@ -1,7 +1,7 @@
 import asyncio
 from typing import AsyncIterator
 
-from haystack.dataclasses import ChatRole, StreamingChunk
+from haystack.dataclasses import ChatRole
 
 from chat2rag.config import CONFIG
 from chat2rag.core.pipelines.rag_pipeline import RAGPipeline
@@ -90,12 +90,6 @@ class RAGStrategy(ResponseStrategy):
         except Exception as e:
             logger.error("Error in exact query processing: %s", str(e))
             raise e
-            await self.handler.callback(
-                StreamingChunk(
-                    content=f"精确查询处理错误: {str(e)}",
-                    meta={"model": "error", "finish_reason": "error"},
-                )
-            )
 
         finally:
             await self.handler.finish()

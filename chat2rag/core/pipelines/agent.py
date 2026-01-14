@@ -1,4 +1,4 @@
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List
 
 from haystack import AsyncPipeline
 from haystack.components.agents import Agent
@@ -10,6 +10,7 @@ from haystack.dataclasses import ChatMessage
 from haystack.utils import Secret
 from haystack_integrations.components.retrievers.qdrant import QdrantEmbeddingRetriever
 from haystack_integrations.document_stores.qdrant import QdrantDocumentStore
+from qdrant_client.models import Filter
 
 from chat2rag.config import CONFIG
 from chat2rag.core.pipelines.base import BasePipeline
@@ -42,7 +43,7 @@ class AgentPipeline(BasePipeline[AsyncPipeline]):
         self._collections = collections[0] if collections else "None"
         self._model = model
         self._tools = []
-        self._tool_names = tools
+        self._tool_list = tools
         self._api_base_url = api_base_url
         self._api_key = api_key
         self._generation_kwargs = recursive_tuple_to_dict(generation_kwargs)  # 临时
@@ -50,13 +51,12 @@ class AgentPipeline(BasePipeline[AsyncPipeline]):
 
     async def _prepare_async_resources(self):
         """异步加载工具"""
-        if self._tool_names:
-            self._tools = []
-            tool = await mcp_service.get_by_names(self._tool_names)
-            if tool:
-                self._tools.extend(tool)
+        if self._tool_list:
+            loaded_tools = await mcp_service.get_by_names(self._tool_list)
+            if loaded_tools:
+                self._tools.extend(loaded_tools)
             else:
-                logger.warning(f"Tool {self._tool_names} not found")
+                logger.warning(f"Failed to load tools: {self._tool_list}")
 
     def _initialize_pipeline(self) -> AsyncPipeline:
 
@@ -111,9 +111,7 @@ class AgentPipeline(BasePipeline[AsyncPipeline]):
             return pipeline
 
         except Exception as e:
-            logger.error(
-                "Failed to initialize the Agent pipeline. Failure reason: %s", e
-            )
+            logger.error("Failed to initialize the Agent pipeline. Failure reason: %s", e)
             raise
 
     async def run(
@@ -121,11 +119,10 @@ class AgentPipeline(BasePipeline[AsyncPipeline]):
         query: str,
         top_k: int,
         score_threshold: float,
-        doc_type: str,
         messages: List[ChatMessage],
+        filters: Dict[str, Any] | Filter | None = None,
         extra_params: Dict[str, Any] = {},
-        streaming_callback: Optional[Callable] = None,
-        # generation_kwargs: Dict[str, Any] = {},
+        streaming_callback: Callable | None = None,
     ):
         """
         Run the pipeline with the given parameters.
@@ -137,11 +134,7 @@ class AgentPipeline(BasePipeline[AsyncPipeline]):
                 "retriever": {
                     "top_k": top_k,
                     "score_threshold": score_threshold,
-                    "filters": {
-                        "field": "meta.type",
-                        "operator": "==",
-                        "value": doc_type,
-                    },
+                    "filters": filters,
                 },
                 "builder": {
                     "template": messages,
@@ -149,8 +142,6 @@ class AgentPipeline(BasePipeline[AsyncPipeline]):
                 },
                 "agent": {
                     "streaming_callback": streaming_callback,
-                    # "generation_kwargs": generation_kwargs,
                 },
             },
-            # include_outputs_from=["doc_joiner"],
         )

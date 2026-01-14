@@ -266,7 +266,11 @@ async def query_documents(
             query=query,
             top_k=top_k,
             score_threshold=score_threshold,
-            doc_type=doc_type,
+            filters={
+                "field": "meta.type",
+                "operator": "==",
+                "value": doc_type,
+            },
         )
         # query_time = time.perf_counter() - start_time
 

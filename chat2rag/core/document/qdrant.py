@@ -1,9 +1,10 @@
 import asyncio
 from time import perf_counter
-from typing import List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from haystack.dataclasses import Document
 from haystack_integrations.document_stores.qdrant import QdrantDocumentStore
+from qdrant_client.models import Filter
 
 from chat2rag.config import CONFIG
 from chat2rag.core.pipelines.document import (
@@ -22,9 +23,7 @@ def prepare_documents(qa: QADocument) -> Tuple[Document, Document]:
     将问题和答案装换为 Document
     """
     return (
-        Document(
-            content=qa.question, meta={"type": "question", "question_id": qa.question}
-        ),
+        Document(content=qa.question, meta={"type": "question", "question_id": qa.question}),
         Document(
             content=f"{qa.question}: {qa.answer}",
             meta={"type": "qa_pair", "question_id": qa.question},
@@ -109,23 +108,18 @@ class QAQdrantDocumentStore(QdrantDocumentStore):
             question_doc, answer_doc = prepare_documents(qa)
             documents.extend([question_doc, answer_doc])
 
-        doc_write_pipeline = await create_pipeline(
-            DocumentWriterPipeline, qdrant_index=self.index
-        )
+        doc_write_pipeline = await create_pipeline(DocumentWriterPipeline, qdrant_index=self.index)
         return await doc_write_pipeline.run(documents=documents)
 
     @property
     def get_document_list(self) -> List[dict]:
         """
         进行文档的查询
-        filter: 针对meta的过滤条件
+        filters: 针对meta的过滤条件
         eg: {"field": "meta.type", "operator": "==", "value": "article"}
         """
         filters = {"field": "meta.type", "operator": "!=", "value": "question"}
-        return [
-            {"id": doc.id, "content": doc.content}
-            for doc in self.filter_documents(filters)
-        ]
+        return [{"id": doc.id, "content": doc.content} for doc in self.filter_documents(filters)]
 
     def delete_documents(self, doc_id_list: List[str]):
         """
@@ -150,31 +144,32 @@ class QAQdrantDocumentStore(QdrantDocumentStore):
         query: str,
         top_k: int = CONFIG.TOP_K,
         score_threshold: float = CONFIG.SCORE_THRESHOLD,
-        doc_type: str = "qa_pair",
+        filters: Dict[str, Any] | Filter | None = None,
     ) -> List[Document]:
         """
         进行 QA 全文的检索
         """
         try:
-            doc_search_pipeline = await create_pipeline(
-                DocumentSearchPipeline, qdrant_index=self.index
-            )
+            doc_search_pipeline = await create_pipeline(DocumentSearchPipeline, qdrant_index=self.index)
+
             response = await doc_search_pipeline.run(
                 query=query,
                 top_k=top_k,
                 score_threshold=score_threshold,
-                doc_type=doc_type,
+                filters=filters,
             )
 
             documents = response.get("retriever").get("documents")
+
             # 优化 todo
-            type_condition = lambda doc: (
-                doc.meta.get("type") == doc_type
-                if doc_type == "question"
-                else doc.meta.get("type") != "question"
-            )
-            result = [doc for doc in documents if type_condition(doc)]
-            return result
+            if isinstance(filters, Dict) and filters.get("value") and filters.get("type"):
+                doc_type = filters.get("value")
+                type_condition = lambda doc: (
+                    doc.meta.get("type") == doc_type if doc_type == "question" else doc.meta.get("type") != "question"
+                )
+                return [doc for doc in documents if type_condition(doc)]
+            else:
+                return documents
 
         except Exception as e:
             logger.error(f"QAQdrantDocumentStore query failed: {e}")
@@ -189,10 +184,15 @@ class QAQdrantDocumentStore(QdrantDocumentStore):
             query=query,
             score_threshold=CONFIG.PRECISION_THRESHOLD,
             top_k=1,
-            doc_type="question",
+            filters={
+                "field": "meta.type",
+                "operator": "==",
+                "value": "question",
+            },
         )
         if not response:
             return None
+
         filters = {
             "operator": "AND",
             "conditions": [

@@ -1,6 +1,6 @@
 import asyncio
 import time
-from typing import List
+from typing import Any, Dict, List
 
 from haystack import Pipeline
 from haystack.components.embedders import OpenAIDocumentEmbedder, OpenAITextEmbedder
@@ -9,6 +9,7 @@ from haystack.dataclasses import Document
 from haystack.utils import Secret
 from haystack_integrations.components.retrievers.qdrant import QdrantEmbeddingRetriever
 from haystack_integrations.document_stores.qdrant import QdrantDocumentStore
+from qdrant_client.models import Filter
 
 from chat2rag.config import CONFIG
 from chat2rag.core.pipelines.base import BasePipeline
@@ -53,9 +54,7 @@ class DocumentSearchPipeline(BasePipeline):
             pipeline.add_component("embedder", embedder)
             pipeline.add_component("retriever", retriever)
             pipeline.connect("embedder.embedding", "retriever.query_embedding")
-            logger.debug(
-                "The initialization of the Document search pipeline was successful."
-            )
+            logger.debug("The initialization of the Document search pipeline was successful.")
             return pipeline
 
         except Exception as e:
@@ -70,7 +69,7 @@ class DocumentSearchPipeline(BasePipeline):
         query: str,
         top_k: int = 5,
         score_threshold: float = CONFIG.SCORE_THRESHOLD,
-        doc_type: DocumentType = "qa_pair",
+        filters: Dict[str, Any] | Filter | None = None,
     ) -> dict:
         """
         Run the Document search pipeline
@@ -79,17 +78,17 @@ class DocumentSearchPipeline(BasePipeline):
             query (str): The query to search for
             top_k (int): The number of documents to be returned
             score_threshold (float): The minimum similarity score for a document to be retrieved
-            doc_type (DocumentType): The type of documents to be retrieved.
+            filters (Dict[str, Any]): The type of documents to be retrieved.
 
         Returns:
             dict: The search results
         """
         logger.info(
-            "Running the Document search pipeline, query: <%s>, top_k: <%s>, score_threshold: <%.2f>, doc_type: <%s>",
+            "Running the Document search pipeline, query: <%s>, top_k: <%s>, score_threshold: <%.2f>, filters: <%s>",
             query,
             top_k,
             score_threshold,
-            doc_type,
+            filters,
         )
         start_time = time.time()
         try:
@@ -97,17 +96,10 @@ class DocumentSearchPipeline(BasePipeline):
                 self.pipeline.run,
                 data={
                     "embedder": {"text": query},
-                    "retriever": {
-                        "top_k": top_k,
-                        "score_threshold": score_threshold,
-                        "filters": {
-                            "field": "meta.type",
-                            "operator": "==",
-                            "value": doc_type,
-                        },
-                    },
+                    "retriever": {"top_k": top_k, "score_threshold": score_threshold, "filters": filters},
                 },
             )
+
             documents = result.get("retriever", {}).get("documents", [])
             logger.info(
                 "Document search pipeline ran successfully. Cost: %.2f seconds, doc_counts: %d",
@@ -117,9 +109,7 @@ class DocumentSearchPipeline(BasePipeline):
             return result
 
         except Exception as e:
-            logger.error(
-                "Failed to run the Document search pipeline. Failure reason: %s", e
-            )
+            logger.error("Failed to run the Document search pipeline. Failure reason: %s", e)
             raise
 
 
@@ -174,20 +164,14 @@ class DocumentWriterPipeline(BasePipeline):
         """
         Run the DocumentWriter pipeline
         """
-        logger.info(
-            f"Running the DocumentWriter pipeline, documents count: <{len(documents)}>"
-        )
+        logger.info(f"Running the DocumentWriter pipeline, documents count: <{len(documents)}>")
         try:
-            result = await asyncio.to_thread(
-                self.pipeline.run, data={"embedder": {"documents": documents}}
-            )
+            result = await asyncio.to_thread(self.pipeline.run, data={"embedder": {"documents": documents}})
             logger.info("DocumentWriter pipeline ran successfully.")
             return result
 
         except Exception as e:
-            logger.error(
-                "Failed to run the DocumentWriter pipeline. Failure reason: %s", e
-            )
+            logger.error("Failed to run the DocumentWriter pipeline. Failure reason: %s", e)
             raise
 
 

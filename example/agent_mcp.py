@@ -3,7 +3,7 @@ import datetime
 from haystack.components.generators.utils import print_streaming_chunk
 from haystack.dataclasses import ChatMessage
 
-from chat2rag.pipelines.agent import AgentPipeline
+from chat2rag.core.pipelines.agent import AgentPipeline
 
 history_messages = [
     ChatMessage.from_system(
@@ -49,9 +49,7 @@ None
     """
     ),
 ]
-pipeline = AgentPipeline(
-    ["福建省广电集团"], model="Qwen/Qwen2.5-72B-Instruct", tools=["maps_weather"]
-)
+pipeline = AgentPipeline(["福建省广电集团"], model="Qwen/Qwen2.5-72B-Instruct", tools=["maps_weather"])
 # Qwen/Qwen2.5-32B-Instruct  /  deepseek-ai/DeepSeek-V3   /  Qwen/Qwen2.5-Coder-32B-Instruct
 
 print(
@@ -62,7 +60,7 @@ print(
         query="民营经济提质增效、转型升级、再创优势，离不开大批创新人才，请问省教育厅是如何深化产教融合、校企合作培养创新人才的？",
         top_k=5,
         score_threshold=0.7,
-        doc_type="qa_pair",
+        filters={"field": "meta.type", "operator": "==", "value": "qa_pair"},
         messages=history_messages,
         vin="HTYW295157A802220",
         city="福州",

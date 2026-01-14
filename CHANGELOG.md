@@ -9,6 +9,7 @@
 ### Added
 
 - 针对福州南站的作业记录表新增文件上传功能，容器挂载 uploads 目录
+- Documents 的检索方式从 doc_type 改为更通用的 filters 的方式
 
 ### Fixed
 
