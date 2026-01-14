@@ -17,7 +17,7 @@ metric_service = MetricService()
 @router.get("/list", summary="获取对话历史")
 async def get_metrics_list(
     current: Current = 1,
-    size: Size = 10,
+    size: int = Query(ge=1, le=10000, description="页码大小"),
     start_time: Optional[str] = Query("2023-01-01", description="开始时间", alias="startTime"),
     end_time: Optional[str] = Query("2099-01-01", description="结束时间", alias="endTime"),
     collection: Optional[str] = Query(None, description="知识库"),
