@@ -14,10 +14,9 @@ from qdrant_client.models import Filter
 
 from chat2rag.config import CONFIG
 from chat2rag.core.logger import get_logger
+from chat2rag.pipelines.base import BasePipeline
 from chat2rag.services.tool_service import mcp_service
 from chat2rag.utils.merge_kwargs import recursive_tuple_to_dict
-
-from .base import BasePipeline
 
 logger = get_logger(__name__)
 
@@ -41,7 +40,7 @@ class AgentPipeline(BasePipeline[AsyncPipeline]):
         api_key: str = "",
         generation_kwargs: Dict[str, Any] = {},
     ):
-        self._collections = collections[0] if collections else "None"
+        self._collections = collections if collections else []
         self._model = model
         self._tools = []
         self._tool_list = tools
@@ -72,18 +71,28 @@ class AgentPipeline(BasePipeline[AsyncPipeline]):
                     dimensions=CONFIG.EMBEDDING_DIMENSIONS,
                 ),
             )
-            pipeline.add_component(
-                "retriever",
-                QdrantEmbeddingRetriever(
-                    document_store=QdrantDocumentStore(
-                        host=CONFIG.QDRANT_HOST,
-                        port=CONFIG.QDRANT_PORT,
-                        embedding_dim=CONFIG.EMBEDDING_DIMENSIONS,
-                        index=self._collections,
-                    )
-                ),
-            )
+            # 为每个 collection 创建独立的 retriever
+            for idx, collection in enumerate(self._collections):
+                retriever_name = f"retriever_{idx}"
+                pipeline.add_component(
+                    retriever_name,
+                    QdrantEmbeddingRetriever(
+                        document_store=QdrantDocumentStore(
+                            host=CONFIG.QDRANT_HOST,
+                            port=CONFIG.QDRANT_PORT,
+                            embedding_dim=CONFIG.EMBEDDING_DIMENSIONS,
+                            index=collection,  # 每个 retriever 使用不同的 collection
+                        )
+                    ),
+                )
+                # 将 embedder 连接到每个 retriever
+                pipeline.connect("embedder.embedding", f"{retriever_name}.query_embedding")
             pipeline.add_component("doc_joiner", DocumentJoiner())
+
+            # 将所有 retriever 的输出连接到 doc_joiner
+            for idx in range(len(self._collections)):
+                pipeline.connect(f"retriever_{idx}.documents", "doc_joiner.documents")
+
             pipeline.add_component(
                 "builder",
                 instance=ChatPromptBuilder(
@@ -104,8 +113,6 @@ class AgentPipeline(BasePipeline[AsyncPipeline]):
                     tools=self._tools,
                 ),
             )
-            pipeline.connect("embedder.embedding", "retriever.query_embedding")
-            pipeline.connect("retriever.documents", "doc_joiner.documents")
             pipeline.connect("doc_joiner.documents", "builder.documents")
             pipeline.connect("builder", "agent")
 
@@ -128,15 +135,19 @@ class AgentPipeline(BasePipeline[AsyncPipeline]):
         """
         Run the pipeline with the given parameters.
         """
+        # 构建 retriever 参数
+        retriever_params = {}
+        for idx in range(len(self._collections)):
+            retriever_params[f"retriever_{idx}"] = {
+                "top_k": top_k,
+                "score_threshold": score_threshold,
+                "filters": filters,
+            }
 
         return await self.pipeline.run_async(
             {
                 "embedder": {"text": query},
-                "retriever": {
-                    "top_k": top_k,
-                    "score_threshold": score_threshold,
-                    "filters": filters,
-                },
+                **retriever_params,  # 展开所有 retriever 的参数
                 "builder": {
                     "template": messages,
                     "template_variables": {"query": query} | extra_params,
@@ -145,4 +156,5 @@ class AgentPipeline(BasePipeline[AsyncPipeline]):
                     "streaming_callback": streaming_callback,
                 },
             },
+            # include_outputs_from=set("doc_joiner"),
         )
