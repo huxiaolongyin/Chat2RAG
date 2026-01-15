@@ -13,8 +13,7 @@ from qdrant_client.models import Filter
 
 from chat2rag.config import CONFIG
 from chat2rag.core.logger import get_logger
-
-from .base import BasePipeline
+from chat2rag.pipelines.base import BasePipeline
 
 logger = get_logger(__name__)
 

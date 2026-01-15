@@ -17,6 +17,7 @@ class StrategyRequest:
     chat_id: str | None = None
     precision_mode: int = 0
     collections: list[str] = field(default_factory=list)
+    batch_or_stream: str = "batch"
     top_k: int = 5
     score_threshold: float = 0.65
     chat_rounds: int = 1

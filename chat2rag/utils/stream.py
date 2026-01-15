@@ -15,6 +15,7 @@ from chat2rag.schemas.chat import (
     BehaviorSchema,
     ContentSchema,
     QueryContent,
+    StreamChunkV1,
     StreamChunkV2,
     ToolSchema,
 )
@@ -390,3 +391,11 @@ class StreamHandler:
 
     async def finish(self):
         await self.queue.put(StreamControl.END)
+
+
+class StreamHandlerV1(StreamHandler):
+
+    async def _create_message(self, *args, **kwargs) -> StreamChunkV1:
+        """创建消息格式"""
+        res: StreamChunkV2 = await super()._create_message(*args, **kwargs)
+        return res.to_stream_chunk_v1()

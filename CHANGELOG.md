@@ -11,6 +11,9 @@
 - 针对福州南站的作业记录表新增文件上传功能，容器挂载 uploads 目录
 - Documents 的检索方式从 doc_type 改为更通用的 filters 的方式
 - 交互指标从 Dict 存储的，改为 schema 处理，增加表情、动作、图片字段
+- 代码文件夹重构，优化 core 中的代码，尽可能让 core 不引用自己的代码
+- 新增 Agent 管道支持多个知识库的检索
+- 新增 chat_service 进行聊天处理 ChatProcessor
 
 ### Fixed
 
@@ -21,6 +24,10 @@
 ### Removed
 
 - 移除 metric_service 中没有使用或者错误定义的函数
+- 移除 function、rag 管道，使用 Agent 管道进行替代
+- 移除 rag 的 strategies
+- 移除 stream_v1.py，StreamHandlerV1 继承 StreamHandler, 进行功能合并
+- 移除 关于 function、rag 管道 的示例
 
 ## [V0.3.0rc3] - 2026-01-09
 

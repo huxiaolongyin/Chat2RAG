@@ -1,3 +1,4 @@
+import json
 from datetime import datetime
 from typing import Any
 
@@ -43,6 +44,7 @@ class ChatQueryParams(BaseSchema):
     precision_mode: int = Field(default=0, description="是否使用精确模式")
     chat_id: str | None = Field(None, description="聊天的标识")
     chat_rounds: int = Field(default=1, ge=0, le=30, description="聊天轮数")
+    batch_or_stream: ProcessType = (Field(ProcessType.BATCH),)
     prompt_name: str = Field("默认", description="提示词名称选择")
     generator_model: str = Field(default=CONFIG.CHAT_V1_DEFAULT_MODELS["generator"], description="生成模型")
     generation_kwargs: str = Field(default="{}", description="生成参数")
@@ -51,7 +53,7 @@ class ChatQueryParams(BaseSchema):
     def to_strategy_request(self) -> StrategyRequest:
         """转换为策略请求模型（V1）"""
         return StrategyRequest(
-            content={"text": self.query},
+            content=QueryContent(text=self.query),
             chat_id=self.chat_id,
             precision_mode=self.precision_mode,
             collections=[self.collection_name] if self.collection_name else [],
@@ -62,8 +64,22 @@ class ChatQueryParams(BaseSchema):
             model=self.generator_model,
             generation_kwargs=self.generation_kwargs,
             tools=self.tool_list,
-            # intention_model=self.intention_model,
+            batch_or_stream=self.batch_or_stream,
         )
+
+    @field_validator("tool_list", mode="after")
+    @classmethod
+    def parse_tool_list(cls, v: str) -> list:
+        """将 tool_list 从 JSON 字符串转换为列表"""
+        if isinstance(v, list):
+            return v
+        try:
+            parsed = json.loads(v)
+            if not isinstance(parsed, list):
+                raise ValueError("tool_list must be a JSON array")
+            return parsed
+        except json.JSONDecodeError as e:
+            raise ValueError(f"Invalid JSON format for tool_list: {e}")
 
 
 class ChatRequest(BaseSchema):
@@ -164,3 +180,12 @@ class StreamChunkV2(BaseSchema):
     document_count: int = Field(..., description="文档的检索数量", examples=[5])
     create_time: str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     message_id: str = Field(..., description="响应消息的唯一ID", examples=["9d0cc3bc43d845ef"])
+
+    def to_stream_chunk_v1(self):
+        return StreamChunkV1(
+            content=self.content.text,
+            model=self.model,
+            status=self.status,
+            document_count=self.document_count,
+            message_id=self.message_id,
+        )
