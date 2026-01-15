@@ -2,7 +2,7 @@ import functools
 import time
 from typing import Callable
 
-from chat2rag.logger import get_logger
+from chat2rag.core.logger import get_logger
 
 logger = get_logger(__name__)
 
@@ -14,9 +14,7 @@ def async_performance_logger(func: Callable):
         start_time = time.perf_counter()
         result = await func(*args, **kwargs)
         elapsed_time = time.perf_counter() - start_time
-        logger.debug(
-            f"API Function <{func.__name__}> took {elapsed_time:.3f} seconds to complete"
-        )
+        logger.debug(f"API Function <{func.__name__}> took {elapsed_time:.3f} seconds to complete")
         return result
 
     return wrapper

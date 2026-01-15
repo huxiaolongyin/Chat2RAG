@@ -1,6 +1,6 @@
 from typing import AsyncIterator, Optional
 
-from chat2rag.logger import get_logger
+from chat2rag.core.logger import get_logger
 from chat2rag.services.command_service import CommandService
 
 from .base import ResponseStrategy

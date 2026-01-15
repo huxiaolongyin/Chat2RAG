@@ -3,7 +3,7 @@ import datetime
 from haystack.components.generators.utils import print_streaming_chunk
 from haystack.dataclasses import ChatMessage
 
-from chat2rag.core.pipelines.agent import AgentPipeline
+from chat2rag.pipelines.agent import AgentPipeline
 
 history_messages = [
     ChatMessage.from_system(

@@ -5,8 +5,8 @@ from typing import Any, Dict, List, Optional
 import requests
 from tortoise import fields
 
-from chat2rag.enums import MCPToolType, Status, ToolMethod
-from chat2rag.logger import get_logger
+from chat2rag.core.enums import MCPToolType, Status, ToolMethod
+from chat2rag.core.logger import get_logger
 
 from .base import BaseModel, TimestampMixin
 
@@ -46,9 +46,7 @@ class MCPTool(BaseModel, TimestampMixin):
     """MCP工具定义"""
 
     id = fields.IntField(primary_key=True)
-    server = fields.ForeignKeyField(
-        "app_system.MCPServer", related_name="tools", on_delete=fields.CASCADE
-    )
+    server = fields.ForeignKeyField("app_system.MCPServer", related_name="tools", on_delete=fields.CASCADE)
     name = fields.CharField(max_length=100, description="工具名称")
     description = fields.TextField(description="工具描述")
     input_schema = fields.JSONField(null=True, description="输入schema")

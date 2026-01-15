@@ -7,12 +7,9 @@ from haystack_integrations.document_stores.qdrant import QdrantDocumentStore
 from qdrant_client.models import Filter
 
 from chat2rag.config import CONFIG
-from chat2rag.core.pipelines.document import (
-    DocumentSearchPipeline,
-    DocumentWriterPipeline,
-)
+from chat2rag.core.logger import get_logger
 from chat2rag.dataclass.document import QADocument
-from chat2rag.logger import get_logger
+from chat2rag.pipelines.document import DocumentSearchPipeline, DocumentWriterPipeline
 from chat2rag.utils.pipeline_cache import create_pipeline
 
 logger = get_logger(__name__)

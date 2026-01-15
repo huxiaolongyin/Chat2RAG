@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Generic, Type, TypeVar
 
-from chat2rag.logger import get_logger
+from chat2rag.core.logger import get_logger
 
 logger = get_logger(__name__)
 
@@ -46,9 +46,7 @@ class BasePipeline(Generic[T], ABC):
         """
         try:
             self.pipeline.warm_up()
-            logger.debug(
-                f"The {self.__class__.__name__} has been warmed up successfully"
-            )
+            logger.debug(f"The {self.__class__.__name__} has been warmed up successfully")
         except Exception as e:
             logger.error(
                 f"Failed to warm up the {self.__class__.__name__}. Failure reason: %s",

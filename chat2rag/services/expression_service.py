@@ -1,5 +1,5 @@
 from chat2rag.core.crud import CRUDBase
-from chat2rag.exceptions import ValueAlreadyExist
+from chat2rag.core.exceptions import ValueAlreadyExist
 from chat2rag.models import RobotExpression
 from chat2rag.schemas.expression import RobotExpressionCreate, RobotExpressionUpdate
 

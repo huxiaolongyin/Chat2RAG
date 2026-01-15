@@ -6,7 +6,10 @@ from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
 from pyinstrument import Profiler
 
-from chat2rag.core.strategies import (
+from chat2rag.core.enums import ProcessType
+from chat2rag.core.logger import get_logger
+from chat2rag.schemas.chat import ChatRequest
+from chat2rag.strategies import (
     AgentStrategy,
     CommandStrategy,
     ExactMatchStrategy,
@@ -15,9 +18,6 @@ from chat2rag.core.strategies import (
     SensitiveWordStrategy,
     StrategyChain,
 )
-from chat2rag.enums import ProcessType
-from chat2rag.logger import get_logger
-from chat2rag.schemas.chat import ChatRequest
 from chat2rag.utils.stream import StreamHandler
 
 logger = get_logger(__name__)

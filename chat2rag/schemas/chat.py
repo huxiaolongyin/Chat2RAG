@@ -4,8 +4,8 @@ from typing import Any
 from pydantic import Field, field_validator, model_validator
 
 from chat2rag.config import CONFIG
+from chat2rag.core.enums import ProcessType
 from chat2rag.dataclass.strategy import StrategyRequest
-from chat2rag.enums import ProcessType
 
 from .base import BaseSchema
 

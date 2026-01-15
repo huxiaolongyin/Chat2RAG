@@ -5,7 +5,7 @@ from typing import Any, Dict
 from httpx import AsyncClient, ConnectTimeout
 from tortoise import fields
 
-from chat2rag.logger import get_logger
+from chat2rag.core.logger import get_logger
 
 from .base import BaseModel, TimestampMixin
 

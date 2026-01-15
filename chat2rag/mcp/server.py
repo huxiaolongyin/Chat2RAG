@@ -54,18 +54,20 @@ class NavigationStatus:
 mcp = FastMCP("MCP-SERVER-HTW", host="0.0.0.0", port=8333)
 
 
-# fmt: off
 Vin = Annotated[str, Field(description="机器人唯一识别vin码，用于确定要控制的特定机器人")]
-Destination = Annotated[str, Field(description="导航目标地点实体名称，使用简洁的名词，无需添加形容词或地点修饰词，例如'会议室'、'前台'等")]
-NavigationConfirm = Annotated[bool, Field(description="导航二次确认，得到用户二次确认后启动导航服务，默认为False，得到确认后为True")]
-EntityId = Annotated[Union[int,str], Field(description="目标地点的唯一ID，用于确认导航")]
+Destination = Annotated[
+    str, Field(description="导航目标地点实体名称，使用简洁的名词，无需添加形容词或地点修饰词，例如'会议室'、'前台'等")
+]
+NavigationConfirm = Annotated[
+    bool, Field(description="导航二次确认，得到用户二次确认后启动导航服务，默认为False，得到确认后为True")
+]
+EntityId = Annotated[Union[int, str], Field(description="目标地点的唯一ID，用于确认导航")]
 
 ItemName = Annotated[str, Field(description="菜品的名称")]
 Quantity = Annotated[int, Field(description="增加或减少的数量，默认为1，减少时使用负数")]
 IsPAY = Annotated[int, Field(description="是否进入支付环节，0代表展示购物车列表，1代表进入支付阶段，默认0")]
 
 
-# fmt: on
 # Add an addition tool
 @mcp.tool()
 @with_db
@@ -83,45 +85,33 @@ async def navigate_to_location(
         if not device:
             msg = f"未找到机器人: {vin}"
             logger.warning(msg)
-            return HTWResponse(
-                code="4000", status=NavigationStatus.ENTITY_NOT_FOUND, msg=msg
-            ).dict()
+            return HTWResponse(code="4000", status=NavigationStatus.ENTITY_NOT_FOUND, msg=msg).dict()
 
         # 查找场景
         scene = device.scene
         if not scene:
             msg = "未找到场景或机器人未绑定场景"
             logger.warning(msg)
-            return HTWResponse(
-                code="4000", status=NavigationStatus.ENTITY_NOT_FOUND, msg=msg
-            ).dict()
+            return HTWResponse(code="4000", status=NavigationStatus.ENTITY_NOT_FOUND, msg=msg).dict()
 
         # 查找实体
-        exact_match_query = Q(
-            Q(name=destination)
-            | Q(common_name=destination)
-            | Q(alias__contains=destination)
-        ) & Q(scenes=scene)
+        exact_match_query = Q(Q(name=destination) | Q(common_name=destination) | Q(alias__contains=destination)) & Q(
+            scenes=scene
+        )
         entities = await Entity.filter(exact_match_query)
 
         #
         if not entities:
             msg = f"在场景:{scene.name} 下未找到{destination}"
             logger.warning(msg)
-            return HTWResponse(
-                code="4000", status=NavigationStatus.ENTITY_NOT_FOUND, msg=msg
-            ).dict()
+            return HTWResponse(code="4000", status=NavigationStatus.ENTITY_NOT_FOUND, msg=msg).dict()
 
         common_name = entities[0].common_name  # 通用名
         is_reachable = entities[0].is_reachable  # 可到达性
 
         # 找到所有通用名一致的实体
         if common_name:
-            similar_entities = [
-                {"name": e.name, "entity_id": e.id}
-                for e in entities
-                if e.common_name == common_name
-            ]
+            similar_entities = [{"name": e.name, "entity_id": e.id} for e in entities if e.common_name == common_name]
         else:
             similar_entities = [{"name": e.name, "entity_id": e.id} for e in entities]
 
@@ -135,9 +125,7 @@ async def navigate_to_location(
             if not is_reachable:
                 msg = f"找到了'{destination}'，但该地点不可到达，无法带路，可以展示路线图：https://www.vgosaas.com/img/index/6-2.jpg"
                 logger.info(msg)
-                return HTWResponse(
-                    msg=msg, status=NavigationStatus.UNABLE_TO_GUIDE, data=data
-                ).dict()
+                return HTWResponse(msg=msg, status=NavigationStatus.UNABLE_TO_GUIDE, data=data).dict()
 
             msg = f"找到了'{destination}'，是否需要我带路前往？请确认。"
 
@@ -203,9 +191,7 @@ async def get_item_id(item_name: str) -> Item:
 
 
 @mcp.tool()
-async def cart_manage(
-    user_id: Vin, item_name: ItemName, quantity: Quantity = 1
-) -> Dict[str, Any]:
+async def cart_manage(user_id: Vin, item_name: ItemName, quantity: Quantity = 1) -> Dict[str, Any]:
     """汉特云餐厅的点餐流程，当用户想要进行点餐、加购时或去除某个菜时使用。选择某个菜品，则向购物车添加菜品，如果购物车无该菜品则新增，有则增加数量。例如：我想要点某个菜，或我想去掉某个菜"""
     try:
         item = await get_item_id(item_name)
@@ -219,9 +205,7 @@ async def cart_manage(
 
         # 如果quantity为负数且购物车无该商品，直接返回提示
         if quantity < 0 and not cart:
-            return HTWResponse(
-                code="4004", msg=f"购物车中无{item_name}，无法减少数量"
-            ).dict()
+            return HTWResponse(code="4004", msg=f"购物车中无{item_name}，无法减少数量").dict()
 
         if cart.get(item):
             cart[item] += quantity

@@ -17,7 +17,8 @@ class LLMClient:
         temperature: float = 0.0,
     ) -> str:
         """异步调用 LLM"""
-        model_source: ModelSource = await model_source_service.get_best_source(model)
+
+        model_source: ModelSource = await model_source_service.get_best_source(model, extra_log="Flow Stage")
         model_provider: ModelProvider = await model_source.provider
         self.client = AsyncOpenAI(
             api_key=model_provider.api_key,

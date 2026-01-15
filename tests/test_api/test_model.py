@@ -130,7 +130,7 @@ class TestModelList:
         assert isinstance(data["data"], list)
 
         # 检查是否包含健康且启用的模型
-        model_aliases = [item["alias"] for item in data["data"]]
+        model_aliases = [item["id"] for item in data["data"]]
         assert "test-model" in model_aliases
 
     async def test_get_model_list_deprecated(self, client: AsyncClient, test_source):
@@ -148,7 +148,7 @@ class TestModelList:
         data = response.json()
         assert data["code"] == "0000"
 
-        model_aliases = [item["alias"] for item in data["data"]]
+        model_aliases = [item["id"] for item in data["data"]]
         assert "test-model" in model_aliases
         # 注意：这里需要根据实际业务逻辑调整，如果unhealthy模型也会出现在列表中则需要修改断言
 
@@ -931,7 +931,7 @@ class TestEdgeCases:
         assert data["code"] == "0000"
 
         # 检查是否去重
-        aliases = [item["alias"] for item in data["data"]]
+        aliases = [item["id"] for item in data["data"]]
         duplicate_count = aliases.count("duplicate-alias")
         assert duplicate_count == 1  # 应该只出现一次
 

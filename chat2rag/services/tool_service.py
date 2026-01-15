@@ -5,11 +5,10 @@ from typing import Any, Dict, List, Optional, Set, Tuple
 from tortoise.expressions import Q
 from tortoise.transactions import in_transaction
 
-import chat2rag.core.tools as tools_module
+import chat2rag.tools as tools_module
 from chat2rag.core.crud import CRUDBase
-from chat2rag.core.tools.mcp import connection_manager
-from chat2rag.exceptions import MCPConnectionError, ToolServiceError, ToolSyncError
-from chat2rag.logger import get_logger
+from chat2rag.core.exceptions import MCPConnectionError, ToolServiceError, ToolSyncError
+from chat2rag.core.logger import get_logger
 from chat2rag.models import APITool, MCPServer, MCPTool
 from chat2rag.schemas.tools import (
     APIToolCreate,
@@ -17,6 +16,7 @@ from chat2rag.schemas.tools import (
     MCPServerCreate,
     MCPServerUpdate,
 )
+from chat2rag.tools.mcp import connection_manager
 
 logger = get_logger(__name__)
 

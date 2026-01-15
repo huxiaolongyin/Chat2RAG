@@ -2,7 +2,7 @@ from typing import Any, Dict, List, Literal, Optional, Union
 
 from pydantic import BaseModel, Field
 
-from chat2rag.enums import ToolMethod
+from chat2rag.core.enums import ToolMethod
 
 
 # APITool Schemas

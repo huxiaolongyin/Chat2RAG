@@ -105,3 +105,6 @@ class FlowDataService(CRUDBase[FlowData, FlowDataCreate, FlowDataUpdate]):
     #             result.append(flow_structure)
 
     #     return result
+
+
+flow_service = FlowDataService()

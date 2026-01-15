@@ -5,12 +5,14 @@ from typing import List, Optional
 from cachetools import TTLCache
 
 from chat2rag.core.init_app import modify_db
+from chat2rag.core.logger import get_logger
 from chat2rag.dataclass.flow_node import Node
-from chat2rag.logger import get_logger
 from chat2rag.models import FlowData
-from chat2rag.services.flow_service import FlowDataService
+from chat2rag.services.flow_service import flow_service
 from chat2rag.utils.flow_json_parse import dict_to_flow_nodes
 from chat2rag.utils.llm_client import LLMClient
+
+logger = get_logger(__name__)
 
 
 class UserFlowState:
@@ -22,8 +24,6 @@ class UserFlowState:
         self.flow_nodes = dict_to_flow_nodes(flow.flow_json)
 
 
-logger = get_logger(__name__)
-flow_service = FlowDataService()
 user_states: TTLCache = TTLCache(maxsize=100, ttl=300)  # 用户状态缓存（TTL: 5分钟）
 llm_client = LLMClient()
 
@@ -34,9 +34,7 @@ async def match_flow_by_query(query: str, flows: list[FlowData]) -> Optional[str
         return None
 
     flow_names = {flow.name for flow in flows}
-    flows_description = "\n".join(
-        [f"{idx + 1}. {flow.name} - {flow.desc}" for idx, flow in enumerate(flows)]
-    )
+    flows_description = "\n".join([f"{idx + 1}. {flow.name} - {flow.desc}" for idx, flow in enumerate(flows)])
 
     system_prompt = f"""
 你是流程匹配助手。根据用户问题判断是否符合以下流程：
@@ -69,10 +67,7 @@ async def match_state_by_query(query: str, current_node: Node) -> Optional[str]:
     available_node_names = [con.transition_node_state_name for con in conditions]
     # 构建条件描述
     conditions_text = "\n".join(
-        [
-            f"- 如果满足：{cond.trigger}，则输出状态名:{cond.transition_node_state_name}"
-            for cond in conditions
-        ]
+        [f"- 如果满足：{cond.trigger}，则输出状态名:{cond.transition_node_state_name}" for cond in conditions]
     )
 
     system_prompt = f"""
@@ -111,9 +106,7 @@ def _handle_state_response(
         _flags = {"emoji_found": False, "action_found": False}
 
     responses = []
-    current_node: Node = next(
-        (n for n in flow_nodes if n.state_name == state_name), None
-    )
+    current_node: Node = next((n for n in flow_nodes if n.state_name == state_name), None)
 
     if not current_node:
         logger.warning(f"State '{state_name}' not found in flow")
@@ -147,22 +140,17 @@ def _handle_state_response(
             user_states[chat_id].current_state = next_node.state_name
 
             # 递归收集下一个节点的响应
-            responses.extend(
-                _handle_state_response(
-                    flow_nodes, next_node.state_name, chat_id, _flags, False
-                )
-            )
+            responses.extend(_handle_state_response(flow_nodes, next_node.state_name, chat_id, _flags, False))
     if _log:
         logger.debug("".join(responses))
 
     return responses
 
 
-# fmt: off
 async def handle_flow(chat_id: str, query: str):
     """处理用户流程交互"""
     flow_state = user_states.get(chat_id)
-    
+
     # 场景1: 用户未在任何流程中，尝试匹配并初始化流程
     if not flow_state:
         _, available_flows = await flow_service.get_list(1, 999)
@@ -170,7 +158,7 @@ async def handle_flow(chat_id: str, query: str):
         if not target_flow_name:
             logger.info(f"No matching flow for user {chat_id}")
             return
-    
+
         logger.info(f"ChatId <{chat_id}> entering flow <{target_flow_name}>")
         flow = await flow_service.get_flow_by_name(target_flow_name)
         if not flow:
@@ -189,7 +177,7 @@ async def handle_flow(chat_id: str, query: str):
     if not current_node:
         logger.error(f"Current state node not found: {flow_state.current_state}")
         return
-    
+
     transition_result = await match_state_by_query(query, current_node)
     if not transition_result or transition_result == "None":
         logger.info(f"No state transition for chatId {chat_id}")
@@ -206,7 +194,6 @@ async def handle_flow(chat_id: str, query: str):
     for response in responses:
         yield response
     return
-# fmt: on
 
 
 # 示例用法

@@ -1,13 +1,10 @@
-import functools
-import inspect
 import logging
 import logging.config
 import sys
 from importlib.metadata import version
-from logging.handlers import TimedRotatingFileHandler
 from pathlib import Path
 
-ROOT_DIR = Path(__file__).parent.parent
+ROOT_DIR = Path(__file__).parent.parent.parent
 LOG_DIR = ROOT_DIR / "logs"
 LOG_DIR.mkdir(exist_ok=True)
 

@@ -4,8 +4,8 @@ from typing import Literal, Optional
 from fastapi import APIRouter, Body, Query
 from tortoise.expressions import Q
 
-from chat2rag.enums import SortOrder, ToolSortField
-from chat2rag.logger import get_logger
+from chat2rag.core.enums import SortOrder, ToolSortField
+from chat2rag.core.logger import get_logger
 from chat2rag.models import MCPTool
 from chat2rag.responses import Error, Success
 from chat2rag.schemas.common import Current, Size

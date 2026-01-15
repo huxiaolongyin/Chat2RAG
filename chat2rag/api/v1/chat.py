@@ -4,15 +4,15 @@ from typing import AsyncIterator
 from fastapi import APIRouter, Depends, Query
 from fastapi.responses import StreamingResponse
 
-from chat2rag.core.strategies import (
+from chat2rag.core.enums import ProcessType
+from chat2rag.core.logger import get_logger
+from chat2rag.schemas.chat import ChatQueryParams
+from chat2rag.strategies import (
     AgentStrategy,
     ExactMatchStrategy,
     RAGStrategy,
     StrategyChain,
 )
-from chat2rag.enums import ProcessType
-from chat2rag.logger import get_logger
-from chat2rag.schemas.chat import ChatQueryParams
 from chat2rag.utils.stream_v1 import StreamHandlerV1
 
 logger = get_logger(__name__)

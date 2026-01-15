@@ -1,7 +1,7 @@
 from typing import List
 
 from chat2rag.core.crud import CRUDBase
-from chat2rag.exceptions import BusinessException, ValueAlreadyExist, ValueNoExist
+from chat2rag.core.exceptions import BusinessException, ValueAlreadyExist, ValueNoExist
 from chat2rag.models import Command, CommandCategory, CommandVariant
 from chat2rag.schemas.command import (
     CommandCategoryCreate,

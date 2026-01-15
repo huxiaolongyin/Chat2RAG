@@ -1,4 +1,5 @@
 from .action import RobotAction
+from .category import Category, TransitionPhrase
 from .command import Command, CommandCategory, CommandVariant
 from .expression import RobotExpression
 from .flow import FlowData
@@ -26,4 +27,6 @@ __all__ = [
     "ModelSource",
     "RobotExpression",
     "RobotAction",
+    "Category",
+    "TransitionPhrase",
 ]

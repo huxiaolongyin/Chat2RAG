@@ -7,8 +7,8 @@ from time import perf_counter
 
 from haystack.dataclasses import StreamingChunk
 
+from chat2rag.core.logger import get_logger
 from chat2rag.dataclass.stream import StreamConfig
-from chat2rag.logger import get_logger
 from chat2rag.models.action import RobotAction
 from chat2rag.models.expression import RobotExpression
 from chat2rag.schemas.chat import (

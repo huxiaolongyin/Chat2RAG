@@ -9,8 +9,8 @@ from haystack_integrations.tools.mcp import (
     StreamableHttpServerInfo,
 )
 
-from chat2rag.enums import MCPToolType
-from chat2rag.logger import get_logger
+from chat2rag.core.enums import MCPToolType
+from chat2rag.core.logger import get_logger
 from chat2rag.models import MCPServer
 
 logger = get_logger(__name__)

@@ -1,7 +1,7 @@
 import asyncio
 
 from chat2rag.pipelines.funciton import FunctionPipeline
-from chat2rag.tools.tool_manager import tool_manager
+from chat2rag.tools import tool_manager
 
 all_tool = tool_manager.fetch_tools(["maps_weather"])
 function_pipeline = FunctionPipeline(tools=all_tool)

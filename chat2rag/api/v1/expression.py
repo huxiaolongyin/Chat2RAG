@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Query
 from tortoise.expressions import Q
 
-from chat2rag.logger import get_logger
+from chat2rag.core.logger import get_logger
 from chat2rag.schemas.base import BaseResponse, PaginatedResponse
 from chat2rag.schemas.common import Current, Size
 from chat2rag.schemas.expression import (

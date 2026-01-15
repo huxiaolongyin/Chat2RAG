@@ -10,7 +10,7 @@ from typing import List, Optional
 
 from haystack.dataclasses import StreamingChunk
 
-from chat2rag.logger import logger
+from chat2rag.core.logger import logger
 from chat2rag.schemas.chat import StreamChunkV1
 from chat2rag.services.metric_service import MetricCreate, MetricService
 

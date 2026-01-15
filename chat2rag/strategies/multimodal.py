@@ -6,7 +6,7 @@ from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.dataclasses import ChatMessage, ImageContent, StreamingChunk
 from haystack.utils import Secret
 
-from chat2rag.logger import get_logger
+from chat2rag.core.logger import get_logger
 
 from .base import ResponseStrategy
 

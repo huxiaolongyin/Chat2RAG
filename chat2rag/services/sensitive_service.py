@@ -22,3 +22,7 @@ class SensitiveService(
 ):
     def __init__(self):
         super().__init__(SensitiveWords)
+
+    async def get_active_sensitive_list(self):
+        sensitive_words = await self.model.filter(is_active=True).all()
+        return [item.word for item in sensitive_words]

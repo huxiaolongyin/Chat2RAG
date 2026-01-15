@@ -8,7 +8,7 @@ from pathlib import Path
 import pandas as pd
 from fastapi import APIRouter, File, HTTPException, UploadFile
 
-from chat2rag.logger import get_logger
+from chat2rag.core.logger import get_logger
 from chat2rag.schemas.base import BaseResponse
 
 router = APIRouter()

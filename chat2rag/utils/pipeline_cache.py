@@ -1,8 +1,8 @@
 from functools import lru_cache
 from typing import Any, Type, TypeVar
 
-from chat2rag.core.pipelines.base import BasePipeline
-from chat2rag.logger import get_logger
+from chat2rag.core.logger import get_logger
+from chat2rag.pipelines.base import BasePipeline
 
 logger = get_logger(__name__)
 T = TypeVar("T")
@@ -11,7 +11,7 @@ T = TypeVar("T")
 from functools import lru_cache
 from typing import Any, Type, TypeVar
 
-from chat2rag.logger import get_logger
+from chat2rag.core.logger import get_logger
 
 logger = get_logger(__name__)
 T = TypeVar("T")

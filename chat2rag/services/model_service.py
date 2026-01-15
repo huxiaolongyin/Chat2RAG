@@ -7,8 +7,8 @@ from tortoise.transactions import in_transaction
 
 from chat2rag.config import CONFIG
 from chat2rag.core.crud import CRUDBase
-from chat2rag.exceptions import ValueAlreadyExist, ValueNoExist
-from chat2rag.logger import get_logger
+from chat2rag.core.exceptions import ValueAlreadyExist, ValueNoExist
+from chat2rag.core.logger import get_logger
 from chat2rag.models import ModelProvider, ModelSource
 from chat2rag.schemas.model import (
     ModelProviderCreate,

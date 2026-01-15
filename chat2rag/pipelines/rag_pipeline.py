@@ -11,11 +11,12 @@ from haystack.dataclasses import ChatMessage
 from haystack.utils import Secret
 
 from chat2rag.config import CONFIG
-from chat2rag.core.pipelines.base import BasePipeline
-from chat2rag.core.pipelines.document import DocumentSearchPipeline
-from chat2rag.logger import get_logger
+from chat2rag.core.logger import get_logger
 from chat2rag.utils.merge_kwargs import recursive_tuple_to_dict
 from chat2rag.utils.pipeline_cache import create_pipeline
+
+from .base import BasePipeline
+from .document import DocumentSearchPipeline
 
 logger = get_logger(__name__)
 
@@ -83,31 +84,17 @@ class RAGPipeline(BasePipeline[AsyncPipeline]):
         **kwargs,
     ) -> Dict[str, Any]:
         try:
-            qdrant_index = (
-                [qdrant_index]
-                if isinstance(qdrant_index, str)
-                else (qdrant_index or [])
-            )
+            qdrant_index = [qdrant_index] if isinstance(qdrant_index, str) else (qdrant_index or [])
 
             self.doc_pipeline = (
-                [
-                    await create_pipeline(DocumentSearchPipeline, index)
-                    for index in qdrant_index
-                ]
-                if qdrant_index
-                else []
+                [await create_pipeline(DocumentSearchPipeline, index) for index in qdrant_index] if qdrant_index else []
             )
             # 并发执行文档检索和函数调用
-            doc_tasks = [
-                pipeline.run(query, top_k, score_threshold)
-                for pipeline in self.doc_pipeline
-            ]
+            doc_tasks = [pipeline.run(query, top_k, score_threshold) for pipeline in self.doc_pipeline]
             doc_result = await asyncio.gather(*doc_tasks)
 
             # 处理文档结果
-            documents_list = [
-                doc for result in doc_result for doc in result["retriever"]["documents"]
-            ]
+            documents_list = [doc for result in doc_result for doc in result["retriever"]["documents"]]
 
             # 构建问题模板
             # current_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")

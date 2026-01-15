@@ -3,7 +3,7 @@ import pytest
 
 @pytest.fixture
 def pipeline():
-    from chat2rag.core.pipelines.funciton import FunctionPipeline
+    from chat2rag.pipelines.funciton import FunctionPipeline
 
     return FunctionPipeline(intention_model="Qwen2.5-14B")
 

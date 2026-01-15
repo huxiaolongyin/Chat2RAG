@@ -2,8 +2,8 @@ import numpy as np
 import torch
 from silero_vad import VADIterator, load_silero_vad
 
+from chat2rag.core.logger import get_logger
 from chat2rag.core.vad.base import VAD
-from chat2rag.logger import get_logger
 
 logger = get_logger(__name__)
 

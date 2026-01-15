@@ -12,9 +12,9 @@ from haystack_integrations.document_stores.qdrant import QdrantDocumentStore
 from qdrant_client.models import Filter
 
 from chat2rag.config import CONFIG
-from chat2rag.core.pipelines.base import BasePipeline
-from chat2rag.enums import DocumentType
-from chat2rag.logger import get_logger
+from chat2rag.core.logger import get_logger
+
+from .base import BasePipeline
 
 logger = get_logger(__name__)
 

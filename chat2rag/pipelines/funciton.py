@@ -11,8 +11,9 @@ from haystack.utils import Secret
 from haystack_integrations.tools.mcp import MCPToolset
 
 from chat2rag.config import CONFIG
-from chat2rag.core.pipelines.base import BasePipeline
-from chat2rag.logger import get_logger
+from chat2rag.core.logger import get_logger
+
+from .base import BasePipeline
 
 logger = get_logger(__name__)
 
@@ -46,9 +47,7 @@ class FunctionPipeline(BasePipeline):
             return pipeline
 
         except Exception as e:
-            logger.error(
-                "Failed to initialize the Function pipeline. Failure reason: %s", e
-            )
+            logger.error("Failed to initialize the Function pipeline. Failure reason: %s", e)
             raise
 
     async def run(
@@ -67,9 +66,7 @@ class FunctionPipeline(BasePipeline):
         """
         start_time = time.time()
         if not CONFIG.FUNCION_ENABLED:
-            logger.debug(
-                "Since FUNCION_ENABLED is configured to False, the Function pipeline is skipped"
-            )
+            logger.debug("Since FUNCION_ENABLED is configured to False, the Function pipeline is skipped")
             return {}
 
         messages = [
@@ -78,17 +75,11 @@ class FunctionPipeline(BasePipeline):
             ChatMessage.from_user(query),
         ]
         try:
-            result = await asyncio.to_thread(
-                self.pipeline.run, data={"intention": {"messages": messages}}
-            )
-            logger.info(
-                "Function pipeline runtime: %.2f seconds", time.time() - start_time
-            )
+            result = await asyncio.to_thread(self.pipeline.run, data={"intention": {"messages": messages}})
+            logger.info("Function pipeline runtime: %.2f seconds", time.time() - start_time)
             logger.debug("Function pipeline result: %s", result)
             return result
 
         except Exception as e:
-            logger.error(
-                "Failed to run the Function pipeline. Reasons for failure: %s", e
-            )
+            logger.error("Failed to run the Function pipeline. Reasons for failure: %s", e)
             raise

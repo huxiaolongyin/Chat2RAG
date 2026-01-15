@@ -3,7 +3,7 @@ from typing import Any, Dict, Optional
 from fastapi import APIRouter
 from tortoise.expressions import Q
 
-from chat2rag.logger import get_logger
+from chat2rag.core.logger import get_logger
 from chat2rag.responses import Error, Success
 from chat2rag.schemas.common import Current, Size
 from chat2rag.schemas.flow_data import FlowDataCreate, FlowDataUpdate

@@ -10,9 +10,9 @@ from openai import OpenAI
 from starlette.websockets import WebSocketState
 
 from chat2rag.core.asr.fun import FunASR
+from chat2rag.core.logger import get_logger
 from chat2rag.core.tts.kokorotts import KokoroTTS
 from chat2rag.core.vad.silero import SileroVAD
-from chat2rag.logger import get_logger
 
 logger = get_logger(__name__)
 

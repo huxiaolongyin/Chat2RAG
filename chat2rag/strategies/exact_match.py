@@ -1,6 +1,6 @@
 from typing import AsyncIterator
 
-from chat2rag.core.document.qdrant import QAQdrantDocumentStore
+from chat2rag.stores.qdrant import QAQdrantDocumentStore
 
 from .base import ResponseStrategy
 

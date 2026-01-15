@@ -9,8 +9,8 @@ from service.knowledge import knowledge_service
 from service.message import message_service
 from utils.sidebar import render_sidebar
 
-from chat2rag.exceptions import ChatServiceError, NetworkError, ParseError
-from chat2rag.logger import get_logger
+from chat2rag.core.exceptions import ChatServiceError, NetworkError, ParseError
+from chat2rag.core.logger import get_logger
 from chat2rag.schemas.chat import ChatQueryParams
 
 logger = get_logger("chat2rag.ui")

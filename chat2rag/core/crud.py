@@ -5,7 +5,7 @@ from pydantic.main import IncEx
 from tortoise.expressions import Q
 from tortoise.models import Model
 
-from chat2rag.exceptions import ValueNoExist
+from chat2rag.core.exceptions import ValueNoExist
 
 ModelType = TypeVar("ModelType", bound=Model)
 CreateSchemaType = TypeVar("CreateSchemaType", bound=BaseModel)
@@ -109,9 +109,7 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         if isinstance(obj_in, dict):
             obj_dict = obj_in
         else:
-            obj_dict = obj_in.model_dump(
-                exclude_unset=True, exclude_none=True, exclude=exclude
-            )
+            obj_dict = obj_in.model_dump(exclude_unset=True, exclude_none=True, exclude=exclude)
         obj: ModelType = self.model(**obj_dict)
         await obj.save()
         return obj
@@ -134,9 +132,7 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         if isinstance(obj_in, dict):
             obj_dict = obj_in
         else:
-            obj_dict = obj_in.model_dump(
-                exclude_unset=True, exclude_none=True, exclude=exclude
-            )
+            obj_dict = obj_in.model_dump(exclude_unset=True, exclude_none=True, exclude=exclude)
         obj = await self.get(id=id)
         obj = obj.update_from_dict(obj_dict)
         await obj.save()

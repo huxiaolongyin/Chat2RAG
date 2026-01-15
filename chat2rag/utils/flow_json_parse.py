@@ -10,10 +10,7 @@ def dict_to_flow_nodes(data: dict) -> List[Node]:
 
     # 转换 Condition
     def _to_condition(cond_list: list) -> List[Condition]:
-        return [
-            Condition(id=cond.get("id", ""), trigger=cond.get("trigger", ""))
-            for cond in cond_list
-        ]
+        return [Condition(id=cond.get("id", ""), trigger=cond.get("trigger", "")) for cond in cond_list]
 
     # 转换 Node
     def _to_node(node_dict: dict) -> Node:
@@ -33,7 +30,6 @@ def dict_to_flow_nodes(data: dict) -> List[Node]:
             state_name=state_name if state_name else node_type,
         )
 
-    # fmt: off
     def _update_condition(edge_dict: dict, nodes: List[Node]):
         source_handle = edge_dict.get("sourceHandle")
 
@@ -48,7 +44,9 @@ def dict_to_flow_nodes(data: dict) -> List[Node]:
         # 2. 如果节点只有一个条件，直接更新它
         if len(source_node.conditions) == 1:
             source_node.conditions[0].transition_node_id = target_id
-            source_node.conditions[0].transition_node_state_name = next((n.state_name for n in nodes if n.id == target_id), "")
+            source_node.conditions[0].transition_node_state_name = next(
+                (n.state_name for n in nodes if n.id == target_id), ""
+            )
             return
 
         # 3. 否则，解析 handle id 并查找匹配的条件进行更新
@@ -62,7 +60,6 @@ def dict_to_flow_nodes(data: dict) -> List[Node]:
                 condition.transition_node_id = target_id
                 condition.transition_node_state_name = next((n.state_name for n in nodes if n.id == target_id), "")
                 break  # 找到并更新后，退出循环
-    # fmt: on
 
     # 转换主对象
     nodes = [_to_node(n) for n in data.get("nodes", [])]

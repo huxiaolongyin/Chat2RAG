@@ -6,9 +6,9 @@ from typing import AsyncIterator, List
 from haystack.dataclasses import ChatMessage, ChatRole, StreamingChunk
 
 from chat2rag.config import CONFIG
-from chat2rag.core.pipelines.agent import AgentPipeline
-from chat2rag.logger import get_logger
+from chat2rag.core.logger import get_logger
 from chat2rag.models.models import ModelProvider, ModelSource
+from chat2rag.pipelines.agent import AgentPipeline
 from chat2rag.services.model_service import model_source_service
 from chat2rag.utils.chat_history import chat_history
 from chat2rag.utils.merge_kwargs import merge_generation_kwargs

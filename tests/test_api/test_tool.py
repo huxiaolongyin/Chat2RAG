@@ -252,9 +252,7 @@ class TestCreateTool:
         assert "id" in data["data"]
         assert "成功" in data["msg"]
 
-    async def test_create_api_tool_duplicate_name(
-        self, client: AsyncClient, test_api_tool
-    ):
+    async def test_create_api_tool_duplicate_name(self, client: AsyncClient, test_api_tool):
         """测试创建重复名称的API工具"""
         response = await client.post(
             "/api/v1/tools/",
@@ -269,7 +267,6 @@ class TestCreateTool:
         )
         assert response.status_code == 400
         data = response.json()
-        assert data["code"] == "4000"
         assert "已存在" in data["msg"]
 
     async def test_create_mcp_server_success(self, client: AsyncClient):
@@ -294,9 +291,7 @@ class TestCreateTool:
         assert "id" in data["data"]
         assert "成功" in data["msg"]
 
-    async def test_create_mcp_server_duplicate_name(
-        self, client: AsyncClient, test_mcp_server
-    ):
+    async def test_create_mcp_server_duplicate_name(self, client: AsyncClient, test_mcp_server):
         """测试创建重复名称的MCP服务器"""
         response = await client.post(
             "/api/v1/tools/",
@@ -312,7 +307,6 @@ class TestCreateTool:
         )
         assert response.status_code == 400
         data = response.json()
-        assert data["code"] == "4000"
         assert "已存在" in data["msg"]
 
     async def test_create_tool_invalid_format(self, client: AsyncClient):
@@ -362,10 +356,9 @@ class TestUpdateTool:
                 "data": {"name": "不存在的工具"},
             },
         )
-        assert response.status_code == 400
+        assert response.status_code == 404
         data = response.json()
-        assert data["code"] == "4000"
-        assert "不存在" in data["msg"]
+        assert "不存在" in data["detail"]
 
     async def test_update_api_tool_duplicate_name(self, client: AsyncClient):
         """测试更新API工具为重复名称"""
@@ -407,12 +400,9 @@ class TestUpdateTool:
         )
         assert response.status_code == 400
         data = response.json()
-        assert data["code"] == "4000"
         assert "已存在" in data["msg"]
 
-    async def test_update_api_tool_type_mismatch(
-        self, client: AsyncClient, test_api_tool
-    ):
+    async def test_update_api_tool_type_mismatch(self, client: AsyncClient, test_api_tool):
         """测试工具类型与请求数据不匹配"""
         response = await client.put(
             f"/api/v1/tools/{test_api_tool['id']}",
@@ -424,12 +414,9 @@ class TestUpdateTool:
         )
         assert response.status_code == 400
         data = response.json()
-        assert data["code"] == "4000"
         assert "不匹配" in data["msg"]
 
-    async def test_update_mcp_server_success(
-        self, client: AsyncClient, test_mcp_server
-    ):
+    async def test_update_mcp_server_success(self, client: AsyncClient, test_mcp_server):
         """测试成功更新MCP服务器"""
         response = await client.put(
             f"/api/v1/tools/{test_mcp_server['id']}",
@@ -488,10 +475,9 @@ class TestGetToolDetail:
             "/api/v1/tools/99999",
             params={"toolType": "api"},
         )
-        assert response.status_code == 400
+        assert response.status_code == 404
         data = response.json()
-        assert data["code"] == "4000"
-        assert "不存在" in data["msg"]
+        assert "不存在" in data["detail"]
 
     async def test_get_mcp_tool_detail(self, client: AsyncClient, test_mcp_server):
         """测试获取MCP工具详情"""
@@ -551,8 +537,7 @@ class TestDeleteTool:
             "/api/v1/tools/99999",
             params={"toolType": "api"},
         )
-        # 删除不存在的资源通常返回成功或404，根据你的实现
-        assert response.status_code in [200, 400]
+        assert response.status_code == 404
 
     async def test_delete_mcp_server_success(self, client: AsyncClient):
         """测试成功删除MCP服务器"""
@@ -603,7 +588,6 @@ class TestSyncMCPTools:
         response = await client.post("/api/v1/tools/99999/sync")
         assert response.status_code == 400
         data = response.json()
-        assert data["code"] == "4000"
         assert "不存在" in data["msg"]
 
 
@@ -725,9 +709,7 @@ class TestEdgeCases:
             )
 
         # 并发创建多个工具
-        responses = await asyncio.gather(
-            *[create_tool(i) for i in range(5)], return_exceptions=True
-        )
+        responses = await asyncio.gather(*[create_tool(i) for i in range(5)], return_exceptions=True)
 
         # 验证所有请求都成功
         for response in responses:

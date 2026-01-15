@@ -5,7 +5,8 @@ import soundfile as sf
 import torch
 from funasr import AutoModel
 from funasr.utils.postprocess_utils import rich_transcription_postprocess
-from logger import get_logger
+
+from chat2rag.core.logger import get_logger
 
 from .base import BaseASR
 
@@ -64,13 +65,9 @@ class FunASR(BaseASR):
                 merge_length_s=15,
             )
             logger.info("ASR识别结果: %s", response)
-            result = rich_transcription_postprocess(response[0]["text"]).replace(
-                " ", ""
-            )
+            result = rich_transcription_postprocess(response[0]["text"]).replace(" ", "")
 
-            logger.info(
-                "ASR识别完成， 内容为%s，耗时: %.2f秒", result, time.time() - start_time
-            )
+            logger.info("ASR识别完成， 内容为%s，耗时: %.2f秒", result, time.time() - start_time)
             return result
         except Exception as e:
             logger.error("ASR识别失败: %s", e)

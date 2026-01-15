@@ -2,7 +2,7 @@ from aerich import Command
 from tortoise.exceptions import OperationalError
 
 from chat2rag.config import CONFIG
-from chat2rag.logger import get_logger
+from chat2rag.core.logger import get_logger
 
 logger = get_logger(__name__)
 

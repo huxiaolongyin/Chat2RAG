@@ -1,51 +1,16 @@
 from typing import List, Optional
 
 from cachetools import TTLCache
-from haystack.dataclasses import (
-    ChatMessage,
-    ChatRole,
-    ImageContent,
-    TextContent,
-    ToolCall,
-)
+from haystack.dataclasses import ChatMessage, ChatRole, ImageContent, ToolCall
 
-from chat2rag.config import CONFIG
-from chat2rag.logger import get_logger
-from chat2rag.schemas.prompt import PromptCreate
-from chat2rag.services.action_service import RobotActionService
-from chat2rag.services.expression_service import RobotExpressionService
-from chat2rag.services.prompt_service import PromptService
+from chat2rag.core.logger import get_logger
+from chat2rag.services.action_service import robot_action_service
+from chat2rag.services.expression_service import robot_expression_service
+from chat2rag.services.prompt_service import prompt_service
 
 logger = get_logger(__name__)
-prompt_service = PromptService()
-action_service = RobotActionService()
-expression_service = RobotExpressionService()
 
 
-# [
-#     "点头",
-#     "摇头",
-#     "挥手",
-#     "招手",
-#     "耸肩",
-#     "鼓掌",
-#     "站立",
-#     "坐下",
-#     "前进",
-#     "后退",
-# ]
-# emoji_list = [
-#     "微笑",
-#     "开心",
-#     "难过",
-#     "愤怒",
-#     "困惑",
-#     "思考",
-#     "惊讶",
-#     "疲惫",
-#     "害羞",
-#     "鼓励",
-# ]
 DEFAULT_QUERY_TEMPLATE = f"""
 问题：{{{{ query }}}}；
 
@@ -89,28 +54,6 @@ async def get_prompt_template(prompt_name: str) -> Optional[str]:
         return prompt.prompt_text
     else:
         return prompt.prompt_text
-    #     try:
-
-    #         prompt = await prompt_service.model.filter(
-    #             prompt_name__in=["默认", "default"]
-    #         ).first()
-    #         if not prompt:
-    #             # 创建默认提示词
-    #             # await prompt_service.ensure_default_prompt()
-    #             # logger.debug("Create default prompt '%s'", prompt_name)
-    #             # prompt = await prompt_service.create(
-    #             #     PromptCreate(
-    #             #         promptName="默认",
-    #             #         promptDesc=f"默认",
-    #             #         promptText=CONFIG.RAG_PROMPT_TEMPLATE,
-    #             #     )
-    #             # )
-    #         return prompt
-
-    #     except Exception as e:
-    #         logger.error("Error retrieving prompt '%s': %s", prompt_name, str(e))
-    #         return None
-    # return prompt.get("promptText")
 
 
 class ChatHistory:
@@ -219,8 +162,8 @@ class ChatHistory:
 
         user_msg = DEFAULT_QUERY_TEMPLATE
         if enable_extra_prompt:
-            action_list = await action_service.get_active_action_list()
-            emoji_list = await expression_service.get_active_expression_list()
+            action_list = await robot_action_service.get_active_action_list()
+            emoji_list = await robot_expression_service.get_active_expression_list()
             formatted_prompt = EXTRA_PROMPT.format(
                 action0=next(iter(action_list), ""),
                 actions="、".join(action_list),

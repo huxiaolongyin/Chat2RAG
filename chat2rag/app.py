@@ -9,10 +9,11 @@ from fastapi.staticfiles import StaticFiles
 from chat2rag.api.routes import router
 from chat2rag.config import CONFIG
 from chat2rag.core.init_app import modify_db
-from chat2rag.logger import get_logger
+from chat2rag.core.logger import get_logger
 from chat2rag.middleware import ExceptionHandlerMiddleware, LoggingMiddleware
 from chat2rag.services.model_service import ModelSourceService, periodic_latency_update
 from chat2rag.services.prompt_service import prompt_service
+from chat2rag.services.question_analyzer import question_analyzer
 
 logger = get_logger(__name__)
 
@@ -24,7 +25,7 @@ async def lifespan(app: FastAPI):
 
     # 进行 RAG 流程监控
     if CONFIG.TELEMETRY_ENABLED:
-        from chat2rag.telemetry import setup_telemetry
+        from chat2rag.core.telemetry import setup_telemetry
 
         logger.info("Setting up telemetry...")
         # 需要先启动 server 服务： python -m phoenix.server.main serve
@@ -33,6 +34,9 @@ async def lifespan(app: FastAPI):
 
     # 创建默认提示词
     await prompt_service.ensure_default_prompt()
+
+    # 创建后台任务执行同步
+    asyncio.create_task(question_analyzer.sync_from_metrics())
 
     # 加载MCP连接
     # ToolManager()

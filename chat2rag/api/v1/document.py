@@ -4,14 +4,14 @@ from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, Body, Depends, HTTPException, Query
 
 from chat2rag.config import CONFIG
-from chat2rag.core.document.qdrant import QAQdrantDocumentStore
+from chat2rag.core.enums import CollectionSortField, DocumentSortField, SortOrder
+from chat2rag.core.logger import get_logger
 from chat2rag.dataclass.document import QADocument
-from chat2rag.enums import CollectionSortField, DocumentSortField, SortOrder
-from chat2rag.logger import get_logger
 from chat2rag.responses import Error, Success
 from chat2rag.schemas.base import BaseResponse
 from chat2rag.schemas.common import Current, Size
 from chat2rag.schemas.document import collectionPaginatedData
+from chat2rag.stores.qdrant import QAQdrantDocumentStore
 from chat2rag.utils.monitoring import async_performance_logger
 
 logger = get_logger(__name__)
