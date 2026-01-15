@@ -28,6 +28,7 @@
 - 移除 rag 的 strategies
 - 移除 stream_v1.py，StreamHandlerV1 继承 StreamHandler, 进行功能合并
 - 移除 关于 function、rag 管道 的示例
+- 移除 不再使用的 exception_handler 装饰器
 
 ## [V0.3.0rc3] - 2026-01-09
 
