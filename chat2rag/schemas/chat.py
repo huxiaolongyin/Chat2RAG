@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Any
 
-from pydantic import Field, field_validator
+from pydantic import Field, field_validator, model_validator
 
 from chat2rag.config import CONFIG
 from chat2rag.dataclass.strategy import StrategyRequest
@@ -13,6 +13,19 @@ from .base import BaseSchema
 class Audio(BaseSchema):
     voice: str
     format: str
+
+
+class QueryContent(BaseSchema):
+    text: str = ""
+    image: str = ""
+    video: str = ""
+    audio: str = ""
+
+    @model_validator(mode="after")
+    def check_at_least_one_content(self):
+        if not any([self.text, self.image, self.video, self.audio]):
+            raise ValueError("至少需要提供一种内容类型（text/image/video/audio）")
+        return self
 
 
 class ChatQueryParams(BaseSchema):
@@ -31,7 +44,6 @@ class ChatQueryParams(BaseSchema):
     chat_id: str | None = Field(None, description="聊天的标识")
     chat_rounds: int = Field(default=1, ge=0, le=30, description="聊天轮数")
     prompt_name: str = Field("默认", description="提示词名称选择")
-    # intention_model: str = Field(default=CONFIG.CHAT_V1_DEFAULT_MODELS["intention"], description="意图模型")
     generator_model: str = Field(default=CONFIG.CHAT_V1_DEFAULT_MODELS["generator"], description="生成模型")
     generation_kwargs: str = Field(default="{}", description="生成参数")
     tool_list: str = Field(default="[]", description="工具列表，JSON字符串格式")
@@ -78,7 +90,7 @@ class ChatRequest(BaseSchema):
     )
     tools: list = Field(default=CONFIG.TOOLS, description="工具列表，非必填，默认为空")
     flows: list = Field(default=[], description="流程列表，非必填，选择调用的流程，默认为空")
-    content: dict = Field(default={"text": ""}, description="交互内容，必填，支持类型：text、image、video、audio")
+    content: QueryContent = Field(..., description="交互内容，必填，支持类型：text、image、video、audio")
     chat_id: str | None = Field(None, description="会话标识，非必填，用于处理多轮聊天会话")
     chat_rounds: int = Field(
         default=CONFIG.CHAT_ROUNDS,

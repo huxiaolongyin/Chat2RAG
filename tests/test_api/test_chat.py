@@ -325,7 +325,8 @@ class TestChatBasic:
                 "collections": ["测试数据"],
             },
         )
-        assert response.status_code == 404
+        assert response.status_code == 422
+        assert "至少需要提供一种内容类型" in str(response.json())
 
     async def test_chat_batch_mode(self, client: AsyncClient):
         """测试批处理模式"""

@@ -17,7 +17,7 @@ class MultiModalStrategy(ResponseStrategy):
     """多模态处理策略"""
 
     async def can_handle(self, query: str) -> bool:
-        return self.request.content.get("image", {})
+        return self.request.content.image
 
     async def execute(self, query: str) -> AsyncIterator[str]:
         # history_messages = await chat_history.get_history_messages(

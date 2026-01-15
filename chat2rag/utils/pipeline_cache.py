@@ -34,7 +34,7 @@ def _make_hashable_kwargs(**kwargs) -> tuple:
     return tuple(items)
 
 
-@lru_cache(maxsize=32)
+@lru_cache(maxsize=128)
 def _cached_get_pipeline(cls: Type[T], args: tuple, hashable_kwargs: tuple) -> T:
     """实际被缓存的工厂函数 - 只缓存实例本身"""
     kwargs = dict(hashable_kwargs)

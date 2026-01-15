@@ -30,11 +30,8 @@ class RobotActionService(CRUDBase[RobotAction, RobotActionCreate, RobotActionUpd
         actions = await self.model.filter(is_active=True).all()
         return [action.name for action in actions]
 
-    async def get_code_by_name(self, name: str = ""):
-        action = await self.model.filter(name=name).first()
-        if not action:
-            return ""
-        return action.code
+    async def get_code_by_name(self, name: str = "") -> RobotAction:
+        return await self.model.filter(name=name).first()
 
 
 robot_action_service = RobotActionService()

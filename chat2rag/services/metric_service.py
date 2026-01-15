@@ -30,9 +30,7 @@ class MetricService(CRUDBase[Metric, MetricCreate, MetricUpdate]):
 
         order_by = [self.order_by_field("create_time", descending=True)]
 
-        return self.get_paginated(
-            page=page, page_size=page_size, filters=filters, order_by=order_by
-        )
+        return self.get_paginated(page=page, page_size=page_size, filters=filters, order_by=order_by)
 
     def get_performance_stats(
         self,
@@ -79,45 +77,27 @@ class MetricService(CRUDBase[Metric, MetricCreate, MetricUpdate]):
 
             # 转换为字典返回
             return {
-                "avg_response_time": (
-                    float(result.avg_response_time) if result.avg_response_time else 0
-                ),
+                "avg_response_time": (float(result.avg_response_time) if result.avg_response_time else 0),
                 "avg_first_response_time": (
-                    float(result.avg_first_response_time)
-                    if result.avg_first_response_time
-                    else 0
+                    float(result.avg_first_response_time) if result.avg_first_response_time else 0
                 ),
                 "avg_document_retrieval_time": (
-                    float(result.avg_document_retrieval_time)
-                    if result.avg_document_retrieval_time
-                    else 0
+                    float(result.avg_document_retrieval_time) if result.avg_document_retrieval_time else 0
                 ),
                 "avg_tool_execution_time": (
-                    float(result.avg_tool_execution_time)
-                    if result.avg_tool_execution_time
-                    else 0
+                    float(result.avg_tool_execution_time) if result.avg_tool_execution_time else 0
                 ),
-                "avg_input_tokens": (
-                    float(result.avg_input_tokens) if result.avg_input_tokens else 0
-                ),
-                "avg_output_tokens": (
-                    float(result.avg_output_tokens) if result.avg_output_tokens else 0
-                ),
+                "avg_input_tokens": (float(result.avg_input_tokens) if result.avg_input_tokens else 0),
+                "avg_output_tokens": (float(result.avg_output_tokens) if result.avg_output_tokens else 0),
                 "total_requests": result.total_requests,
                 "total_input_tokens": result.total_input_tokens,
                 "total_output_tokens": result.total_output_tokens,
-                "min_response_time": (
-                    float(result.min_response_time) if result.min_response_time else 0
-                ),
-                "max_response_time": (
-                    float(result.max_response_time) if result.max_response_time else 0
-                ),
+                "min_response_time": (float(result.min_response_time) if result.min_response_time else 0),
+                "max_response_time": (float(result.max_response_time) if result.max_response_time else 0),
             }
         else:
             # 按小时分组统计
-            hour_extract_expr = func.date_trunc("hour", Metric.create_time).label(
-                "hour"
-            )
+            hour_extract_expr = func.date_trunc("hour", Metric.create_time).label("hour")
 
             query = (
                 self.db.query(
@@ -138,11 +118,7 @@ class MetricService(CRUDBase[Metric, MetricCreate, MetricUpdate]):
             return [
                 {
                     "hour": result.hour.isoformat(),
-                    "avg_response_time": (
-                        float(result.avg_response_time)
-                        if result.avg_response_time
-                        else 0
-                    ),
+                    "avg_response_time": (float(result.avg_response_time) if result.avg_response_time else 0),
                     "total_requests": result.total_requests,
                     "total_input_tokens": result.total_input_tokens,
                     "total_output_tokens": result.total_output_tokens,
@@ -161,9 +137,7 @@ class MetricService(CRUDBase[Metric, MetricCreate, MetricUpdate]):
         Returns:
             最新的指标记录列表
         """
-        return (
-            self.db.query(Metric).order_by(desc(Metric.create_time)).limit(limit).all()
-        )
+        return self.db.query(Metric).order_by(desc(Metric.create_time)).limit(limit).all()
 
     def update_metric(
         self,
@@ -186,9 +160,7 @@ class MetricService(CRUDBase[Metric, MetricCreate, MetricUpdate]):
             return self.update(db_obj=db_obj, obj_in=metric_data)
         return None
 
-    async def create_metric(
-        self, metric_data: Union[MetricCreate, Dict[str, Any]]
-    ) -> Metric:
+    async def create_metric(self, metric_data: Union[MetricCreate, Dict[str, Any]]) -> Metric:
         """
         创建新的指标记录
 
@@ -206,9 +178,7 @@ class MetricService(CRUDBase[Metric, MetricCreate, MetricUpdate]):
 
         return await self.create(obj_in=metric_data)
 
-    def get_model_usage_stats(
-        self, start_time: datetime, end_time: datetime
-    ) -> List[Dict[str, Any]]:
+    def get_model_usage_stats(self, start_time: datetime, end_time: datetime) -> List[Dict[str, Any]]:
         """
         获取不同模型的使用统计
 
@@ -239,18 +209,14 @@ class MetricService(CRUDBase[Metric, MetricCreate, MetricUpdate]):
             {
                 "model": result.model,
                 "request_count": result.request_count,
-                "avg_response_time": (
-                    float(result.avg_response_time) if result.avg_response_time else 0
-                ),
+                "avg_response_time": (float(result.avg_response_time) if result.avg_response_time else 0),
                 "total_input_tokens": result.total_input_tokens,
                 "total_output_tokens": result.total_output_tokens,
             }
             for result in results
         ]
 
-    def get_tool_usage_stats(
-        self, start_time: datetime, end_time: datetime
-    ) -> List[Dict[str, Any]]:
+    def get_tool_usage_stats(self, start_time: datetime, end_time: datetime) -> List[Dict[str, Any]]:
         """
         获取工具使用统计
 
@@ -277,24 +243,18 @@ class MetricService(CRUDBase[Metric, MetricCreate, MetricUpdate]):
         SELECT * FROM tool_usage ORDER BY usage_count DESC
         """
 
-        result = self.db.execute(
-            text(sql), {"start_time": start_time, "end_time": end_time}
-        )
+        result = self.db.execute(text(sql), {"start_time": start_time, "end_time": end_time})
 
         return [
             {
                 "tool_name": row.tool_name,
                 "usage_count": row.usage_count,
-                "avg_execution_time": (
-                    float(row.avg_execution_time) if row.avg_execution_time else 0
-                ),
+                "avg_execution_time": (float(row.avg_execution_time) if row.avg_execution_time else 0),
             }
             for row in result
         ]
 
-    def get_collection_usage_stats(
-        self, start_time: datetime, end_time: datetime
-    ) -> List[Dict[str, Any]]:
+    def get_collection_usage_stats(self, start_time: datetime, end_time: datetime) -> List[Dict[str, Any]]:
         """
         获取知识库使用统计
 
@@ -322,27 +282,19 @@ class MetricService(CRUDBase[Metric, MetricCreate, MetricUpdate]):
         SELECT * FROM collection_usage ORDER BY usage_count DESC
         """
 
-        result = self.db.execute(
-            text(sql), {"start_time": start_time, "end_time": end_time}
-        )
+        result = self.db.execute(text(sql), {"start_time": start_time, "end_time": end_time})
 
         return [
             {
                 "collection_name": row.collection_name,
                 "usage_count": row.usage_count,
-                "avg_retrieval_time": (
-                    float(row.avg_retrieval_time) if row.avg_retrieval_time else 0
-                ),
-                "avg_document_count": (
-                    float(row.avg_document_count) if row.avg_document_count else 0
-                ),
+                "avg_retrieval_time": (float(row.avg_retrieval_time) if row.avg_retrieval_time else 0),
+                "avg_document_count": (float(row.avg_document_count) if row.avg_document_count else 0),
             }
             for row in result
         ]
 
-    def get_error_stats(
-        self, start_time: datetime, end_time: datetime
-    ) -> Dict[str, Any]:
+    def get_error_stats(self, start_time: datetime, end_time: datetime) -> Dict[str, Any]:
         """
         获取错误统计信息
 
@@ -356,35 +308,26 @@ class MetricService(CRUDBase[Metric, MetricCreate, MetricUpdate]):
         filters = [self.between_dates("create_time", start_time, end_time)]
 
         # 总请求数
-        total_count = (
-            self.db.query(func.count(Metric.message_id)).filter(*filters).scalar()
-        )
+        total_count = self.db.query(func.count(Metric.message_id)).filter(*filters).scalar()
 
         # 错误请求数（有错误信息的请求）
         error_filters = filters.copy()
         error_filters.append(Metric.error_message.isnot(None))
-        error_count = (
-            self.db.query(func.count(Metric.message_id)).filter(*error_filters).scalar()
-        )
+        error_count = self.db.query(func.count(Metric.message_id)).filter(*error_filters).scalar()
 
         # 计算错误率
         error_rate = (error_count / total_count) if total_count > 0 else 0
 
         # 获取常见错误类型及数量
         common_errors_query = (
-            self.db.query(
-                Metric.error_message, func.count(Metric.message_id).label("count")
-            )
+            self.db.query(Metric.error_message, func.count(Metric.message_id).label("count"))
             .filter(*error_filters)
             .group_by(Metric.error_message)
             .order_by(desc("count"))
             .limit(10)
         )
 
-        common_errors = [
-            {"error_message": row.error_message, "count": row.count}
-            for row in common_errors_query
-        ]
+        common_errors = [{"error_message": row.error_message, "count": row.count} for row in common_errors_query]
 
         return {
             "total_requests": total_count,
@@ -421,9 +364,7 @@ class MetricService(CRUDBase[Metric, MetricCreate, MetricUpdate]):
         elif interval == "week":
             time_expr = func.date_trunc("week", Metric.create_time).label("time_bucket")
         elif interval == "month":
-            time_expr = func.date_trunc("month", Metric.create_time).label(
-                "time_bucket"
-            )
+            time_expr = func.date_trunc("month", Metric.create_time).label("time_bucket")
         else:
             raise ValueError(f"不支持的时间间隔: {interval}")
 
@@ -433,21 +374,14 @@ class MetricService(CRUDBase[Metric, MetricCreate, MetricUpdate]):
         elif metric == "avg_response_time":
             metric_expr = func.avg(Metric.total_ms).label("value")
         elif metric == "avg_tokens":
-            metric_expr = func.avg(Metric.input_tokens + Metric.output_tokens).label(
-                "value"
-            )
+            metric_expr = func.avg(Metric.input_tokens + Metric.output_tokens).label("value")
         else:
             raise ValueError(f"不支持的指标: {metric}")
 
         # 执行查询
         filters = [self.between_dates("create_time", start_time, end_time)]
 
-        query = (
-            self.db.query(time_expr, metric_expr)
-            .filter(*filters)
-            .group_by(time_expr)
-            .order_by(time_expr)
-        )
+        query = self.db.query(time_expr, metric_expr).filter(*filters).group_by(time_expr).order_by(time_expr)
 
         results = query.all()
 
@@ -473,23 +407,14 @@ class MetricService(CRUDBase[Metric, MetricCreate, MetricUpdate]):
         filters = [Metric.chat_id == chat_id]
 
         # 获取会话基本信息
-        first_message = (
-            self.db.query(Metric).filter(*filters).order_by(Metric.create_time).first()
-        )
-        last_message = (
-            self.db.query(Metric)
-            .filter(*filters)
-            .order_by(desc(Metric.create_time))
-            .first()
-        )
+        first_message = self.db.query(Metric).filter(*filters).order_by(Metric.create_time).first()
+        last_message = self.db.query(Metric).filter(*filters).order_by(desc(Metric.create_time)).first()
 
         if not first_message or not last_message:
             return {"error": "未找到会话记录"}
 
         # 计算会话持续时间（秒）
-        duration_seconds = (
-            last_message.create_time - first_message.create_time
-        ).total_seconds()
+        duration_seconds = (last_message.create_time - first_message.create_time).total_seconds()
 
         # 获取会话轮次
         rounds = self.db.query(func.count(Metric.message_id)).filter(*filters).scalar()
@@ -503,17 +428,11 @@ class MetricService(CRUDBase[Metric, MetricCreate, MetricUpdate]):
         token_result = token_query.first()
 
         # 获取平均响应时间
-        avg_response_time = (
-            self.db.query(func.avg(Metric.total_ms)).filter(*filters).scalar()
-        )
+        avg_response_time = self.db.query(func.avg(Metric.total_ms)).filter(*filters).scalar()
 
         # 获取工具使用情况
         tools_used = []
-        tools_query = (
-            self.db.query(Metric.tools)
-            .filter(*filters)
-            .filter(Metric.tools.isnot(None))
-        )
+        tools_query = self.db.query(Metric.tools).filter(*filters).filter(Metric.tools.isnot(None))
 
         for row in tools_query:
             if row.tools:
@@ -533,19 +452,9 @@ class MetricService(CRUDBase[Metric, MetricCreate, MetricUpdate]):
             "end_time": last_message.create_time.isoformat(),
             "duration_seconds": duration_seconds,
             "rounds": rounds,
-            "total_input_tokens": (
-                token_result.total_input_tokens
-                if token_result.total_input_tokens
-                else 0
-            ),
-            "total_output_tokens": (
-                token_result.total_output_tokens
-                if token_result.total_output_tokens
-                else 0
-            ),
-            "avg_response_time_ms": (
-                float(avg_response_time) if avg_response_time else 0
-            ),
+            "total_input_tokens": (token_result.total_input_tokens if token_result.total_input_tokens else 0),
+            "total_output_tokens": (token_result.total_output_tokens if token_result.total_output_tokens else 0),
+            "avg_response_time_ms": (float(avg_response_time) if avg_response_time else 0),
             "tools_usage": [{"tool": k, "count": v} for k, v in tool_frequency.items()],
         }
 
@@ -572,12 +481,7 @@ class MetricService(CRUDBase[Metric, MetricCreate, MetricUpdate]):
         if filters:
             base_filters.extend(filters)
 
-        metrics = (
-            self.db.query(Metric)
-            .filter(*base_filters)
-            .order_by(Metric.create_time)
-            .all()
-        )
+        metrics = self.db.query(Metric).filter(*base_filters).order_by(Metric.create_time).all()
 
         result = []
         for metric in metrics:
@@ -636,15 +540,11 @@ class MetricService(CRUDBase[Metric, MetricCreate, MetricUpdate]):
         start_time = end_time - timedelta(days=days)
 
         # 获取总请求数
-        total_requests = self.count(
-            filters=[self.between_dates("create_time", start_time, end_time)]
-        )
+        total_requests = self.count(filters=[self.between_dates("create_time", start_time, end_time)])
 
         # 获取今日请求数
         today_start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
-        today_requests = self.count(
-            filters=[self.between_dates("create_time", today_start, end_time)]
-        )
+        today_requests = self.count(filters=[self.between_dates("create_time", today_start, end_time)])
 
         # 获取平均响应时间
         avg_response_time = (
@@ -677,19 +577,12 @@ class MetricService(CRUDBase[Metric, MetricCreate, MetricUpdate]):
             "period_days": days,
             "total_requests": total_requests,
             "today_requests": today_requests,
-            "avg_response_time_ms": (
-                float(avg_response_time) if avg_response_time else 0
-            ),
+            "avg_response_time_ms": (float(avg_response_time) if avg_response_time else 0),
             "error_rate": error_rate,
-            "total_input_tokens": (
-                token_result.total_input_tokens
-                if token_result.total_input_tokens
-                else 0
-            ),
-            "total_output_tokens": (
-                token_result.total_output_tokens
-                if token_result.total_output_tokens
-                else 0
-            ),
+            "total_input_tokens": (token_result.total_input_tokens if token_result.total_input_tokens else 0),
+            "total_output_tokens": (token_result.total_output_tokens if token_result.total_output_tokens else 0),
             "model_distribution": model_usage,
         }
+
+
+metric_service = MetricService()

@@ -16,7 +16,6 @@ from chat2rag.core.strategies import (
     StrategyChain,
 )
 from chat2rag.enums import ProcessType
-from chat2rag.exceptions import ValueNoExist
 from chat2rag.logger import get_logger
 from chat2rag.schemas.chat import ChatRequest
 from chat2rag.utils.stream import StreamHandler
@@ -33,7 +32,7 @@ class ChatProcessor:
         self.handler = StreamHandler()
         self.start_time = perf_counter()
         self.is_batch = request.batch_or_stream == ProcessType.BATCH
-        self.query = self.request.content.get("text")
+        self.query = self.request.content.text
 
     async def process(self) -> AsyncIterator[str]:
         """处理聊天请求"""
@@ -80,8 +79,10 @@ class ChatProcessor:
             "top_k": self.request.top_k,
             "score_threshold": self.request.score_threshold,
         }
+        # content = json.dumps(self.request.content, ensure_ascii=False)
+
         self.handler.set_query_info(
-            question=json.dumps(self.request.content, ensure_ascii=False),
+            content=self.request.content,
             chat_id=self.request.chat_id,
             chat_rounds=self.request.chat_rounds,
             collections=self.request.collections,
@@ -97,13 +98,6 @@ class ChatProcessor:
 @router.post("/chat")
 async def chat(chat_request: ChatRequest):
     """聊天接口"""
-    if not (
-        chat_request.content.get("text")
-        or chat_request.content.get("image")
-        or chat_request.content.get("video")
-        or chat_request.content.get("audio")
-    ):
-        raise ValueNoExist("没有输入的内容")
 
     # TODO: 临时补丁
     # chat_request.tools = [

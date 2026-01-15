@@ -30,11 +30,8 @@ class RobotExpressionService(CRUDBase[RobotExpression, RobotExpressionCreate, Ro
         expressions = await self.model.filter(is_active=True).all()
         return [expression.name for expression in expressions]
 
-    async def get_code_by_name(self, name: str = ""):
-        expression = await self.model.filter(name=name).first()
-        if not expression:
-            return ""
-        return expression.code
+    async def get_code_by_name(self, name: str = "") -> RobotExpression:
+        return await self.model.filter(name=name).first()
 
 
 robot_expression_service = RobotExpressionService()

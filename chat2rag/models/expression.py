@@ -8,9 +8,7 @@ class RobotExpression(BaseModel, TimestampMixin):
 
     id = fields.IntField(primary_key=True)
     name = fields.CharField(max_length=50, unique=True, description="表情名称")
-    code = fields.CharField(
-        max_length=50, unique=True, db_index=True, description="表情代码"
-    )
+    code = fields.CharField(max_length=50, unique=True, db_index=True, description="表情代码")
     description = fields.CharField(max_length=255, null=True, description="表情描述")
     is_active = fields.BooleanField(default=True, db_index=True, description="是否启用")
 

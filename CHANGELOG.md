@@ -10,6 +10,7 @@
 
 - 针对福州南站的作业记录表新增文件上传功能，容器挂载 uploads 目录
 - Documents 的检索方式从 doc_type 改为更通用的 filters 的方式
+- 交互指标从 Dict 存储的，改为 schema 处理，增加表情、动作、图片字段
 
 ### Fixed
 

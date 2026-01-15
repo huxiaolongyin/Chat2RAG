@@ -27,7 +27,7 @@ class ResponseStrategy(ABC):
         self.handler = handler
         self.start_time = start_time
         self.is_batch = is_batch
-        self.query = self.request.content.get("text")
+        self.query = self.request.content.text
 
     @abstractmethod
     async def can_handle(self, query: str) -> bool:

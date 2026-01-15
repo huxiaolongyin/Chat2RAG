@@ -26,7 +26,7 @@ class ModelProviderService(CRUDBase[ModelProvider, ModelProviderCreate, ModelPro
 
     async def create(self, obj_in: ModelProviderCreate, exclude=None) -> ModelProvider:
         """创建模型渠道商"""
-        if await provider_service.model.filter(name=obj_in.name).exists():
+        if await model_provider_service.model.filter(name=obj_in.name).exists():
             raise ValueAlreadyExist("该模型渠道商名称已存在")
 
         return await super().create(obj_in, exclude)
@@ -34,7 +34,7 @@ class ModelProviderService(CRUDBase[ModelProvider, ModelProviderCreate, ModelPro
     async def update(self, id: int, obj_in: ModelProviderUpdate, exclude=None) -> ModelProvider:
         """更新模型渠道商"""
         # 名称检查
-        if await provider_service.model.filter(name=obj_in.name).exclude(id=id).exists():
+        if await model_provider_service.model.filter(name=obj_in.name).exclude(id=id).exists():
             raise ValueAlreadyExist("该模型渠道商名称已存在")
 
         # 使用事务确保数据一致性
@@ -140,5 +140,5 @@ async def periodic_latency_update(service: ModelSourceService, interval_sec: int
         await asyncio.sleep(interval_sec)
 
 
-provider_service = ModelProviderService()
-source_service = ModelSourceService()
+model_provider_service = ModelProviderService()
+model_source_service = ModelSourceService()

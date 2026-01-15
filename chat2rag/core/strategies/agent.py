@@ -9,7 +9,7 @@ from chat2rag.config import CONFIG
 from chat2rag.core.pipelines.agent import AgentPipeline
 from chat2rag.logger import get_logger
 from chat2rag.models.models import ModelProvider, ModelSource
-from chat2rag.services.model_service import ModelSourceService
+from chat2rag.services.model_service import model_source_service
 from chat2rag.utils.chat_history import chat_history
 from chat2rag.utils.merge_kwargs import merge_generation_kwargs
 from chat2rag.utils.pipeline_cache import create_pipeline
@@ -17,7 +17,6 @@ from chat2rag.utils.pipeline_cache import create_pipeline
 from .base import ResponseStrategy
 
 logger = get_logger(__name__)
-model_source_service = ModelSourceService()
 
 
 class AgentStrategy(ResponseStrategy):
@@ -32,7 +31,7 @@ class AgentStrategy(ResponseStrategy):
             self.request.prompt_name,
             self.request.chat_id,
             self.request.chat_rounds,
-            image=self.request.content.get("image", ""),
+            image=self.request.content.image,
         )
         asyncio.create_task(self._process_pipeline(query, history_messages))
 
