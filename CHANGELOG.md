@@ -20,6 +20,8 @@
 
 ### Removed
 
+- 移除 metric_service 中没有使用或者错误定义的函数
+
 ## [V0.3.0rc3] - 2026-01-09
 
 ### Added
