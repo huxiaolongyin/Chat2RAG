@@ -180,16 +180,24 @@ class PromptService(CRUDBase[Prompt, PromptCreate, PromptUpdate]):
 
         return total, results
 
-    async def get_by_prompt_name(self, prompt_name: str) -> PromptData:
+    async def get_by_prompt_name(self, prompt_name: str) -> PromptData | None:
         prompt = await self.model.filter(prompt_name=prompt_name).first()
         if not prompt:
-            raise ValueNoExist(msg="提示词不存在")
+            logger.warning(f"提示词<{prompt_name}>不存在")
+            return None
         version = prompt.current_version
         if version:
             version_obj = await PromptVersion.filter(prompt=prompt, version=version).first()
         else:
             version_obj = await PromptVersion.filter(prompt=prompt).order_by("-version").first()
         return _merge_prompt_version_data(prompt, version_obj)
+
+    async def get_prompt_template(self, prompt_name: str) -> str:
+        """Obtain the prompt template from the database"""
+        prompt = await prompt_service.get_by_prompt_name(prompt_name) or await prompt_service.get_by_prompt_name("默认")
+        if not prompt:
+            raise ValueNoExist(msg=f"提示词<{prompt_name}>不存在, 且默认提示词未设置")
+        return prompt.prompt_text
 
 
 prompt_service = PromptService()

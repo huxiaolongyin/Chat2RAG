@@ -38,24 +38,6 @@ EXTRA_PROMPT = """
 """
 
 
-async def get_prompt_template(prompt_name: str) -> Optional[str]:
-    """
-    Obtain the prompt template from the database
-    """
-    if not prompt_name:
-        return None
-    prompt = await prompt_service.get_by_prompt_name(prompt_name)
-
-    # 没找到提示词则使用默认
-    if not prompt:
-        logger.warning("Prompt with name '%s' not found", prompt_name)
-        prompt = await prompt_service.get_by_prompt_name("默认")
-
-        return prompt.prompt_text
-    else:
-        return prompt.prompt_text
-
-
 class ChatHistory:
     _instance = None
 
@@ -150,7 +132,7 @@ class ChatHistory:
 
         # Prepare system prompt with optional context about collection
         system_context = f"你当前处于{collection}场景下。\n" if collection else ""
-        system_prompt = system_context + await get_prompt_template(prompt_name)
+        system_prompt = system_context + await prompt_service.get_prompt_template(prompt_name)
         messages = [ChatMessage.from_system(system_prompt)]
 
         rounds_to_retrieve = max(0, rounds - 1)  # exclude current round

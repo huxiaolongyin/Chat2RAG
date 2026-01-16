@@ -4,7 +4,7 @@ from config import CONFIG
 
 class MetricController:
     def __init__(self):
-        self.metric_base_url = f"http://127.0.0.1:8000/api/v1/metrics/list"
+        self.metric_base_url = f"{CONFIG.BASE_URL}/api/v1/metrics"
 
     def get_metric_list(
         self,
@@ -26,7 +26,7 @@ class MetricController:
             },
         )
         if response.status_code == 200:
-            return response.json()["data"]
+            return response.json()["data"]["items"]
         else:
             return []
 
