@@ -77,7 +77,7 @@ async def get_documents(
     # 返回分页数据
     return BaseResponse.success(
         data={
-            "doc_list": paginated_docs,
+            "docList": paginated_docs,
             "current": current,
             "size": size,
             "total": total,
@@ -148,10 +148,10 @@ async def query_documents(
     processed_docs = [{"id": doc.id, "content": doc.content, "score": doc.score} for doc in doc_list]
 
     data = {
-        "collection_name": collection_name,
-        "doc_list": processed_docs,
-        "top_k": top_k,
-        "score_threshold": score_threshold,
+        "collectionName": collection_name,
+        "docList": processed_docs,
+        "topK": top_k,
+        "scoreThreshold": score_threshold,
     }
     logger.info(
         f"Knowledge query success. Collection name: <{collection_name}>; Number of results: <{len(processed_docs)}>"
@@ -207,9 +207,9 @@ async def get_collection_stats(collection_name: str = Query(description="知识�
         avg_length = 0
 
     stats = {
-        "collection_name": collection_name,
-        "total_documents": total_docs,
-        "average_length": round(avg_length, 2),
+        "collectionName": collection_name,
+        "totalDocuments": total_docs,
+        "averageLength": round(avg_length, 2),
     }
 
     logger.info(f"Stats for collection <{collection_name}> retrieved successfully")

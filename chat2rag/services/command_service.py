@@ -46,13 +46,16 @@ class CommandService(CRUDBase[Command, CommandCreate, CommandUpdate]):
         # 检查名称、代码、分类是否已存在
         if await self.model.filter(name=obj_in.name).exists():
             raise ValueAlreadyExist("该指令名称已存在")
+
         if await self.model.filter(code=obj_in.code).exists():
             raise ValueAlreadyExist("该指令代码已存在")
+
         if obj_in.category_id and not await CommandCategory.filter(id=obj_in.category_id).exists():
             raise ValueNoExist("指定的分类不存在")
 
         command = await super().create(obj_in, exclude=exclude)
         commands_text = obj_in.commands
+
         if not commands_text:
             return command
 

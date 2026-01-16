@@ -12,7 +12,7 @@ from chat2rag.strategies import (
     SensitiveWordStrategy,
     StrategyChain,
 )
-from chat2rag.utils.stream import StreamHandler
+from chat2rag.utils.stream import StreamHandler, StreamHandlerV1
 
 
 class ChatProcessor:
@@ -71,6 +71,10 @@ class ChatProcessor:
 
 
 class ChatProcessorV1(ChatProcessor):
+    def __init__(self, request: ChatRequest):
+        super().__init__(request)
+        self.handler = StreamHandlerV1()
+
     def _build_strategy_chain(self) -> StrategyChain:
         """构建策略链"""
         # TODO: 定制化需求

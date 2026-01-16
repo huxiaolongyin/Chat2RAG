@@ -120,13 +120,15 @@ async def get_command_detail(command_id: int):
 @router.post("", response_model=BaseResponse[CommandData], summary="创建指令")
 async def create_command(command_in: CommandCreate):
     command = await command_service.create(command_in)
-    return BaseResponse.success(data=CommandData.model_validate(command))
+    command_dict = {**command.__dict__, "commands": command_in.commands}
+    return BaseResponse.success(data=CommandData.model_validate(command_dict))
 
 
 @router.put("/{command_id}", response_model=BaseResponse[CommandData], summary="更新指令")
 async def update_command(command_id: int, command_in: CommandUpdate):
     command = await command_service.update(command_id, command_in)
-    return BaseResponse.success(data=CommandData.model_validate(command))
+    command_dict = {**command.__dict__, "commands": command_in.commands}
+    return BaseResponse.success(data=CommandData.model_validate(command_dict))
 
 
 @router.delete("/{command_id}", response_model=BaseResponse, summary="删除指令")
