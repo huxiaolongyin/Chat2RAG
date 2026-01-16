@@ -1,11 +1,22 @@
 from chat2rag.core.crud import CRUDBase
+from chat2rag.core.exceptions import ValueAlreadyExist, ValueNoExist
 from chat2rag.models import FlowData
-from chat2rag.schemas.flow_data import FlowDataCreate, FlowDataUpdate
+from chat2rag.schemas.flow_data import FlowCreate, FlowUpdate
 
 
-class FlowDataService(CRUDBase[FlowData, FlowDataCreate, FlowDataUpdate]):
+class FlowDataService(CRUDBase[FlowData, FlowCreate, FlowUpdate]):
     def __init__(self):
         super().__init__(FlowData)
+
+    async def create(self, obj_in: FlowCreate, exclude=None):
+        if await self.model.filter(name=obj_in.name).exists():
+            raise ValueAlreadyExist("该流程已存在")
+        return await super().create(obj_in, exclude)
+
+    async def update(self, obj_in: FlowUpdate, exclude=None):
+        if await self.model.filter(name=obj_in.name).exists():
+            raise ValueAlreadyExist("该流程已存在")
+        return await super().update(id, obj_in, exclude)
 
     async def get_all_flows(self):
         flows = await self.get_list(1, 10000)

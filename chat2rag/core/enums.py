@@ -23,29 +23,6 @@ class Status(int, Enum):
     DISABLED: int = 0
 
 
-class MCPToolType(str, Enum):
-    STDIO: str = "stdio"
-    SSE: str = "sse"
-    STREAMABLE: str = "streamable"
-
-
-class ToolMethod(str, Enum):
-    NONE: str = ""
-    GET: str = "GET"
-    POST: str = "POST"
-
-
-class SortOrder(str, Enum):
-    ASC = "asc"
-    DESC = "desc"
-
-
-class ToolSortField(str, Enum):
-    TOOL_NAME = "name"
-    TOOL_DESC = "description"
-    CREATE_TIME = "create_time"
-
-
 class SortOrder(str, Enum):
     ASC = "asc"
     DESC = "desc"
@@ -58,3 +35,28 @@ class CollectionSortField(str, Enum):
 
 class DocumentSortField(str, Enum):
     DOCUMENT_CONTENT = "content"
+
+
+# ==================== Tool Enums ====================
+class MCPToolType(str, Enum):
+    STDIO: str = "stdio"
+    SSE: str = "sse"
+    STREAMABLE: str = "streamable"
+
+
+class ToolMethod(str, Enum):
+    NONE: str = ""
+    GET: str = "GET"
+    POST: str = "POST"
+
+
+class ToolSortField(str, Enum):
+    TOOL_NAME = "name"
+    TOOL_DESC = "description"
+    CREATE_TIME = "create_time"
+
+
+class ToolType(str, Enum):
+    API = "api"
+    MCP = "mcp"
+    ALL = "all"

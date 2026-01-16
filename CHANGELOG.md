@@ -14,6 +14,7 @@
 - 代码文件夹重构，优化 core 中的代码，尽可能让 core 不引用自己的代码
 - 新增 Agent 管道支持多个知识库的检索
 - 新增 chat_service 进行聊天处理 ChatProcessor
+- 简化 document、flow、metric、sensitive、tool 的接口，将复杂逻辑移入 service 层处理，并添加响应处理
 
 ### Fixed
 
@@ -29,6 +30,7 @@
 - 移除 stream_v1.py，StreamHandlerV1 继承 StreamHandler, 进行功能合并
 - 移除 关于 function、rag 管道 的示例
 - 移除 不再使用的 exception_handler 装饰器
+- 移除 Response 的 Success、Error 响应，改用 BaseResponse 和异常处理替代
 
 ## [V0.3.0rc3] - 2026-01-09
 

@@ -24,7 +24,7 @@ class ValueNoExist(BaseException):
 class BusinessException(BaseException):
     """业务相关的异常"""
 
-    ...
+    pass
 
 
 class ChatServiceError(Exception):
@@ -65,5 +65,11 @@ class MCPConnectionError(ToolServiceError):
 
 class ToolSyncError(ToolServiceError):
     """工具同步异常"""
+
+    pass
+
+
+class ParameterException(BaseException):
+    """API的参数错误"""
 
     pass

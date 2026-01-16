@@ -1,17 +1,22 @@
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
-from pydantic import BaseModel, Field
+from pydantic import Field
+
+from .base import BaseSchema, IDMixin
 
 
-class FlowDataBase(BaseModel):
+class FlowBase(BaseSchema):
     name: str = Field(...)
-    desc: Optional[str] = Field(None)
-    current_version: Optional[int] = Field(1, alias="currentVersion")
-    flow_json: Optional[Dict[str, Any]] = Field(1, alias="flowJson")
+    desc: str | None = Field(None)
+    current_version: int | None = Field(1)
+    flow_json: Dict[str, Any] | None = Field()
 
 
-class FlowDataCreate(FlowDataBase): ...
+class FlowData(IDMixin, FlowBase): ...
 
 
-class FlowDataUpdate(FlowDataBase):
-    name: Optional[str] = Field(None)
+class FlowCreate(FlowBase): ...
+
+
+class FlowUpdate(FlowBase):
+    name: str | None = Field(None)

@@ -5,7 +5,12 @@ from fastapi import Request, Response, status
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from chat2rag.core.exceptions import BusinessException, ValueAlreadyExist, ValueNoExist
+from chat2rag.core.exceptions import (
+    BusinessException,
+    ParameterException,
+    ValueAlreadyExist,
+    ValueNoExist,
+)
 from chat2rag.core.logger import get_logger
 
 logger = get_logger(__name__)
@@ -31,6 +36,13 @@ class ExceptionHandlerMiddleware(BaseHTTPMiddleware):
                 extra={"path": request.url.path, "method": request.method, "error_type": "ValueAlreadyExist"},
             )
             return JSONResponse(status_code=status.HTTP_409_CONFLICT, content={"detail": e.msg})
+
+        except ParameterException as e:
+            logger.warning(
+                f"参数错误: {e.msg}",
+                extra={"path": request.url.path, "method": request.method, "error_type": "ParameterException"},
+            )
+            return JSONResponse(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, content={"detail": e.msg})
 
         except BusinessException as e:
             logger.warning(

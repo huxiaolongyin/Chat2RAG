@@ -1,12 +1,14 @@
 import pytest
 from httpx import AsyncClient
 
+TOOL_BASE_URL = "/api/v1/tools"
+
 
 @pytest.fixture
 async def test_api_tool(client: AsyncClient):
     """创建测试用API工具"""
     response = await client.post(
-        "/api/v1/tools/",
+        TOOL_BASE_URL,
         json={
             "toolType": "api",
             "data": {
@@ -30,7 +32,7 @@ async def test_api_tool(client: AsyncClient):
 async def test_mcp_server(client: AsyncClient):
     """创建测试用MCP服务器"""
     response = await client.post(
-        "/api/v1/tools/",
+        TOOL_BASE_URL,
         json={
             "toolType": "mcp",
             "data": {
@@ -52,11 +54,11 @@ class TestToolList:
 
     async def test_get_all_tools_default(self, client: AsyncClient, test_api_tool):
         """测试获取所有工具（默认参数）"""
-        response = await client.get("/api/v1/tools/")
+        response = await client.get(TOOL_BASE_URL)
         assert response.status_code == 200
         data = response.json()
         assert data["code"] == "0000"
-        assert "toolList" in data["data"]
+        assert "items" in data["data"]
         assert "total" in data["data"]
         assert "current" in data["data"]
         assert "size" in data["data"]
@@ -65,40 +67,40 @@ class TestToolList:
 
     async def test_get_api_tools_only(self, client: AsyncClient, test_api_tool):
         """测试仅获取API工具"""
-        response = await client.get("/api/v1/tools/", params={"toolType": "api"})
+        response = await client.get(TOOL_BASE_URL, params={"toolType": "api"})
         assert response.status_code == 200
         data = response.json()
         assert data["code"] == "0000"
         assert data["data"]["total"] >= 1
         # 验证所有工具都是API类型
-        for tool in data["data"]["toolList"]:
+        for tool in data["data"]["items"]:
             assert tool["toolType"] == "api"
 
     async def test_get_mcp_tools_only(self, client: AsyncClient, test_mcp_server):
         """测试仅获取MCP工具"""
-        response = await client.get("/api/v1/tools/", params={"toolType": "mcp"})
+        response = await client.get(TOOL_BASE_URL, params={"toolType": "mcp"})
         assert response.status_code == 200
         data = response.json()
         assert data["code"] == "0000"
         assert data["data"]["total"] >= 1
         # 验证所有工具都是MCP类型
-        for tool in data["data"]["toolList"]:
+        for tool in data["data"]["items"]:
             assert tool["toolType"] == "mcp"
 
     async def test_get_tools_with_name_filter(self, client: AsyncClient, test_api_tool):
         """测试按名称过滤工具"""
-        response = await client.get("/api/v1/tools/", params={"toolName": "测试API"})
+        response = await client.get(TOOL_BASE_URL, params={"toolName": "测试API"})
         assert response.status_code == 200
         data = response.json()
         assert data["code"] == "0000"
         assert data["data"]["total"] >= 1
         # 验证返回的工具名称包含搜索关键词
-        for tool in data["data"]["toolList"]:
+        for tool in data["data"]["items"]:
             assert "测试API" in tool["name"]
 
     async def test_get_tools_with_desc_filter(self, client: AsyncClient, test_api_tool):
         """测试按描述过滤工具"""
-        response = await client.get("/api/v1/tools/", params={"toolDesc": "工具描述"})
+        response = await client.get(TOOL_BASE_URL, params={"toolDesc": "工具描述"})
         assert response.status_code == 200
         data = response.json()
         assert data["code"] == "0000"
@@ -108,7 +110,7 @@ class TestToolList:
         """测试按启用状态过滤工具"""
         # 创建启用和禁用的工具
         await client.post(
-            "/api/v1/tools/",
+            TOOL_BASE_URL,
             json={
                 "toolType": "api",
                 "data": {
@@ -120,7 +122,7 @@ class TestToolList:
             },
         )
         await client.post(
-            "/api/v1/tools/",
+            TOOL_BASE_URL,
             json={
                 "toolType": "api",
                 "data": {
@@ -133,19 +135,19 @@ class TestToolList:
         )
 
         # 测试过滤启用的工具
-        response = await client.get("/api/v1/tools/", params={"isActive": True})
+        response = await client.get(TOOL_BASE_URL, params={"isActive": True})
         assert response.status_code == 200
         data = response.json()
         assert data["code"] == "0000"
-        for tool in data["data"]["toolList"]:
+        for tool in data["data"]["items"]:
             assert tool["isActive"] is True
 
         # 测试过滤禁用的工具
-        response = await client.get("/api/v1/tools/", params={"isActive": False})
+        response = await client.get(TOOL_BASE_URL, params={"isActive": False})
         assert response.status_code == 200
         data = response.json()
         assert data["code"] == "0000"
-        for tool in data["data"]["toolList"]:
+        for tool in data["data"]["items"]:
             assert tool["isActive"] is False
 
     async def test_get_tools_pagination(self, client: AsyncClient):
@@ -153,7 +155,7 @@ class TestToolList:
         # 创建多个工具
         for i in range(5):
             await client.post(
-                "/api/v1/tools/",
+                TOOL_BASE_URL,
                 json={
                     "toolType": "api",
                     "data": {
@@ -165,17 +167,17 @@ class TestToolList:
             )
 
         # 测试第一页
-        response = await client.get("/api/v1/tools/", params={"current": 1, "size": 3})
+        response = await client.get(TOOL_BASE_URL, params={"current": 1, "size": 3})
         assert response.status_code == 200
         data = response.json()
         assert data["code"] == "0000"
-        assert len(data["data"]["toolList"]) <= 3
+        assert len(data["data"]["items"]) <= 3
         assert data["data"]["current"] == 1
         assert data["data"]["size"] == 3
         assert data["data"]["pages"] >= 2
 
         # 测试第二页
-        response = await client.get("/api/v1/tools/", params={"current": 2, "size": 3})
+        response = await client.get(TOOL_BASE_URL, params={"current": 2, "size": 3})
         assert response.status_code == 200
         data = response.json()
         assert data["code"] == "0000"
@@ -184,37 +186,37 @@ class TestToolList:
     async def test_get_tools_sort_by_create_time_asc(self, client: AsyncClient):
         """测试按创建时间升序排序"""
         response = await client.get(
-            "/api/v1/tools/",
+            TOOL_BASE_URL,
             params={"sortBy": "create_time", "sortOrder": "asc"},
         )
         assert response.status_code == 200
         data = response.json()
         assert data["code"] == "0000"
         # 验证排序（如果有多条记录）
-        if len(data["data"]["toolList"]) > 1:
-            tools = data["data"]["toolList"]
+        if len(data["data"]["items"]) > 1:
+            tools = data["data"]["items"]
             for i in range(len(tools) - 1):
                 assert tools[i]["create_time"] <= tools[i + 1]["create_time"]
 
     async def test_get_tools_sort_by_create_time_desc(self, client: AsyncClient):
         """测试按创建时间降序排序"""
         response = await client.get(
-            "/api/v1/tools/",
+            TOOL_BASE_URL,
             params={"sortBy": "create_time", "sortOrder": "desc"},
         )
         assert response.status_code == 200
         data = response.json()
         assert data["code"] == "0000"
         # 验证排序（如果有多条记录）
-        if len(data["data"]["toolList"]) > 1:
-            tools = data["data"]["toolList"]
+        if len(data["data"]["items"]) > 1:
+            tools = data["data"]["items"]
             for i in range(len(tools) - 1):
                 assert tools[i]["create_time"] >= tools[i + 1]["create_time"]
 
     async def test_get_tools_combined_filters(self, client: AsyncClient):
         """测试组合过滤条件"""
         response = await client.get(
-            "/api/v1/tools/",
+            TOOL_BASE_URL,
             params={
                 "toolType": "api",
                 "toolName": "测试",
@@ -234,7 +236,7 @@ class TestCreateTool:
     async def test_create_api_tool_success(self, client: AsyncClient):
         """测试成功创建API工具"""
         response = await client.post(
-            "/api/v1/tools/",
+            TOOL_BASE_URL,
             json={
                 "toolType": "api",
                 "data": {
@@ -255,7 +257,7 @@ class TestCreateTool:
     async def test_create_api_tool_duplicate_name(self, client: AsyncClient, test_api_tool):
         """测试创建重复名称的API工具"""
         response = await client.post(
-            "/api/v1/tools/",
+            TOOL_BASE_URL,
             json={
                 "toolType": "api",
                 "data": {
@@ -265,14 +267,14 @@ class TestCreateTool:
                 },
             },
         )
-        assert response.status_code == 400
+        assert response.status_code == 409
         data = response.json()
-        assert "已存在" in data["msg"]
+        assert "已存在" in data["detail"]
 
     async def test_create_mcp_server_success(self, client: AsyncClient):
         """测试成功创建MCP服务器"""
         response = await client.post(
-            "/api/v1/tools/",
+            TOOL_BASE_URL,
             json={
                 "toolType": "mcp",
                 "data": {
@@ -294,7 +296,7 @@ class TestCreateTool:
     async def test_create_mcp_server_duplicate_name(self, client: AsyncClient, test_mcp_server):
         """测试创建重复名称的MCP服务器"""
         response = await client.post(
-            "/api/v1/tools/",
+            TOOL_BASE_URL,
             json={
                 "toolType": "mcp",
                 "data": {
@@ -305,14 +307,14 @@ class TestCreateTool:
                 },
             },
         )
-        assert response.status_code == 400
+        assert response.status_code == 409
         data = response.json()
-        assert "已存在" in data["msg"]
+        assert "已存在" in data["detail"]
 
     async def test_create_tool_invalid_format(self, client: AsyncClient):
         """测试创建工具时使用无效格式"""
         response = await client.post(
-            "/api/v1/tools/",
+            TOOL_BASE_URL,
             json={
                 "toolType": "invalid",
                 "data": {"name": "无效工具"},
@@ -328,7 +330,7 @@ class TestUpdateTool:
     async def test_update_api_tool_success(self, client: AsyncClient, test_api_tool):
         """测试成功更新API工具"""
         response = await client.put(
-            f"/api/v1/tools/{test_api_tool['id']}",
+            f"{TOOL_BASE_URL}/{test_api_tool['id']}",
             params={"toolType": "api"},
             json={
                 "toolType": "api",
@@ -364,7 +366,7 @@ class TestUpdateTool:
         """测试更新API工具为重复名称"""
         # 创建两个工具
         tool1 = await client.post(
-            "/api/v1/tools/",
+            TOOL_BASE_URL,
             json={
                 "toolType": "api",
                 "data": {
@@ -377,7 +379,7 @@ class TestUpdateTool:
         tool1_data = tool1.json()["data"]
 
         tool2 = await client.post(
-            "/api/v1/tools/",
+            TOOL_BASE_URL,
             json={
                 "toolType": "api",
                 "data": {
@@ -391,35 +393,35 @@ class TestUpdateTool:
 
         # 尝试将工具B更新为工具A的名称
         response = await client.put(
-            f"/api/v1/tools/{tool2_data['id']}",
+            f"{TOOL_BASE_URL}/{tool2_data['id']}",
             params={"toolType": "api"},
             json={
                 "toolType": "api",
                 "data": {"name": "工具A"},
             },
         )
-        assert response.status_code == 400
+        assert response.status_code == 409
         data = response.json()
-        assert "已存在" in data["msg"]
+        assert "已存在" in data["detail"]
 
     async def test_update_api_tool_type_mismatch(self, client: AsyncClient, test_api_tool):
         """测试工具类型与请求数据不匹配"""
         response = await client.put(
-            f"/api/v1/tools/{test_api_tool['id']}",
+            f"{TOOL_BASE_URL}/{test_api_tool['id']}",
             params={"toolType": "api"},
             json={
                 "toolType": "mcp",
                 "data": {"name": "MCP数据", "mcpType": "stdio"},
             },
         )
-        assert response.status_code == 400
+        assert response.status_code == 422
         data = response.json()
-        assert "不匹配" in data["msg"]
+        assert "错误" in data["detail"]
 
     async def test_update_mcp_server_success(self, client: AsyncClient, test_mcp_server):
         """测试成功更新MCP服务器"""
         response = await client.put(
-            f"/api/v1/tools/{test_mcp_server['id']}",
+            f"{TOOL_BASE_URL}/{test_mcp_server['id']}",
             params={"toolType": "mcp"},
             json={
                 "toolType": "mcp",
@@ -440,7 +442,7 @@ class TestUpdateTool:
     async def test_update_tool_partial(self, client: AsyncClient, test_api_tool):
         """测试部分更新工具"""
         response = await client.put(
-            f"/api/v1/tools/{test_api_tool['id']}",
+            f"{TOOL_BASE_URL}/{test_api_tool['id']}",
             params={"toolType": "api"},
             json={
                 "toolType": "api",
@@ -458,7 +460,7 @@ class TestGetToolDetail:
     async def test_get_api_tool_detail(self, client: AsyncClient, test_api_tool):
         """测试获取API工具详情"""
         response = await client.get(
-            f"/api/v1/tools/{test_api_tool['id']}",
+            f"{TOOL_BASE_URL}/{test_api_tool['id']}",
             params={"toolType": "api"},
         )
         assert response.status_code == 200
@@ -482,7 +484,7 @@ class TestGetToolDetail:
     async def test_get_mcp_tool_detail(self, client: AsyncClient, test_mcp_server):
         """测试获取MCP工具详情"""
         response = await client.get(
-            f"/api/v1/tools/{test_mcp_server['id']}",
+            f"{TOOL_BASE_URL}/{test_mcp_server['id']}",
             params={"toolType": "mcp"},
         )
         assert response.status_code == 200
@@ -509,7 +511,7 @@ class TestDeleteTool:
         """测试成功删除API工具"""
         # 创建工具
         create_response = await client.post(
-            "/api/v1/tools/",
+            TOOL_BASE_URL,
             json={
                 "toolType": "api",
                 "data": {
@@ -523,7 +525,7 @@ class TestDeleteTool:
 
         # 删除工具
         response = await client.delete(
-            f"/api/v1/tools/{tool_id}",
+            f"{TOOL_BASE_URL}/{tool_id}",
             params={"toolType": "api"},
         )
         assert response.status_code == 200
@@ -543,7 +545,7 @@ class TestDeleteTool:
         """测试成功删除MCP服务器"""
         # 创建服务器
         create_response = await client.post(
-            "/api/v1/tools/",
+            TOOL_BASE_URL,
             json={
                 "toolType": "mcp",
                 "data": {
@@ -558,7 +560,7 @@ class TestDeleteTool:
 
         # 删除服务器
         response = await client.delete(
-            f"/api/v1/tools/{server_id}",
+            f"{TOOL_BASE_URL}/{server_id}",
             params={"toolType": "mcp"},
         )
         assert response.status_code == 200
@@ -572,7 +574,7 @@ class TestSyncMCPTools:
 
     async def test_sync_mcp_tools_success(self, client: AsyncClient, test_mcp_server):
         """测试成功同步MCP工具"""
-        response = await client.post(f"/api/v1/tools/{test_mcp_server['id']}/sync")
+        response = await client.post(f"{TOOL_BASE_URL}/{test_mcp_server['id']}/sync")
         # 注意：实际同步可能需要MCP服务器运行，这里测试框架行为
         assert response.status_code in [200, 400]
         data = response.json()
@@ -586,9 +588,9 @@ class TestSyncMCPTools:
     async def test_sync_mcp_tools_server_not_found(self, client: AsyncClient):
         """测试同步不存在的MCP服务器"""
         response = await client.post("/api/v1/tools/99999/sync")
-        assert response.status_code == 400
+        assert response.status_code == 404
         data = response.json()
-        assert "不存在" in data["msg"]
+        assert "不存在" in data["detail"]
 
 
 class TestEdgeCases:
@@ -597,19 +599,19 @@ class TestEdgeCases:
     async def test_empty_tool_list(self, client: AsyncClient):
         """测试空工具列表"""
         response = await client.get(
-            "/api/v1/tools/",
+            TOOL_BASE_URL,
             params={"toolName": "不存在的工具名称xyz123"},
         )
         assert response.status_code == 200
         data = response.json()
         assert data["code"] == "0000"
         assert data["data"]["total"] == 0
-        assert len(data["data"]["toolList"]) == 0
+        assert len(data["data"]["items"]) == 0
 
     async def test_large_page_size(self, client: AsyncClient):
         """测试大分页size"""
         response = await client.get(
-            "/api/v1/tools/",
+            TOOL_BASE_URL,
             params={"size": 100},
         )
         assert response.status_code == 200
@@ -619,7 +621,7 @@ class TestEdgeCases:
     async def test_invalid_page_number(self, client: AsyncClient):
         """测试无效的页码"""
         response = await client.get(
-            "/api/v1/tools/",
+            TOOL_BASE_URL,
             params={"current": 0},
         )
         # 应该返回422（参数验证失败）
@@ -628,7 +630,7 @@ class TestEdgeCases:
     async def test_api_tool_with_complex_headers(self, client: AsyncClient):
         """测试创建带复杂headers的API工具"""
         response = await client.post(
-            "/api/v1/tools/",
+            TOOL_BASE_URL,
             json={
                 "toolType": "api",
                 "data": {
@@ -654,7 +656,7 @@ class TestEdgeCases:
     async def test_mcp_server_with_env_vars(self, client: AsyncClient):
         """测试创建带环境变量的MCP服务器"""
         response = await client.post(
-            "/api/v1/tools/",
+            TOOL_BASE_URL,
             json={
                 "toolType": "mcp",
                 "data": {
@@ -677,7 +679,7 @@ class TestEdgeCases:
     async def test_tool_name_special_characters(self, client: AsyncClient):
         """测试工具名称包含特殊字符"""
         response = await client.post(
-            "/api/v1/tools/",
+            TOOL_BASE_URL,
             json={
                 "toolType": "api",
                 "data": {
@@ -697,7 +699,7 @@ class TestEdgeCases:
 
         async def create_tool(index):
             return await client.post(
-                "/api/v1/tools/",
+                TOOL_BASE_URL,
                 json={
                     "toolType": "api",
                     "data": {
@@ -723,7 +725,7 @@ class TestEdgeCases:
         # 创建混合类型的工具
         for i in range(3):
             await client.post(
-                "/api/v1/tools/",
+                TOOL_BASE_URL,
                 json={
                     "toolType": "api",
                     "data": {
@@ -734,7 +736,7 @@ class TestEdgeCases:
                 },
             )
             await client.post(
-                "/api/v1/tools/",
+                TOOL_BASE_URL,
                 json={
                     "toolType": "mcp",
                     "data": {
@@ -748,7 +750,7 @@ class TestEdgeCases:
 
         # 获取全部工具并验证排序
         response = await client.get(
-            "/api/v1/tools/",
+            TOOL_BASE_URL,
             params={"toolType": "all", "size": 10},
         )
         assert response.status_code == 200
@@ -757,5 +759,5 @@ class TestEdgeCases:
         assert data["data"]["total"] >= 3
 
         # 验证包含两种类型的工具
-        tool_types = {tool["toolType"] for tool in data["data"]["toolList"]}
+        tool_types = {tool["toolType"] for tool in data["data"]["items"]}
         assert len(tool_types) >= 1  # 至少有一种类型

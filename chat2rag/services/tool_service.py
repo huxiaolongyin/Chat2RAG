@@ -1,20 +1,34 @@
 import asyncio
 from functools import lru_cache
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any, Dict, List, Set, Tuple
 
 from tortoise.expressions import Q
 from tortoise.transactions import in_transaction
 
 import chat2rag.tools as tools_module
 from chat2rag.core.crud import CRUDBase
-from chat2rag.core.exceptions import MCPConnectionError, ToolServiceError, ToolSyncError
+from chat2rag.core.enums import SortOrder
+from chat2rag.core.exceptions import (
+    MCPConnectionError,
+    ParameterException,
+    ToolServiceError,
+    ToolSyncError,
+    ValueAlreadyExist,
+    ValueNoExist,
+)
 from chat2rag.core.logger import get_logger
 from chat2rag.models import APITool, MCPServer, MCPTool
 from chat2rag.schemas.tools import (
     APIToolCreate,
+    APIToolCreateRequest,
     APIToolUpdate,
+    APIToolUpdateRequest,
+    CombinedCreateRequest,
+    CombinedUpdateRequest,
     MCPServerCreate,
+    MCPServerCreateRequest,
     MCPServerUpdate,
+    MCPServerUpdateRequest,
 )
 from chat2rag.tools.mcp import connection_manager
 
@@ -38,7 +52,7 @@ class MCPService(CRUDBase[MCPServer, MCPServerCreate, MCPServerUpdate]):
 
     def __init__(self):
         super().__init__(MCPServer)
-        self._tool_registry_cache: Optional[Dict[str, Any]] = None
+        self._tool_registry_cache: Dict[str, Any] | None = None
 
     @lru_cache(maxsize=1)
     def _get_builtin_tool_registry(self) -> Dict[str, Any]:
@@ -169,8 +183,8 @@ class MCPService(CRUDBase[MCPServer, MCPServerCreate, MCPServerUpdate]):
         self,
         page: int = 1,
         page_size: int = DEFAULT_PAGE_SIZE,
-        search: Optional[Q] = None,
-        order: Optional[List[str]] = None,
+        search: Q | None = None,
+        order: List[str] | None = None,
     ) -> Tuple[int, List[MCPTool]]:
         """获取MCP工具列表（分页）
 
@@ -209,7 +223,7 @@ class MCPService(CRUDBase[MCPServer, MCPServerCreate, MCPServerUpdate]):
             logger.error(f"Error getting MCP tool list: {e}")
             raise ToolServiceError(f"Failed to get MCP tool list: {e}") from e
 
-    async def create(self, obj_in: MCPServerCreate, exclude: Optional[List[str]] = None) -> MCPServer:
+    async def create(self, obj_in: MCPServerCreate, exclude: List[str] | None = None) -> MCPServer:
         """创建MCP服务器并同步工具"""
         try:
             async with in_transaction():
@@ -226,9 +240,7 @@ class MCPService(CRUDBase[MCPServer, MCPServerCreate, MCPServerUpdate]):
             logger.error(f"Error creating MCP server: {e}")
             raise ToolServiceError(f"Failed to create MCP server: {e}") from e
 
-    async def update(
-        self, id: int, obj_in: MCPServerUpdate, exclude: Optional[List[str]] = None
-    ) -> Optional[MCPServer]:
+    async def update(self, id: int, obj_in: MCPServerUpdate, exclude: List[str] | None = None) -> MCPServer | None:
         """更新MCP服务器"""
         try:
             old_server = await self.get(id)
@@ -290,19 +302,11 @@ class MCPService(CRUDBase[MCPServer, MCPServerCreate, MCPServerUpdate]):
 
     async def sync_tools(self, server_id: int) -> List[MCPTool]:
         """手动同步指定服务器的工具"""
-        try:
-            server = await self.get(server_id)
-            if not server:
-                logger.warning(f"MCP server with id {server_id} not found")
-                return []
 
-            tools = await self._sync_tools_with_retry(server)
-            logger.info(f"Manually synced {len(tools)} tools for server {server.name}")
-            return tools
-
-        except Exception as e:
-            logger.error(f"Error syncing tools for server {server_id}: {e}")
-            raise ToolServiceError(f"Failed to sync tools: {e}") from e
+        server = await self.get(server_id)
+        tools = await self._sync_tools_with_retry(server)
+        logger.info(f"Manually synced {len(tools)} tools for server {server.name}")
+        return tools
 
     async def _sync_tools_with_retry(self, server: MCPServer) -> List[MCPTool]:
         """带重试的工具同步"""
@@ -388,6 +392,103 @@ class MCPService(CRUDBase[MCPServer, MCPServerCreate, MCPServerUpdate]):
         return created_tools
 
 
+class ToolService:
+    async def create(self, request: CombinedCreateRequest):
+        if isinstance(request, APIToolCreateRequest):
+            if await APITool.filter(name=request.data.name).exists():
+                raise ValueAlreadyExist("工具名已存在")
+            return await api_service.create(request.data)
+
+        elif isinstance(request, MCPServerCreateRequest):
+            if await MCPServer.filter(name=request.data.name).exists():
+                raise ValueAlreadyExist("工具名已存在")
+
+            return await mcp_service.create(request.data)
+
+    async def update(self, tool_id: int, tool_type: str, request: CombinedUpdateRequest):
+        if tool_type == "api":
+            if not isinstance(request, APIToolUpdateRequest):
+                raise ParameterException(msg="API工具输入参数错误")
+
+            await api_service.get(tool_id)
+
+            # 检查名称是否已被其他工具使用
+            if request.data.name:
+                if await APITool.filter(name=request.data.name).exclude(id=tool_id).exists():
+                    raise ValueAlreadyExist("工具名已存在")
+
+            return await api_service.update(tool_id, request.data)
+
+        elif tool_type == "mcp":
+            if not isinstance(request, MCPServerUpdateRequest):
+                raise ParameterException(msg="MCP工具输入参数错误")
+            await mcp_service.get(tool_id)
+
+            if request.data.name:
+                if await MCPServer.filter(name=request.data.name).exclude(id=tool_id).exists():
+                    raise ValueAlreadyExist("工具名已存在")
+
+            return await mcp_service.update(tool_id, request.data)
+
+    async def remove(self, tool_id: int, tool_type: str):
+        if tool_type == "api":
+            await api_service.get(tool_id)
+            await api_service.remove(tool_id)
+        else:
+            if not await mcp_service.get(tool_id):
+                raise ValueNoExist("工具不存在")
+            await mcp_service.remove(tool_id)
+
+    async def get(self, tool_id: int, tool_type: str):
+        """获取工具详细信息"""
+        if tool_type == "api":
+            return await api_service.get(tool_id)
+
+        elif tool_type == "mcp":
+            tool = await MCPTool.filter(id=tool_id).prefetch_related("server").first()
+            if not tool:
+                raise ValueNoExist("工具不存在")
+            return tool
+
+    async def get_list(
+        self,
+        page: int,
+        page_size: int,
+        tool_type: str,
+        search: Q = Q(),
+        order: list[str] | None = None,
+    ) -> Tuple[int, list]:
+        tool_list = []
+        total = 0
+
+        if tool_type in ["api", "all"]:
+            # 获取API工具
+            api_total, api_tools = await api_service.get_list(1, 999, search, order)
+            tool_list.extend([{**await tool.to_dict(), "tool_type": "api"} for tool in api_tools])
+            total += api_total
+
+        if tool_type in ["mcp", "all"]:
+            # 获取MCP工具
+            mcp_total, mcp_tools = await mcp_service.get_mcp_tool_list(1, 999, search, order)
+            tool_list.extend([{**await tool.to_dict(), "tool_type": "mcp"} for tool in mcp_tools])
+            total += mcp_total
+
+        # 如果是获取全部工具，需要重新排序和分页
+        if tool_type == "all":
+            # 合并后重新排序（根据order参数判断升降序）
+            reverse = order and order[0].startswith("-")
+            sort_key = order[0].replace("-", "")
+            tool_list.sort(key=lambda x: x.get(sort_key, ""), reverse=reverse)
+
+            # 重新分页
+            start_idx = (page - 1) * page_size
+            end_idx = start_idx + page_size
+            tool_list = tool_list[start_idx:end_idx]
+
+        return total, tool_list
+
+
 # 服务实例
 api_service = APIToolService()
 mcp_service = MCPService()
+tool_service = ToolService()

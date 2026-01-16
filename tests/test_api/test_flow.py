@@ -40,10 +40,9 @@ class TestFlowAPI:
 
         # 第二次创建同名流程
         response = await client.post(FLOW_BASE_URL, json=flow_data)
-        assert response.status_code == 400
+        assert response.status_code == 409
 
         result = response.json()
-        assert result["code"] == "4000"
         assert "该流程已存在" in result["msg"]
 
     async def test_create_flow_minimal_data(self, client: AsyncClient):

@@ -1,32 +1,36 @@
-from typing import Optional
+from pydantic import Field
 
-from pydantic import BaseModel, Field
-
-
-class SensitiveWordBase(BaseModel):
-    word: str = Field(..., alias="word")
-    category_id: Optional[int] = Field(None, alias="categoryId")
-    level: Optional[int] = Field(1, alias="level", ge=1, le=3)  # 限制级别在1-3之间
-    description: Optional[str] = Field(None, alias="description")
-    is_active: Optional[bool] = Field(True, alias="isActive")
+from .base import BaseSchema, IDMixin
 
 
-class SensitiveWordCreate(SensitiveWordBase):
-    pass
+class SensitiveWordBase(BaseSchema):
+    word: str = Field(...)
+    category_id: int | None = Field(None)
+    level: int | None = Field(1, ge=1, le=3)  # 限制级别在1-3之间
+    description: str | None = Field(None)
+    is_active: bool | None = Field(True)
+
+
+class SensitiveWordData(IDMixin, SensitiveWordBase): ...
+
+
+class SensitiveWordCreate(SensitiveWordBase): ...
 
 
 class SensitiveWordUpdate(SensitiveWordBase):
-    word: Optional[str] = Field(None, alias="word")  # 更新时，敏感词可选
+    word: str | None = Field(None)  # 更新时，敏感词可选
 
 
-class SensitiveWordCategoryBase(BaseModel):
-    name: str = Field(..., alias="name")
-    description: Optional[str] = Field(None, alias="description")
+class SensitiveWordCategoryBase(BaseSchema):
+    name: str = Field(...)
+    description: str | None = Field(None)
 
 
-class SensitiveWordCategoryCreate(SensitiveWordCategoryBase):
-    pass
+class SensitiveWordCategoryData(IDMixin, SensitiveWordCategoryBase): ...
+
+
+class SensitiveWordCategoryCreate(SensitiveWordCategoryBase): ...
 
 
 class SensitiveWordCategoryUpdate(SensitiveWordCategoryBase):
-    name: Optional[str] = Field(None, alias="name")
+    name: str | None = Field(None)
