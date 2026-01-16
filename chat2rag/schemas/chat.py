@@ -44,7 +44,7 @@ class ChatQueryParams(BaseSchema):
     precision_mode: int = Field(default=0, description="是否使用精确模式")
     chat_id: str | None = Field(None, description="聊天的标识")
     chat_rounds: int = Field(default=1, ge=0, le=30, description="聊天轮数")
-    batch_or_stream: ProcessType = (Field(ProcessType.BATCH),)
+    batch_or_stream: ProcessType = Field(ProcessType.BATCH, description="流式响应或者批式响应")
     prompt_name: str = Field("默认", description="提示词名称选择")
     generator_model: str = Field(default=CONFIG.CHAT_V1_DEFAULT_MODELS["generator"], description="生成模型")
     generation_kwargs: str = Field(default="{}", description="生成参数")
@@ -118,7 +118,7 @@ class ChatRequest(BaseSchema):
         default=CONFIG.MODALITIES,
         description=f'支持输出的模态，如文本、图像等，非必填，支持["text","audio"]、["text"]，默认: {CONFIG.MODALITIES}',
     )
-    audio: Audio = Field(default={}, description="声音输出配置, 非必填")
+    audio: Audio | None = Field(default=None, description="声音输出配置, 非必填")
     extra_params: dict = Field(default={}, description="额外参数，非必填，传入prompt提示词的参数")
 
     @field_validator("tools", mode="after")
