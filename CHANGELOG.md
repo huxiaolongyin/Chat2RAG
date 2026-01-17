@@ -18,6 +18,12 @@
 
 ### Fixed
 
+- 修复当没有配置敏感词时的匹配错误
+- 修复 chat 获取 prompt 时的错误
+- 修复 chat V1、document、command 接口输出异常
+- 修复接口输入 batch_or_stream 参数定义错误
+- 修复 str 类型的 tool_list 解析失败的情况，新增 ast.literal_eval 解析及异常下空列表返回
+
 ### Changed
 
 ### Deprecated

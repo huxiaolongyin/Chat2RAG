@@ -1,3 +1,4 @@
+import ast
 import json
 from datetime import datetime
 from typing import Any
@@ -6,9 +7,12 @@ from pydantic import Field, field_validator, model_validator
 
 from chat2rag.config import CONFIG
 from chat2rag.core.enums import ProcessType
+from chat2rag.core.logger import get_logger
 from chat2rag.dataclass.strategy import StrategyRequest
 
 from .base import BaseSchema
+
+logger = get_logger(__name__)
 
 
 class Audio(BaseSchema):
@@ -69,7 +73,7 @@ class ChatQueryParams(BaseSchema):
 
     @field_validator("tool_list", mode="after")
     @classmethod
-    def parse_tool_list(cls, v: str) -> list:
+    def parse_tool_list(cls, v: str | list) -> list:
         """将 tool_list 从 JSON 字符串转换为列表"""
         if isinstance(v, list):
             return v
@@ -79,7 +83,14 @@ class ChatQueryParams(BaseSchema):
                 raise ValueError("tool_list must be a JSON array")
             return parsed
         except json.JSONDecodeError as e:
-            raise ValueError(f"Invalid JSON format for tool_list: {e}")
+            try:
+                parsed = ast.literal_eval(v)
+                if not isinstance(parsed, list):
+                    raise ValueError("tool_list must be a JSON array")
+                return parsed
+            except Exception as e:
+                logger.error("Invalid JSON format for tool_list: {e}")
+                return []
 
 
 class ChatRequest(BaseSchema):
