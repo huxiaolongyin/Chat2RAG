@@ -1,11 +1,12 @@
 import os
 from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
-from typing import Any, Dict
 
 from dotenv import load_dotenv
 
-load_dotenv(override=True)
+# 只在非测试环境下加载 .env
+if not os.environ.get("PYTEST_CURRENT_TEST"):
+    load_dotenv(override=True)
 
 promt_path = Path(__file__).parent / "prompt"
 
@@ -127,9 +128,7 @@ class Config:
     EMBEDDING_DIMENSIONS = load_int_env("EMBEDDING_DIMENSIONS") or 1024
 
     # Vector Store
-    QDRANT_HOST = load_str_env("QDRANT_HOST") or "localhost"
-    QDRANT_PORT = load_int_env("QDRANT_PORT") or 6333
-    QDRANT_GRPC_PORT = load_int_env("QDRANT_GRPC_PORT") or 6334
+    QDRANT_LOCATION = load_str_env("QDRANT_LOCATION", required=True) or "http://localhost/6333"
 
     # Database
     POSTGRESQL_HOST = load_str_env("POSTGRESQL_HOST") or "localhost"

@@ -44,8 +44,7 @@ class DocumentSearchPipeline(BasePipeline):
             )
             retriever = QdrantEmbeddingRetriever(
                 document_store=QdrantDocumentStore(
-                    host=CONFIG.QDRANT_HOST,
-                    port=CONFIG.QDRANT_PORT,
+                    location=CONFIG.QDRANT_LOCATION,
                     embedding_dim=CONFIG.EMBEDDING_DIMENSIONS,
                     index=self._qdrant_index,
                 )
@@ -140,8 +139,7 @@ class DocumentWriterPipeline(BasePipeline):
             )
             writer = DocumentWriter(
                 document_store=QdrantDocumentStore(
-                    host=CONFIG.QDRANT_HOST,
-                    port=CONFIG.QDRANT_PORT,
+                    location=CONFIG.QDRANT_LOCATION,
                     embedding_dim=CONFIG.EMBEDDING_DIMENSIONS,
                     index=self._qdrant_index,
                 ),

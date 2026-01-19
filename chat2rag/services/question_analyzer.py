@@ -21,7 +21,7 @@ logger = get_logger(__name__)
 class QuestionAnalyzer:
     def __init__(self):
         self.collection_name = "questions"
-        self.client = QdrantClient(host=CONFIG.QDRANT_HOST, port=CONFIG.QDRANT_PORT)
+        self.client = QdrantClient(location=CONFIG.QDRANT_LOCATION)
         self.checkpoint_file = Path("data/metric_sync_checkpoint.json")
 
     @staticmethod

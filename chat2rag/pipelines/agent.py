@@ -78,8 +78,7 @@ class AgentPipeline(BasePipeline[AsyncPipeline]):
                     retriever_name,
                     QdrantEmbeddingRetriever(
                         document_store=QdrantDocumentStore(
-                            host=CONFIG.QDRANT_HOST,
-                            port=CONFIG.QDRANT_PORT,
+                            location=CONFIG.QDRANT_LOCATION,
                             embedding_dim=CONFIG.EMBEDDING_DIMENSIONS,
                             index=collection,  # 每个 retriever 使用不同的 collection
                         )

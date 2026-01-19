@@ -1,6 +1,6 @@
 import asyncio
 from time import perf_counter
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Tuple
 
 from haystack.dataclasses import Document
 from haystack_integrations.document_stores.qdrant import QdrantDocumentStore
@@ -36,18 +36,10 @@ class QAQdrantDocumentStore(QdrantDocumentStore):
     def __init__(
         self,
         index: str = "Document",
-        port: int = CONFIG.QDRANT_PORT,
-        host: Optional[str] = CONFIG.QDRANT_HOST,
-        grpc_port: int = CONFIG.QDRANT_GRPC_PORT,
+        location: str = CONFIG.QDRANT_LOCATION,
         embedding_dim: int = CONFIG.EMBEDDING_DIMENSIONS,
     ):
-        super().__init__(
-            host=host,
-            port=port,
-            grpc_port=grpc_port,
-            index=index,
-            embedding_dim=embedding_dim,
-        )
+        super().__init__(location=location, index=index, embedding_dim=embedding_dim)
         self._initialize_client()
 
     @property
@@ -172,7 +164,7 @@ class QAQdrantDocumentStore(QdrantDocumentStore):
             logger.error(f"QAQdrantDocumentStore query failed: {e}")
             raise e
 
-    async def query_exact(self, query: str) -> Optional[str]:
+    async def query_exact(self, query: str) -> str | None:
         """
         通过精准匹配模式，直接索引问题，然后匹配答案
         """
