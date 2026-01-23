@@ -31,7 +31,7 @@ services:
     # restart: always
 
   qdrant:
-    image: qdrant/qdrant
+    image: qdrant/qdrant:v1.16
     container_name: qdrant
     healthcheck:
       test: [ "CMD", "/bin/bash", "-c", '</dev/tcp/localhost/6333' ]

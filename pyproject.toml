@@ -27,7 +27,7 @@ dependencies = [
 
     # 核心RAG组件
     "haystack-ai==2.22.0",
-    "qdrant-haystack==9.2.0",
+    "qdrant-haystack==10.0.0",
     "mcp-haystack==1.1.0",
 
     # 监控和性能
