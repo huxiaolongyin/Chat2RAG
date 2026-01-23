@@ -11,6 +11,7 @@ from chat2rag.core.enums import (
 )
 from chat2rag.core.exceptions import ValueNoExist
 from chat2rag.core.logger import get_logger
+from chat2rag.dataclass.document import QADocument
 from chat2rag.schemas.base import BaseResponse
 from chat2rag.schemas.common import Current, Size
 from chat2rag.schemas.document import CollectionPaginatedData
@@ -91,11 +92,29 @@ async def get_documents(
 
 
 @async_performance_logger
-@router.post("/collection/document", response_model=BaseResponse, summary="创建知识")
-async def create_documents(
+@router.post("/collection/document", response_model=BaseResponse, summary="从json内容创建知识")
+async def create_documents_by_json(
+    collection_name: str = Query(description="知识库名称", alias="collectionName"),
+    doc_list: List[QADocument] = Body(description="知识内容", alias="docList"),
+):
+    if not await collection_service.client.collection_exists(collection_name):
+        raise ValueNoExist(f"知识库<{collection_name}>不存在")
+
+    # 后台执行内容创建
+    await document_service.create_by_json(collection_name, doc_list)
+
+    return BaseResponse.success(
+        msg="知识内容创建成功",
+        data={"collectionName": collection_name},
+    )
+
+
+@async_performance_logger
+@router.post("/collection/document/file", response_model=BaseResponse, summary="从文件进行创建知识")
+async def create_documents_by_file(
     background_tasks: BackgroundTasks,
     collection_name: str = Query(description="知识库名称", alias="collectionName"),
-    file: UploadFile = File(description="上传知识文件 (CSV/XLSX/PDF)"),
+    file: UploadFile | None = File(None, description="上传知识文件 (CSV/XLSX/PDF)"),
 ):
     if not await collection_service.client.collection_exists(collection_name):
         raise ValueNoExist(f"知识库<{collection_name}>不存在")

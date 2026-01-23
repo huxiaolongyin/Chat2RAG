@@ -22,9 +22,10 @@ from chat2rag.core.enums import (
 )
 from chat2rag.core.exceptions import ValueAlreadyExist, ValueNoExist
 from chat2rag.core.logger import get_logger
+from chat2rag.dataclass.document import QADocument
 from chat2rag.parses.document_parser import PDFParser, QAPairParser
 from chat2rag.pipelines.document import DocumentSearchPipeline, DocumentWriterPipeline
-from chat2rag.schemas.document import CollectionData, DocumentData
+from chat2rag.schemas.document import CollectionData, DocumentData, SourceLocation
 from chat2rag.utils.pipeline_cache import create_pipeline
 from chat2rag.utils.qdrant_store import get_client
 
@@ -118,7 +119,38 @@ class DocumentService:
         documents = [Document(content=doc.content, meta=doc.model_dump(exclude=["content"])) for doc in doc_list]
         return await doc_write_pipeline.run(documents)
 
+    async def create_by_json(self, collection_name: str, documents: List[QADocument]):
+        doc_list = []
+        for doc in documents:
+            doc_list.extend(
+                [
+                    DocumentData(
+                        doc_type=DocumentType.QUESTION,
+                        content=doc.question,
+                        answer=doc.answer,
+                        source=SourceLocation(file_path="json"),
+                    ),
+                    DocumentData(
+                        doc_type=DocumentType.QA_PAIR,
+                        content=f"{doc.question}:{doc.answer}",
+                        source=SourceLocation(file_path="json"),
+                    ),
+                ]
+            )
+
+        # 比对已有知识内容，保留没有的知识点
+        doc_list = await self._filter_existing_documents(collection_name, doc_list)
+
+        if not doc_list:
+            msg = f"没有新知识点写入"
+            logger.warning(msg)
+            raise ValueNoExist(msg)
+
+        return await self._write_document(collection_name, doc_list)
+
     async def create(self, collection_name: str, file: UploadFile):
+        """通过文件 创建知识点"""
+
         # 创建目录（如果不存在）
         upload_dir = "uploads/documents"
         Path(upload_dir).mkdir(parents=True, exist_ok=True)
