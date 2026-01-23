@@ -60,7 +60,7 @@ print(
         query="民营经济提质增效、转型升级、再创优势，离不开大批创新人才，请问省教育厅是如何深化产教融合、校企合作培养创新人才的？",
         top_k=5,
         score_threshold=0.7,
-        filters={"field": "meta.type", "operator": "==", "value": "qa_pair"},
+        filters={"field": "meta.doc_type", "operator": "==", "value": "qa_pair"},
         messages=history_messages,
         vin="HTYW295157A802220",
         city="福州",

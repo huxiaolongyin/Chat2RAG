@@ -2,7 +2,7 @@ import asyncio
 import time
 from typing import Any, Dict, List
 
-from haystack import Pipeline
+from haystack import AsyncPipeline
 from haystack.components.embedders import OpenAIDocumentEmbedder, OpenAITextEmbedder
 from haystack.components.writers import DocumentWriter
 from haystack.dataclasses import Document
@@ -14,6 +14,7 @@ from qdrant_client.models import Filter
 from chat2rag.config import CONFIG
 from chat2rag.core.logger import get_logger
 from chat2rag.pipelines.base import BasePipeline
+from chat2rag.utils.qdrant_store import get_client
 
 logger = get_logger(__name__)
 
@@ -30,25 +31,26 @@ class DocumentSearchPipeline(BasePipeline):
         self._qdrant_index = qdrant_index
         super().__init__()
 
-    def _initialize_pipeline(self) -> Pipeline:
+    def _initialize_pipeline(self) -> AsyncPipeline:
         """
         Initialize the Document search pipeline
         """
         try:
-            pipeline = Pipeline()
+            pipeline = AsyncPipeline()
             embedder = OpenAITextEmbedder(
                 api_base_url=CONFIG.EMBEDDING_OPENAI_URL,
-                api_key=Secret.from_token("OPENAI_API_KEY"),
+                api_key=Secret.from_token(CONFIG.EMBEDDING_API_KEY),
                 model=CONFIG.EMBEDDING_MODEL,
                 dimensions=CONFIG.EMBEDDING_DIMENSIONS,
             )
-            retriever = QdrantEmbeddingRetriever(
-                document_store=QdrantDocumentStore(
-                    location=CONFIG.QDRANT_LOCATION,
-                    embedding_dim=CONFIG.EMBEDDING_DIMENSIONS,
-                    index=self._qdrant_index,
-                )
+            document_store = QdrantDocumentStore(
+                location=CONFIG.QDRANT_LOCATION,
+                embedding_dim=CONFIG.EMBEDDING_DIMENSIONS,
+                index=self._qdrant_index,
             )
+            # 替换内置client，以便在测试阶段，使用 location=':memory:' 时，能够共用实例
+            document_store._async_client = get_client()
+            retriever = QdrantEmbeddingRetriever(document_store=document_store)
             pipeline.add_component("embedder", embedder)
             pipeline.add_component("retriever", retriever)
             pipeline.connect("embedder.embedding", "retriever.query_embedding")
@@ -90,12 +92,15 @@ class DocumentSearchPipeline(BasePipeline):
         )
         start_time = time.time()
         try:
-            result = await asyncio.to_thread(
-                self.pipeline.run,
+            result = await self.pipeline.run_async(
                 data={
                     "embedder": {"text": query},
-                    "retriever": {"top_k": top_k, "score_threshold": score_threshold, "filters": filters},
-                },
+                    "retriever": {
+                        "top_k": top_k,
+                        "score_threshold": score_threshold,
+                        "filters": filters,
+                    },
+                }
             )
 
             documents = result.get("retriever", {}).get("documents", [])
@@ -124,26 +129,27 @@ class DocumentWriterPipeline(BasePipeline):
         self.pipeline = self._initialize_pipeline()
         super().__init__()
 
-    def _initialize_pipeline(self):
+    def _initialize_pipeline(self) -> AsyncPipeline:
         """
         Initialize the DocumentWriter pipeline
         """
         logger.debug("Initializing DocumentWriter pipeline...")
         try:
-            pipeline = Pipeline()
+            pipeline = AsyncPipeline()
             embedder = OpenAIDocumentEmbedder(
                 api_base_url=CONFIG.EMBEDDING_OPENAI_URL,
-                api_key=Secret.from_token("OPENAI_API_KEY"),
+                api_key=Secret.from_token(CONFIG.EMBEDDING_API_KEY),
                 model=CONFIG.EMBEDDING_MODEL,
                 dimensions=CONFIG.EMBEDDING_DIMENSIONS,
             )
-            writer = DocumentWriter(
-                document_store=QdrantDocumentStore(
-                    location=CONFIG.QDRANT_LOCATION,
-                    embedding_dim=CONFIG.EMBEDDING_DIMENSIONS,
-                    index=self._qdrant_index,
-                ),
+            document_store = QdrantDocumentStore(
+                location=CONFIG.QDRANT_LOCATION,
+                embedding_dim=CONFIG.EMBEDDING_DIMENSIONS,
+                index=self._qdrant_index,
             )
+            # 替换内置client，以便在测试阶段，使用 location=':memory:' 时，能够共用实例
+            document_store._async_client = get_client()
+            writer = DocumentWriter(document_store=document_store)
             pipeline.add_component("embedder", embedder)
             pipeline.add_component("writer", writer)
             pipeline.connect("embedder", "writer")
@@ -163,7 +169,7 @@ class DocumentWriterPipeline(BasePipeline):
         """
         logger.info(f"Running the DocumentWriter pipeline, documents count: <{len(documents)}>")
         try:
-            result = await asyncio.to_thread(self.pipeline.run, data={"embedder": {"documents": documents}})
+            result = await self.pipeline.run_async({"embedder": {"documents": documents}})
             logger.info("DocumentWriter pipeline ran successfully.")
             return result
 

@@ -67,7 +67,7 @@ class AgentStrategy(ResponseStrategy):
                 query=query,
                 top_k=self.request.top_k,
                 score_threshold=self.request.score_threshold,
-                filters={"field": "meta.type", "operator": "==", "value": "qa_pair"},
+                filters={"field": "meta.doc_type", "operator": "==", "value": "qa_pair"},
                 messages=history_messages,
                 extra_params=self.request.extra_params | current_time,
                 streaming_callback=self.handler.callback,

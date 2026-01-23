@@ -1,16 +1,22 @@
 import asyncio
-import tempfile
+import os
 
 import pytest
+from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
-from qdrant_client import QdrantClient
-from qdrant_client.models import Distance, VectorParams
 from tortoise import Tortoise
 
-from chat2rag.config import CONFIG
-from chat2rag.middleware import ExceptionHandlerMiddleware, LoggingMiddleware
+# 设置测试的环境变量
+os.environ["PYTEST_CURRENT_TEST"] = "True"
+os.environ["QDRANT_LOCATION"] = ":memory:"
+os.environ["EMBEDDING_OPENAI_URL"] = "https://api.siliconflow.cn/v1"
+os.environ["EMBEDDING_MODEL"] = "Qwen/Qwen3-Embedding-0.6B"
+os.environ["EMBEDDING_API_KEY"] = "sk-xanhyopslamqkebregfhldoudjkjyunlhebkrcslwlbbsuyu"
+os.environ["EMBEDDING_DIMENSIONS"] = "1024"
+os.environ["SERPERDEV_API_KEY"] = "st-123"
 
-# from tortoise.contrib.fastapi import RegisterTortoise
+
+from chat2rag.utils.qdrant_store import get_client
 
 
 @pytest.fixture(scope="session")
@@ -19,24 +25,6 @@ def event_loop():
     loop = asyncio.get_event_loop_policy().new_event_loop()
     yield loop
     loop.close()
-
-
-@pytest.fixture(scope="function")
-def qdrant_client():
-    """Create in-memory Qdrant client for testing."""
-    # 使用临时目录作为存储路径，测试结束后自动清理
-    with tempfile.TemporaryDirectory() as temp_dir:
-        client = QdrantClient(path=temp_dir)
-
-        # 创建测试用的集合（根据你的实际需求调整）
-        test_collections = ["test_collection_1", "test_collection_2", "knowledge_base"]
-        for collection_name in test_collections:
-            client.create_collection(
-                collection_name=collection_name,
-                vectors_config=VectorParams(size=1024, distance=Distance.COSINE),  # 根据你使用的embedding模型调整
-            )
-
-        yield client
 
 
 @pytest.fixture(scope="function", autouse=True)
@@ -60,15 +48,36 @@ async def initialize_db():
     await Tortoise.close_connections()
 
 
+@pytest.fixture(scope="function", autouse=True)
+async def initialize_qdrant():
+    """Initialize and clean up Qdrant for each test function."""
+    client = get_client()
+
+    # 清理所有existing collections
+    collections = await client.get_collections()
+
+    for collection in collections.collections:
+        await client.delete_collection(collection.name)
+
+    yield
+
+    # 测试后清理
+    print("删除知识库")
+    collections = await client.get_collections()
+    for collection in collections.collections:
+        await client.delete_collection(collection.name)
+
+
 @pytest.fixture
 async def client():
     """Create test client."""
-    from fastapi import FastAPI
-
     from chat2rag.api.routes import router
+    from chat2rag.config import CONFIG
+    from chat2rag.middleware import ExceptionHandlerMiddleware, LoggingMiddleware
 
     # 创建不带 lifespan 的测试 app
     app = FastAPI(title="Chat2RAG Test")
+
     # 注意顺序：异常处理在外层，日志记录在内层
     app.add_middleware(ExceptionHandlerMiddleware)
     app.add_middleware(LoggingMiddleware, log_level="info", log_body=True)

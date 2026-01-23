@@ -2,15 +2,17 @@ from enum import Enum
 
 
 class DocumentType(str, Enum):
-    """
-    The type of document.
+    """文档类型"""
 
-    QA Pair matches questions and answers for retrieval.
-    QUESTION only matches questions and is generally used for precise answers.
-    """
-
-    QA_PAIR = "qa_pair"
     QUESTION = "question"
+    QA_PAIR = "qa_pair"  # 问答对
+    PDF = "pdf"
+    WORD = "word"
+    MARKDOWN = "markdown"
+    TEXT = "text"
+    WEB = "web"
+    EXCEL = "excel"
+    CSV = "csv"
 
 
 class ProcessType(str, Enum):

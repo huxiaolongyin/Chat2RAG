@@ -1,6 +1,6 @@
 from typing import AsyncIterator
 
-from chat2rag.stores.qdrant import QAQdrantDocumentStore
+from chat2rag.services.collection_service import document_service
 
 from .base import ResponseStrategy
 
@@ -13,7 +13,8 @@ class ExactMatchStrategy(ResponseStrategy):
 
     async def execute(self, query: str) -> AsyncIterator[str]:
         for collection in self.request.collections:
-            if answer := await QAQdrantDocumentStore(collection).query_exact(query):
+            document = await document_service.query_exact(collection_name=collection, query=query)
+            if answer := document.meta.get("answer", ""):
                 async for item in self._yield_stream(answer, "Exact match answer"):
                     yield item
                 return

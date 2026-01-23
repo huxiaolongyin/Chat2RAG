@@ -126,6 +126,7 @@ class Config:
     EMBEDDING_OPENAI_URL = load_str_env("EMBEDDING_OPENAI_URL")
     EMBEDDING_MODEL = load_str_env("EMBEDDING_MODEL") or "360Zhinao-search"
     EMBEDDING_DIMENSIONS = load_int_env("EMBEDDING_DIMENSIONS") or 1024
+    EMBEDDING_API_KEY = load_str_env("EMBEDDING_API_KEY", True)
 
     # Vector Store
     QDRANT_LOCATION = load_str_env("QDRANT_LOCATION", required=True) or "http://localhost/6333"

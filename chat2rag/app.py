@@ -14,6 +14,7 @@ from chat2rag.middleware import ExceptionHandlerMiddleware, LoggingMiddleware
 from chat2rag.services.model_service import ModelSourceService, periodic_latency_update
 from chat2rag.services.prompt_service import prompt_service
 from chat2rag.services.question_analyzer import question_analyzer
+from chat2rag.utils.qdrant_store import get_client
 
 logger = get_logger(__name__)
 
@@ -21,6 +22,7 @@ logger = get_logger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
 
+    qdrant_client = get_client()
     await modify_db()  # 数据库自动迁移
 
     # 进行 RAG 流程监控
@@ -36,7 +38,7 @@ async def lifespan(app: FastAPI):
     await prompt_service.ensure_default_prompt()
 
     # 创建后台任务执行同步
-    asyncio.create_task(question_analyzer.sync_from_metrics())
+    # asyncio.create_task(question_analyzer.sync_from_metrics())
 
     # 加载MCP连接
     # ToolManager()
@@ -45,7 +47,7 @@ async def lifespan(app: FastAPI):
     yield
     # 关闭时执行
     # await FastAPICache.clear()
-
+    await qdrant_client.close()
     logger.info("Stopping Chat2RAG application")
 
 

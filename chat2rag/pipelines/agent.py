@@ -17,6 +17,7 @@ from chat2rag.core.logger import get_logger
 from chat2rag.pipelines.base import BasePipeline
 from chat2rag.services.tool_service import mcp_service
 from chat2rag.utils.merge_kwargs import recursive_tuple_to_dict
+from chat2rag.utils.qdrant_store import get_client
 
 logger = get_logger(__name__)
 
@@ -66,7 +67,7 @@ class AgentPipeline(BasePipeline[AsyncPipeline]):
                 "embedder",
                 OpenAITextEmbedder(
                     api_base_url=CONFIG.EMBEDDING_OPENAI_URL,
-                    api_key=Secret.from_token("OPENAI_API_KEY"),
+                    api_key=Secret.from_token(CONFIG.EMBEDDING_API_KEY),
                     model=CONFIG.EMBEDDING_MODEL,
                     dimensions=CONFIG.EMBEDDING_DIMENSIONS,
                 ),
@@ -74,15 +75,13 @@ class AgentPipeline(BasePipeline[AsyncPipeline]):
             # 为每个 collection 创建独立的 retriever
             for idx, collection in enumerate(self._collections):
                 retriever_name = f"retriever_{idx}"
+                document_store = QdrantDocumentStore(
+                    location=CONFIG.QDRANT_LOCATION, embedding_dim=CONFIG.EMBEDDING_DIMENSIONS, index=collection
+                )
+                document_store._async_client = get_client()
                 pipeline.add_component(
                     retriever_name,
-                    QdrantEmbeddingRetriever(
-                        document_store=QdrantDocumentStore(
-                            location=CONFIG.QDRANT_LOCATION,
-                            embedding_dim=CONFIG.EMBEDDING_DIMENSIONS,
-                            index=collection,  # 每个 retriever 使用不同的 collection
-                        )
-                    ),
+                    QdrantEmbeddingRetriever(document_store=document_store),
                 )
                 # 将 embedder 连接到每个 retriever
                 pipeline.connect("embedder.embedding", f"{retriever_name}.query_embedding")
