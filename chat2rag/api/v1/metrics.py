@@ -11,7 +11,7 @@ from chat2rag.services.metric_service import metric_service
 router = APIRouter()
 
 
-@router.get("/", response_model=PaginatedResponse[MetricData], summary="获取对话历史")
+@router.get("", response_model=PaginatedResponse[MetricData], summary="获取对话历史")
 @router.get("/list", response_model=PaginatedResponse[MetricData], summary="获取对话历史")
 async def get_metrics_list(
     current: Current = 1,
