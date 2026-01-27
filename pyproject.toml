@@ -19,7 +19,7 @@ classifiers = [
 ]
 dependencies = [
     # 页面UI
-    "streamlit==1.50.0",
+    "streamlit==1.53.1",
     "requests>=2.31.0",
     "streamlit-antd-components>=0.3.2",
     "openpyxl>=3.1.5",
@@ -31,21 +31,21 @@ dependencies = [
     "mcp-haystack==1.1.0",
 
     # 监控和性能
-    "openinference-instrumentation-haystack==0.1.27",
-    "opentelemetry-sdk==1.38.0",
-    "opentelemetry-exporter-otlp==1.38.0",
-    "arize-phoenix==12.9.0",
+    "openinference-instrumentation-haystack==0.1.29",
+    "opentelemetry-sdk==1.39.1",
+    "opentelemetry-exporter-otlp==1.39.1",
+    "arize-phoenix==12.31.2",
     "pyinstrument==5.1.1",
     "plotly==6.3.0",
     "xlrd",
 
     # 数据库
-    "tortoise-orm[asyncpg]==0.25.1",
+    "tortoise-orm[asyncpg]==0.25.3",
     "aerich==0.9.2",
 
     # Web服务
     "fastapi==0.120.3",
-    "uvicorn[standard]==0.34.0",
+    "uvicorn[standard]==0.40.0",
 
     # 工具库
     "pyhumps==3.8.0",
