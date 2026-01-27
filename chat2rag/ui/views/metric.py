@@ -225,10 +225,13 @@ def prepare_metrics_dataframe(metrics):
 
     df = pd.DataFrame(metrics)
 
-    # 格式化响应时间
+    # 保留原始数值列用于图表（在重命名之前）
     if "firstResponseMs" in df.columns:
+        df["firstResponseMs_raw"] = df["firstResponseMs"]
         df["firstResponseMs_formatted"] = df["firstResponseMs"].apply(format_response_time)
+
     if "totalMs" in df.columns:
+        df["totalMs_raw"] = df["totalMs"]
         df["totalMs_formatted"] = df["totalMs"].apply(format_response_time)
 
     # 重命名列
@@ -250,11 +253,6 @@ def prepare_metrics_dataframe(metrics):
     # 只重命名存在的列
     rename_dict = {k: v for k, v in column_map.items() if k in df.columns}
     df = df.rename(columns=rename_dict)
-
-    # 保留原始数值列用于图表
-    df["firstResponseMs_raw"] = metrics[0].get("firstResponseMs") if metrics else None
-    df["totalMs_raw"] = metrics[0].get("totalMs") if metrics else None
-
     return df
 
 
