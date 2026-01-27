@@ -15,6 +15,7 @@
 - 新增 Agent 管道支持多个知识库的检索
 - 新增 chat_service 进行聊天处理 ChatProcessor
 - 简化 document、flow、metric、sensitive、tool 的接口，将复杂逻辑移入 service 层处理，并添加响应处理
+- 新增知识库文档各类解析器 QA 解析器
 
 ### Fixed
 
