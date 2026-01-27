@@ -201,7 +201,35 @@ class DocumentService:
         if not await self.client.collection_exists(collection_name):
             raise ValueNoExist(f"知识库<{collection_name}>不存在")
 
-        return await self.client.delete(collection_name=collection_name, points_selector=doc_id_list)
+        # 如果是QA，需要把问题的文档ID也检索出来
+        all_ids_to_delete = set(doc_id_list)
+
+        # 获取要删除的文档信息
+        documents = await self.client.retrieve(collection_name=collection_name, ids=doc_id_list)
+
+        # 检查是否有QA_PAIR类型文档，找出关联的question文档
+        for doc in documents:
+            if doc.payload.get("meta", {}).get("doc_type") == DocumentType.QA_PAIR:
+                qa_content = doc.payload.get("content", "")
+                if qa_content:
+                    question, answer = qa_content.split(":")
+                    # 查询content等于answer且doc_type为question的文档
+                    question_docs = await self.client.scroll(
+                        collection_name=collection_name,
+                        scroll_filter=Filter(
+                            must=[
+                                FieldCondition(key="meta.doc_type", match=MatchValue(value=DocumentType.QUESTION)),
+                                FieldCondition(key="content", match=MatchValue(value=question)),
+                                FieldCondition(key="meta.answer", match=MatchValue(value=answer)),
+                            ]
+                        ),
+                        limit=100,
+                    )
+                    # 将找到的question文档ID加入删除列表
+                    for question_doc in question_docs[0]:
+                        all_ids_to_delete.add(question_doc.id)
+
+        return await self.client.delete(collection_name=collection_name, points_selector=list(all_ids_to_delete))
 
     async def get_list(
         self,
@@ -214,7 +242,9 @@ class DocumentService:
     ):
         document_list, _ = await self.client.scroll(
             collection_name=collection_name,
-            scroll_filter=Filter(must_not=[FieldCondition(key="meta.doc_type", match=MatchValue(value="question"))]),
+            scroll_filter=Filter(
+                must_not=[FieldCondition(key="meta.doc_type", match=MatchValue(value=DocumentType.QUESTION))]
+            ),
             limit=10000,
             with_payload=True,  # 根据实际调整
         )
