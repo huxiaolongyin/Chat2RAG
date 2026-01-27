@@ -14,6 +14,9 @@ class ExactMatchStrategy(ResponseStrategy):
     async def execute(self, query: str) -> AsyncIterator[str]:
         for collection in self.request.collections:
             document = await document_service.query_exact(collection_name=collection, query=query)
+            if not document:
+                continue
+
             if answer := document.meta.get("answer", ""):
                 async for item in self._yield_stream(answer, "Exact match answer"):
                     yield item
