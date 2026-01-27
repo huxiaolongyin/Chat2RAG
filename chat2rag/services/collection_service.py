@@ -60,6 +60,9 @@ class CollectionService:
         collections_summary = await self.client.get_collections()
         items = collections_summary.collections
 
+        # 去除内置使用库
+        items = [item for item in items if item.name not in ["Document", "questions"]]
+
         # 按 collection_name 过滤
         if collection_name:
             items = [item for item in items if collection_name.lower() in item.name.lower()]
@@ -219,7 +222,7 @@ class DocumentService:
         if not document_list:
             return 0, []
 
-        document_list = [{"id": doc.payload["id"], "content": doc.payload["content"]} for doc in document_list]
+        document_list = [{"id": doc.id, "content": doc.payload["content"]} for doc in document_list]
 
         # 内容过滤
         if document_content:
