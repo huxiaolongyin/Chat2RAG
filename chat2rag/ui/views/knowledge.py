@@ -89,6 +89,8 @@ def del_knowledge_dialog(data):
     data_id = [item["id"] for item in data]
     if st.button("确认删除", width="stretch", type="primary"):
         knowledge_service.delete_documents(st.session_state["collection_select"], data_id)
+        st.toast("删除成功！", icon="✅")
+        time.sleep(1)
         st.rerun()
 
 
@@ -164,7 +166,7 @@ def render_upload_view():
 
         def upload_with_progress():
             total_records = len(process_df)
-            batch_size = 4
+            batch_size = 8
 
             # 计算总批次数
             total_batches = (total_records + batch_size - 1) // batch_size
@@ -245,9 +247,9 @@ def render_knowledge_view():
     knowledge_table = st.data_editor(
         data_with_select,
         column_config={
-            "select": st.column_config.CheckboxColumn("选择", help="选择要操作的知识", width="small"),
-            "id": st.column_config.TextColumn("ID", width="small"),
-            "content": st.column_config.TextColumn("内容", width="large"),
+            "select": st.column_config.CheckboxColumn("选择", help="选择要操作的知识", width=10),
+            "id": st.column_config.TextColumn("ID", width=10),
+            "content": st.column_config.TextColumn("内容", width=500),
         },
         hide_index=True,
         width="stretch",
