@@ -152,12 +152,7 @@ def render_upload_view():
             st.error("答案列不能包含空值")
             return False
 
-        process_df = pd.DataFrame(
-            {
-                "问题": questions,
-                "答案": answers,
-            }
-        )
+        process_df = pd.DataFrame({"问题": questions, "答案": answers})
         st.dataframe(process_df, hide_index=True, width="stretch")
         st.markdown(f"知识总数：{len(process_df)}")
 
@@ -218,6 +213,8 @@ def render_upload_view():
         # 上传完成后自动刷新
         if st.session_state.upload_complete:
             st.session_state.upload_complete = False
+            st.toast("知识批量导入成功！", icon="✅")
+            time.sleep(1.5)
             st.rerun()
 
 

@@ -16,6 +16,9 @@
 - 新增 chat_service 进行聊天处理 ChatProcessor
 - 简化 document、flow、metric、sensitive、tool 的接口，将复杂逻辑移入 service 层处理，并添加响应处理
 - 新增知识库文档各类解析器 QA 解析器
+- 新增 UI 界面中知识库文档删除成功时的提示
+- 新增 UI 登录页面
+- 新增热门问题分析，采用 DBCAN+向量化的方式进行处理
 
 ### Fixed
 

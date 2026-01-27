@@ -8,6 +8,7 @@ services:
       - "8501:8501"
     volumes:
       - ${DATA_PATH}/phoenix:/.phoenix
+      - ${DATA_PATH}/checkpoint:/code/data/checkpoint
       - ${LOG_PATH}:/code/logs
       - ${MIGRATIONS_PATH}:/code/migrations
       - ${UPLOADS_PATH}:/code/uploads

@@ -5,7 +5,13 @@ from pathlib import Path
 
 from haystack.dataclasses import Document
 from qdrant_client import QdrantClient
-from qdrant_client.models import FieldCondition, Filter, MatchValue
+from qdrant_client.models import (
+    Distance,
+    FieldCondition,
+    Filter,
+    MatchValue,
+    VectorParams,
+)
 from sklearn.cluster import DBSCAN
 from tortoise.expressions import Q
 
@@ -22,7 +28,14 @@ class QuestionAnalyzer:
     def __init__(self):
         self.collection_name = "questions"
         self.client = QdrantClient(location=CONFIG.QDRANT_LOCATION)
-        self.checkpoint_file = Path("data/metric_sync_checkpoint.json")
+        if not self.client.collection_exists(self.collection_name):
+            logger.warning(f"知识库 `{self.collection_name}` 不存在，进行新建")
+            self.client.create_collection(
+                self.collection_name,
+                vectors_config=VectorParams(size=CONFIG.EMBEDDING_DIMENSIONS, distance=Distance.COSINE),
+            )
+
+        self.checkpoint_file = Path("data/checkpoint/metric_sync_checkpoint.json")
 
     @staticmethod
     def clean_text(text: str, level: str = "standard") -> str:
@@ -108,7 +121,13 @@ class QuestionAnalyzer:
 
         return cleaned.strip()
 
-    async def add_or_update_question(self, collection_name: str, question_text: str):
+    async def add_or_update_question(
+        self,
+        collection_name: str,
+        question_text: str,
+        create_time: str = datetime.now().isoformat(),
+        update_time: str = datetime.now().isoformat(),
+    ):
         """添加新问题或更新已存在的相似问题"""
         try:
             # 清洗问题文本
@@ -132,9 +151,7 @@ class QuestionAnalyzer:
 
                 # 更新计数和时间戳
                 new_count = question_meta.get("count", 0) + 1
-                updated_payload = {
-                    "meta": {**question_meta, "count": new_count, "update_time": datetime.now().isoformat()}
-                }
+                updated_payload = {"meta": {**question_meta, "count": new_count, "update_time": update_time}}
 
                 # 更新到数据库
                 self.client.set_payload(
@@ -148,8 +165,8 @@ class QuestionAnalyzer:
                 doc_writer_pipeline = await create_pipeline(DocumentWriterPipeline, qdrant_index=self.collection_name)
                 meta = {
                     "collection_name": collection_name,
-                    "create_time": datetime.now().isoformat(),
-                    "update_time": datetime.now().isoformat(),
+                    "create_time": create_time,
+                    "update_time": update_time,
                     "count": 1,
                 }
                 await doc_writer_pipeline.run([Document(content=question_text, meta=meta)])
@@ -157,7 +174,7 @@ class QuestionAnalyzer:
         except Exception as e:
             logger.error("添加新问题或更新已存在的相似问题失败")
 
-    def get_hot_questions(self, limit: int | None = None, days: int | None = None, collection_name: str | None = None):
+    def get_hot_questions(self, collection_name: str | None = None, days: int | None = None, limit: int | None = None):
         """
         获取热门问题
 
@@ -177,7 +194,7 @@ class QuestionAnalyzer:
                 cutoff_date = (datetime.now() - timedelta(days=days)).isoformat()
                 filter_conditions.append(FieldCondition(key="meta.update_time", range={"gte": cutoff_date}))
 
-            if collection_name is not None:
+            if collection_name:
                 filter_conditions.append(FieldCondition(key="meta.collection_name", match={"value": collection_name}))
 
             # 如果有过滤条件则创建 Filter，否则为 None
@@ -201,6 +218,7 @@ class QuestionAnalyzer:
             questions_data = []
 
             for point in points:
+
                 vectors.append(point.vector)
                 meta = point.payload.get("meta", {})
                 questions_data.append(
@@ -208,6 +226,7 @@ class QuestionAnalyzer:
                         "id": point.id,
                         "text": point.payload.get("content", ""),
                         "count": meta.get("count", 0),
+                        "collection": meta.get("collection_name", ""),
                         "create_time": meta.get("create_time", ""),
                         "update_time": meta.get("update_time", ""),
                         "point": point,
@@ -240,7 +259,17 @@ class QuestionAnalyzer:
                 # 计算簇内所有问题的count总和
                 total_count = sum(q["count"] for q in cluster_questions)
 
-                clusters = [{"id": c["id"], "text": c["text"], "count": c["count"]} for c in cluster_questions]
+                clusters = [
+                    {
+                        "id": point["id"],
+                        "text": point["text"],
+                        "collection": point["collection"],
+                        "create_time": point["create_time"],
+                        "update_time": point["update_time"],
+                        "count": point["count"],
+                    }
+                    for point in cluster_questions
+                ]
 
                 # 创建代表性问题记录
                 cluster_representative = {
@@ -313,15 +342,17 @@ class QuestionAnalyzer:
                 # 将ISO格式字符串转换为datetime对象
                 last_sync_time = datetime.fromisoformat(last_sync_time_str)
                 # 修正查询操作符：glt -> gt (greater than)
-                metrics = await Metric.filter(Q(create_time__gt=last_sync_time)).all()
+                metrics = await Metric.filter(Q(create_time__gt=last_sync_time)).all().order_by("create_time")
                 logger.info(f"增量同步: 从 {last_sync_time_str} 开始")
             else:
-                metrics = await Metric.all()
+                metrics = await Metric.all().order_by("create_time")
                 logger.info("全量同步: 首次同步所有数据")
 
             # 同步数据
             for metric in metrics:
-                await self.add_or_update_question(metric.collections, metric.question)
+                await self.add_or_update_question(
+                    metric.collections, metric.question, metric.create_time.isoformat(), metric.update_time.isoformat()
+                )
 
             # 同步成功后保存checkpoint
             self._save_checkpoint()
@@ -335,13 +366,13 @@ class QuestionAnalyzer:
 
 
 question_analyzer = QuestionAnalyzer()
+
 if __name__ == "__main__":
     import asyncio
 
     import pandas as pd
 
-    qa = QuestionAnalyzer()
     # question_df = pd.read_csv("temp/场景-问题.csv")
     # for collection_name, question in question_df.values:
     #     asyncio.run(qa.add_or_update_question(collection_name, question))
-    print(json.dumps(qa.get_hot_questions(limit=20), ensure_ascii=False))
+    print(json.dumps(question_analyzer.get_hot_questions(limit=20), ensure_ascii=False))

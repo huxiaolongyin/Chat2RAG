@@ -30,5 +30,16 @@ class MetricController:
         else:
             return []
 
+    def get_hot_questions(self, collection: str | None = None, days: int = 30, limit: int = 10):
+        response = requests.get(
+            f"{self.metric_base_url}/hot-questions",
+            params={"collection": collection, "days": days, "limit": limit},
+            timeout=10,
+        )
+        response.raise_for_status()
+        result = response.json()
+        if result["code"] == "0000" and result["data"]:
+            return result["data"]
+
 
 metric_controller = MetricController()
