@@ -407,15 +407,15 @@ def render_hot_questions_details(raw_data):
     st.subheader("相似问题详情")
 
     for item in raw_data:
-        with st.expander(f"{item['representative_question']} (共 {item['count']} 次)"):
+        with st.expander(f"{item['representativeQuestion']} (共 {item['count']} 次)"):
             col1, col2 = st.columns(2)
             with col1:
-                st.write(f"**聚类大小**: {item['cluster_size']}")
-                st.write(f"**创建时间**: {item['create_time']}")
+                st.write(f"**聚类大小**: {item['clusterSize']}")
+                st.write(f"**创建时间**: {item['createTime']}")
             with col2:
-                st.write(f"**更新时间**: {item['update_time']}")
+                st.write(f"**更新时间**: {item['updateTime']}")
 
-            if item.get("similar_questions"):
+            if item.get("similarQuestions"):
                 st.write("**相似问题列表**:")
                 similar_df = pd.DataFrame(
                     [
@@ -424,7 +424,7 @@ def render_hot_questions_details(raw_data):
                             "知识库": q["collection"],
                             "出现次数": q["count"],
                         }
-                        for q in item["similar_questions"]
+                        for q in item["similarQuestions"]
                     ]
                 )
                 st.dataframe(similar_df, use_container_width=True, hide_index=True)
@@ -448,10 +448,10 @@ def render_hot_questions_tab():
     df_hot = pd.DataFrame(
         [
             {
-                "问题": item["representative_question"],
+                "问题": item["representativeQuestion"],
                 "提问次数": item["count"],
-                "聚类大小": item["cluster_size"],
-                "更新时间": item["update_time"],
+                "聚类大小": item["clusterSize"],
+                "更新时间": item["updateTime"],
             }
             for item in raw_data
         ]
