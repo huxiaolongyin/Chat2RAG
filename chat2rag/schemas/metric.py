@@ -1,6 +1,8 @@
 from datetime import datetime
 from typing import Any, Dict, List
 
+from pydantic import Field
+
 from .base import BaseSchema
 
 
@@ -56,19 +58,19 @@ class MetricUpdate(BaseSchema):
 
 
 class HotQuestionPoint(BaseSchema):
-    id: str
-    text: str
-    collection: str
-    create_time: str
-    update_time: str
+    id: str = Field(..., description="ID", examples=["2edcf681-f8d2-5188-afd6-b94c79b87c41"])
+    text: str = Field(..., description="相似问题", examples=["地铁咋走啊"])
+    collection: str = Field(..., description="知识库/场景", examples=["北京朝阳站"])
+    create_time: str = Field(..., description="创建时间", examples=["2025-09-28T15:21:15.911842+08:00"])
+    update_time: str = Field(..., description="创建时间", examples=["2026-01-11T16:43:37.679929+08:00"])
     count: int
 
 
 class HotQuestionData(BaseSchema):
-    id: str
-    representative_question: str
-    count: int
-    cluster_size: int
-    create_time: str
-    update_time: str
-    similar_questions: List[HotQuestionPoint]
+    id: str = Field(..., description="ID", examples=["8c495fea-ca58-587a-8b83-d07eb7561be6"])
+    representative_question: str = Field(..., description="热点问题中最具代表性的问题", examples=["地铁怎么走"])
+    count: int = Field(..., description="热点问题出现的次数", examples=[57])
+    cluster_size: int = Field(..., description="聚类的大小", examples=[8])
+    create_time: str = Field(..., description="创建时间", examples=["2025-09-28T15:21:15.911842+08:00"])
+    update_time: str = Field(..., description="创建时间", examples=["2026-01-11T16:43:37.679929+08:00"])
+    similar_questions: List[HotQuestionPoint] = Field(..., description="相似问题列表")
