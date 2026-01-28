@@ -3,6 +3,7 @@ from typing import AsyncIterator
 
 from chat2rag.core.enums import ProcessType
 from chat2rag.schemas.chat import ChatRequest
+from chat2rag.services.question_analyzer import question_analyzer
 from chat2rag.strategies import (
     AgentStrategy,
     CommandStrategy,
@@ -35,6 +36,10 @@ class ChatProcessor:
         strategy_chain = self._build_strategy_chain()
         async for chunk in strategy_chain.execute(self.query):
             yield chunk
+
+        # 记录热门问题分析
+        await question_analyzer.add_or_update_question(",".join(self.request.collections), question_text=self.query)
+        question_analyzer._save_checkpoint()
 
     def _build_strategy_chain(self) -> StrategyChain:
         """构建策略链"""
