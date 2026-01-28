@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 from .base import BaseSchema
 
@@ -53,3 +53,22 @@ class MetricUpdate(BaseSchema):
     tool_result: Dict[str, Any] | None = None
     error_message: str | None = None
     meta_data: Dict[str, Any] | None = None
+
+
+class HotQuestionPoint(BaseSchema):
+    id: str
+    text: str
+    collection: str
+    create_time: str
+    update_time: str
+    count: int
+
+
+class HotQuestionData(BaseSchema):
+    id: str
+    representative_question: str
+    count: int
+    cluster_size: int
+    create_time: str
+    update_time: str
+    similar_questions: List[HotQuestionPoint]

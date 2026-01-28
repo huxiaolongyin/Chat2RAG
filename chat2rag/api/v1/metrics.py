@@ -1,11 +1,12 @@
 from datetime import datetime
+from typing import List
 
 from fastapi import APIRouter, Query
 from tortoise.expressions import Q
 
 from chat2rag.schemas.base import BaseResponse, PaginatedResponse
 from chat2rag.schemas.common import Current
-from chat2rag.schemas.metric import MetricData
+from chat2rag.schemas.metric import HotQuestionData, MetricData
 from chat2rag.services.metric_service import metric_service
 from chat2rag.services.question_analyzer import question_analyzer
 
@@ -46,7 +47,7 @@ async def get_metrics_list(
     )
 
 
-@router.get("/hot-questions", response_model=BaseResponse, summary="获取热点话题")
+@router.get("/hot-questions", response_model=BaseResponse[List[HotQuestionData]], summary="获取热点话题")
 async def get_hot_questions(
     collection: str | None = Query(None, description="知识库"),
     days: int | None = Query(None, description="热点天数"),
