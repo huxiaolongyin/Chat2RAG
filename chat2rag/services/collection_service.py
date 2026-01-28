@@ -212,7 +212,8 @@ class DocumentService:
             if doc.payload.get("meta", {}).get("doc_type") == DocumentType.QA_PAIR:
                 qa_content = doc.payload.get("content", "")
                 if qa_content:
-                    question, answer = qa_content.split(":")
+                    question = qa_content.split(":")[0]
+                    answer = qa_content[len(question) + 1 :]
                     # 查询content等于answer且doc_type为question的文档
                     question_docs = await self.client.scroll(
                         collection_name=collection_name,

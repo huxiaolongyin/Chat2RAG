@@ -88,9 +88,12 @@ def del_knowledge_dialog(data):
     st.write([item["content"] for item in data])
     data_id = [item["id"] for item in data]
     if st.button("确认删除", width="stretch", type="primary"):
-        knowledge_service.delete_documents(st.session_state["collection_select"], data_id)
-        st.toast("删除成功！", icon="✅")
-        time.sleep(1)
+        if knowledge_service.delete_documents(st.session_state["collection_select"], data_id):
+            st.toast("删除成功！", icon="✅")
+            time.sleep(1)
+        else:
+            st.toast("删除失败", icon="❌")
+            time.sleep(1)
         st.rerun()
 
 

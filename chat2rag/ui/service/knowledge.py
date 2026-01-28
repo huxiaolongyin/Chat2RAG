@@ -62,11 +62,15 @@ class KnowledgeService:
         )
 
     def delete_documents(self, collection_name: str, document_id: List[str]):
-        requests.delete(
+        response = requests.delete(
             self.doc_base_url,
             params={"collectionName": collection_name},
             json=document_id,
         )
+        if response.status_code == 200:
+            return True
+        else:
+            return False
 
     def query_document(self, query: str):
         """
