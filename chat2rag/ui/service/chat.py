@@ -42,10 +42,10 @@ class ChatService:
                         yield StreamChunkV1.model_validate(chunk_data, by_alias=True)
 
                     except json.JSONDecodeError as e:
-                        logger.warning(f"JSON解析错误: {e}, chunk: {chunk}")
+                        logger.warning(f"Failed to parse JSON: {str(e)}")
                         continue
                     except UnicodeDecodeError as e:
-                        logger.warning(f"编码解析错误: {e}")
+                        logger.warning(f"Failed to decode content: {str(e)}")
                         continue
 
         except Exception as e:

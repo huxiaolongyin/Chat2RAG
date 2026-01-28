@@ -55,7 +55,7 @@ class ChatUI:
             self._handle_assistant_response(query)
 
         except Exception as e:
-            logger.error(f"处理用户输入时发生错误: {e}")
+            logger.exception("Failed to process user input")
             st.error(f"处理消息时发生错误: {str(e)}")
 
     def _handle_assistant_response(self, query: str):
@@ -88,7 +88,7 @@ class ChatUI:
                 except ChatServiceError as e:
                     st.error(f"服务错误: {str(e)}")
                 except Exception as e:
-                    logger.error(f"处理助手响应时发生未知错误: {e}")
+                    logger.exception("Failed to process assistant response")
                     st.error("处理响应时发生未知错误，请稍后重试")
 
     def _process_stream_response(self, response: requests.Response, placeholder) -> str:
@@ -102,7 +102,7 @@ class ChatUI:
                     placeholder.markdown(full_response)
 
         except Exception as e:
-            logger.error(f"处理流式响应时发生错误: {e}")
+            logger.exception("Failed to process streaming response")
             st.error("处理响应流时发生错误")
 
         return full_response
@@ -131,7 +131,7 @@ class ChatUI:
                 )
 
         except Exception as e:
-            logger.error(f"获取参考文档时发生错误: {e}")
+            logger.exception("Failed to fetch reference documents")
             st.warning("获取参考文档时发生错误")
 
     def render(self):

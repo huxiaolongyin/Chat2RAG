@@ -79,14 +79,29 @@ class ModelSourceService(CRUDBase[ModelSource, ModelSourceCreate, ModelSourceUpd
             .first()
         )
         if not model_source:
-            logger.warning("The model was not recognized. Select the default model")
+            logger.warning(
+                f"Model not found or unavailable: '{name_or_alias}', falling back to default model '{CONFIG.MODEL}'"
+            )
             model_source = (
                 await self.model.filter(Q(alias__icontains=CONFIG.MODEL) | Q(name__icontains=CONFIG.MODEL))
                 .order_by("-priority", "last_latency")
                 .first()
             )
-        provider = await model_source.provider
-        logger.info(f"{extra_log} Select model: {provider.name}-{model_source.name}")
+            if not model_source:
+                logger.error(f"Default model '{CONFIG.MODEL}' not found. No available models.")
+                return None
+
+        try:
+            provider = await model_source.provider
+            log_prefix = f"{extra_log} - " if extra_log else ""
+            logger.info(
+                f"{log_prefix}Model selected: provider={provider.name}, "
+                f"model={model_source.name}, latency={model_source.last_latency}ms"
+            )
+        except Exception as e:
+            logger.exception(f"Failed to get provider info for model '{model_source.name}'")
+            return None
+
         return model_source
 
     # async def update_latency(self, source: ModelSource):
@@ -136,7 +151,7 @@ async def periodic_latency_update(service: ModelSourceService, interval_sec: int
         try:
             await service.update_all_enabled_latency()
         except Exception as e:
-            logger.error(f"Periodic latency update error: {e}")
+            logger.exception(f"Failed to update periodic latency")
         await asyncio.sleep(interval_sec)
 
 

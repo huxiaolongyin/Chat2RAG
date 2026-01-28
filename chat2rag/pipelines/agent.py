@@ -117,7 +117,7 @@ class AgentPipeline(BasePipeline[AsyncPipeline]):
             return pipeline
 
         except Exception as e:
-            logger.error("Failed to initialize the Agent pipeline. Failure reason: %s", e)
+            logger.exception("Failed to initialize the Agent pipeline")
             raise
 
     async def run(

@@ -53,12 +53,10 @@ class MultiModalStrategy(ResponseStrategy):
                 output_tokens = int(usage.get("completion_tokens", 0))
                 self.handler.set_token_info(input_tokens, output_tokens)
 
-            logger.info(
-                f"MultiModal processed successfully. " f"Answer:({message.text}) Cost: %.2fs",
-                perf_counter() - self.start_time,
-            )
+            logger.info(f"MultiModal processed: answer='{message.text}', cost={perf_counter() - self.start_time:.2f}s")
+
         except Exception as e:
-            logger.error("Error in pipeline: %s", str(e))
+            logger.exception("Failed to execute multimodal strategy")
             self.handler.set_error(str(e))
             await self.handler.callback(
                 StreamingChunk(

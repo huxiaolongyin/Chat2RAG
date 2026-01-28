@@ -63,7 +63,7 @@ class MCPConnectionManager:
                 toolset = MCPToolset(server_info=server_info, eager_connect=True)
 
                 self._toolsets[server.id] = toolset
-                logger.info(f"Successfully connected to MCP server: {server.name}")
+                logger.info(f"Connected to MCP server: {server.name}")
                 return toolset
 
             except Exception as e:

@@ -42,7 +42,7 @@ class PromptService(CRUDBase[Prompt, PromptCreate, PromptUpdate]):
                     promptText=CONFIG.RAG_PROMPT_TEMPLATE,
                 )
             )
-            logger.info("已创建默认提示词")
+            logger.info("Default prompt created")
 
     async def create(self, obj_in: PromptCreate) -> PromptVersion:
         """创建提示词"""
@@ -183,7 +183,7 @@ class PromptService(CRUDBase[Prompt, PromptCreate, PromptUpdate]):
     async def get_by_prompt_name(self, prompt_name: str) -> PromptData | None:
         prompt = await self.model.filter(prompt_name=prompt_name).first()
         if not prompt:
-            logger.warning(f"提示词<{prompt_name}>不存在")
+            logger.warning(f"Prompt '{prompt_name}' not found")
             return None
         version = prompt.current_version
         if version:

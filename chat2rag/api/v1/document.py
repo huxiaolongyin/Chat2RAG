@@ -35,9 +35,7 @@ async def get_collections(
         current, size, sort_by, sort_order, collection_name
     )
 
-    logger.info(
-        f"The list of knowledge collections is successfully obtained. Collection name: <{collection_name}>; Total: <{total}>;"
-    )
+    logger.info(f"Fetched knowledge collections: collection={collection_name}, total={total}")
     data = CollectionPaginatedData.create(items=paginated_collections, current=current, total=total, size=size)
 
     # 返回分页数据
@@ -75,9 +73,7 @@ async def get_documents(
         sort_order=sort_order,
         document_content=document_content,
     )
-    logger.info(
-        f"The documents of collection is successfully obtained. Collection name: <{collection_name}>; Total: <{total}>;"
-    )
+    logger.info(f"Fetched documents: collection='{collection_name}', total={total}")
 
     # 返回分页数据
     return BaseResponse.success(
@@ -103,10 +99,7 @@ async def create_documents_by_json(
     # 后台执行内容创建
     await document_service.create_by_json(collection_name, doc_list)
 
-    return BaseResponse.success(
-        msg="知识内容创建成功",
-        data={"collectionName": collection_name},
-    )
+    return BaseResponse.success(msg="知识内容创建成功", data={"collectionName": collection_name})
 
 
 @async_performance_logger
@@ -122,10 +115,7 @@ async def create_documents_by_file(
     # 后台执行内容创建
     background_tasks.add_task(document_service.create, collection_name, file)
 
-    return BaseResponse.success(
-        msg="知识内容创建中",
-        data={"collectionName": collection_name},
-    )
+    return BaseResponse.success(msg="知识内容创建中", data={"collectionName": collection_name})
 
 
 @async_performance_logger
@@ -169,7 +159,7 @@ async def query_documents(
         "topK": top_k,
         "scoreThreshold": score_threshold,
     }
-    logger.info(f"Knowledge query success. Collection name: <{collection_name}>; Number of results: <{len(doc_list)}>")
+    logger.info(f"Query knowledge completed: collection='{collection_name}', results={len(doc_list)}")
 
     return BaseResponse.success(data=data)
 
@@ -183,18 +173,8 @@ async def exact_query(
     answer_document = await document_service.query_exact(collection_name, query)
     if answer_document:
         return BaseResponse.success(
-            data={
-                "collectionName": collection_name,
-                "query": query,
-                "answer": answer_document.meta["answer"],
-            }
+            data={"collectionName": collection_name, "query": query, "answer": answer_document.meta["answer"]}
         )
     else:
-        logger.info(f"Exact query found no results. Collection name: <{collection_name}>; Query: <{query}>")
-        return BaseResponse.success(
-            data={
-                "collectionName": collection_name,
-                "query": query,
-                "answer": None,
-            }
-        )
+        logger.info(f"Exact match returned no results: collection='{collection_name}', query='{query}'")
+        return BaseResponse.success(data={"collectionName": collection_name, "query": query, "answer": None})

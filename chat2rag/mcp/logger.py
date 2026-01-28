@@ -48,9 +48,7 @@ def initialize_logging():
     config = {
         "version": 1,
         "formatters": {
-            "standard": {
-                "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-            },
+            "standard": {"format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s"},
         },
         "handlers": {
             "console": {
@@ -93,10 +91,8 @@ def initialize_logging():
     logging.config.dictConfig(config)
 
     # 打印banner (只执行一次)
-    logger = logging.getLogger("mcp_server_htw")
     banner = get_banner()
-    logger.info(f"\n{banner}")
-    logger.info("Starting Chat2RAG application")
+    print(banner)
 
     _is_initialized = True
 

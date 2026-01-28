@@ -22,6 +22,13 @@ def ensure_telemetry_server():
 
 
 def setup_telemetry():
+    """
+    Setup Phoenix telemetry.
+
+    Prerequisites:
+        Phoenix server must be running:
+        $ python -m phoenix.server.main serve
+    """
     ensure_telemetry_server()
     endpoint = "http://localhost:6006/v1/traces"
     tracer_provider = trace_sdk.TracerProvider()

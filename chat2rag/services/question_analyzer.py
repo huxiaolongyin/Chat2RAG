@@ -19,6 +19,7 @@ from chat2rag.config import CONFIG
 from chat2rag.core.logger import get_logger
 from chat2rag.models.metric import Metric
 from chat2rag.pipelines.document import DocumentSearchPipeline, DocumentWriterPipeline
+from chat2rag.schemas.metric import HotQuestionData, HotQuestionPoint
 from chat2rag.utils.pipeline_cache import create_pipeline
 
 logger = get_logger(__name__)
@@ -29,7 +30,7 @@ class QuestionAnalyzer:
         self.collection_name = "questions"
         self.client = QdrantClient(location=CONFIG.QDRANT_LOCATION)
         if not self.client.collection_exists(self.collection_name):
-            logger.warning(f"知识库 `{self.collection_name}` 不存在，进行新建")
+            logger.warning(f"Collection '{self.collection_name}' does not exist, creating new one")
             self.client.create_collection(
                 self.collection_name,
                 vectors_config=VectorParams(size=CONFIG.EMBEDDING_DIMENSIONS, distance=Distance.COSINE),
@@ -129,6 +130,7 @@ class QuestionAnalyzer:
         update_time: str = datetime.now().isoformat(),
     ):
         """添加新问题或更新已存在的相似问题"""
+        logger.info("Adding new questions or updating existing similar questions")
         try:
             # 清洗问题文本
             question_text = self.clean_text(question_text, level="standard")
@@ -172,7 +174,7 @@ class QuestionAnalyzer:
                 await doc_writer_pipeline.run([Document(content=question_text, meta=meta)])
 
         except Exception as e:
-            logger.error("添加新问题或更新已存在的相似问题失败")
+            logger.exception("Failed to add or update questions")
 
     def get_hot_questions(self, collection_name: str | None = None, days: int | None = None, limit: int | None = None):
         """
@@ -260,51 +262,51 @@ class QuestionAnalyzer:
                 total_count = sum(q["count"] for q in cluster_questions)
 
                 clusters = [
-                    {
-                        "id": point["id"],
-                        "text": point["text"],
-                        "collection": point["collection"],
-                        "create_time": point["create_time"],
-                        "update_time": point["update_time"],
-                        "count": point["count"],
-                    }
+                    HotQuestionPoint(
+                        id=point["id"],
+                        text=point["text"],
+                        collection=point["collection"],
+                        create_time=point["create_time"],
+                        update_time=point["update_time"],
+                        count=point["count"],
+                    )
                     for point in cluster_questions
                 ]
 
                 # 创建代表性问题记录
-                cluster_representative = {
-                    "id": representative["id"],
-                    "representative_question": representative["text"],
-                    "count": total_count,  # 使用簇的总count
-                    "cluster_size": len(cluster_questions),  # 簇的大小
-                    "create_time": representative["create_time"],
-                    "update_time": representative["update_time"],
-                    "similar_questions": clusters,
-                }
+                cluster_representative = HotQuestionData(
+                    id=representative["id"],
+                    representative_question=representative["text"],
+                    count=total_count,  # 使用簇的总count
+                    cluster_size=len(cluster_questions),  # 簇的大小
+                    create_time=representative["create_time"],
+                    update_time=representative["update_time"],
+                    similar_questions=clusters,
+                )
 
                 cluster_representatives.append(cluster_representative)
 
             # 处理噪声点（单独的问题）
             for noise_question in noise_questions:
-                noise_representative = {
-                    "id": noise_question["id"],
-                    "representative_question": noise_question["text"],
-                    "count": 1,  # 使用簇的总count
-                    "cluster_size": 1,  # 簇的大小
-                    "create_time": noise_question["create_time"],
-                    "update_time": noise_question["update_time"],
-                    "similar_questions": [],
-                }
+                noise_representative = HotQuestionData(
+                    id=noise_question["id"],
+                    representative_question=noise_question["text"],
+                    count=1,  # 使用簇的总count
+                    cluster_size=1,  # 簇的大小
+                    create_time=noise_question["create_time"],
+                    update_time=noise_question["update_time"],
+                    similar_questions=[],
+                )
 
                 cluster_representatives.append(noise_representative)
 
             # 按总count排序并返回前N个
-            hot_questions = sorted(cluster_representatives, key=lambda x: x["count"], reverse=True)[:limit]
+            hot_questions = sorted(cluster_representatives, key=lambda x: x.count, reverse=True)[:limit]
 
             return hot_questions
 
         except Exception as e:
-            logger.error(f"获取热门问题时出错: {e}")
+            logger.exception("Failed to fetch popular questions")
             return []
 
     def _load_checkpoint(self) -> str | None:
@@ -318,7 +320,7 @@ class QuestionAnalyzer:
                 return data.get("last_sync_time")
 
         except Exception as e:
-            logger.error(f"加载checkpoint失败: {e}")
+            logger.exception("Failed to load checkpoint")
             return None
 
     def _save_checkpoint(self, sync_time: datetime | None = None):
@@ -328,10 +330,10 @@ class QuestionAnalyzer:
             data = {"last_sync_time": timestamp.isoformat()}
             with open(self.checkpoint_file, "w", encoding="utf-8") as f:
                 json.dump(data, f, ensure_ascii=False, indent=2)
-            logger.info(f"✓ Checkpoint已保存: {timestamp.isoformat()}")
+            logger.info("Checkpoint saved successfully")
 
         except Exception as e:
-            logger.error(f"保存checkpoint失败: {e}")
+            logger.error("Failed to save checkpoint")
 
     async def sync_from_metrics(self):
         """从Metric模型同步数据"""
@@ -343,10 +345,10 @@ class QuestionAnalyzer:
                 last_sync_time = datetime.fromisoformat(last_sync_time_str)
                 # 修正查询操作符：glt -> gt (greater than)
                 metrics = await Metric.filter(Q(create_time__gt=last_sync_time)).all().order_by("create_time")
-                logger.info(f"增量同步: 从 {last_sync_time_str} 开始")
+                logger.info(f"Incremental sync started from {last_sync_time_str}")
             else:
                 metrics = await Metric.all().order_by("create_time")
-                logger.info("全量同步: 首次同步所有数据")
+                logger.info("Full sync started: syncing all data")
 
             # 同步数据
             for metric in metrics:
@@ -356,23 +358,13 @@ class QuestionAnalyzer:
 
             # 同步成功后保存checkpoint
             self._save_checkpoint()
-            logger.info(f"✓ 同步完成，共处理 {len(metrics)} 条记录")
+            logger.info(f"Sync completed: processed {len(metrics)} record(s)")
 
             return True
 
         except Exception as e:
-            logger.error(f"同步失败: {e}")
+            logger.exception("Sync failed")
             return False
 
 
 question_analyzer = QuestionAnalyzer()
-
-if __name__ == "__main__":
-    import asyncio
-
-    import pandas as pd
-
-    # question_df = pd.read_csv("temp/场景-问题.csv")
-    # for collection_name, question in question_df.values:
-    #     asyncio.run(qa.add_or_update_question(collection_name, question))
-    print(json.dumps(question_analyzer.get_hot_questions(limit=20), ensure_ascii=False))

@@ -92,10 +92,10 @@ class ModelProvider(BaseModel, TimestampMixin):
                 await ModelSource.bulk_create(model_source_objs)
 
         except ConnectTimeout:
-            logger.error(f"{self.base_url}连接超时")
+            logger.exception(f"Connection timeout to {self.base_url}")
 
         except Exception as e:
-            logger.error(f"模型渠道商: {self.name} 列表同步失败")
+            logger.exception(f"Failed to sync model provider list: {self.name}")
 
 
 class ModelSource(BaseModel, TimestampMixin):

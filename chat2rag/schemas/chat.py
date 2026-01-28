@@ -88,8 +88,9 @@ class ChatQueryParams(BaseSchema):
                 if not isinstance(parsed, list):
                     raise ValueError("tool_list must be a JSON array")
                 return parsed
+
             except Exception as e:
-                logger.error("Invalid JSON format for tool_list: {e}")
+                logger.exception("Invalid JSON format for tool_list")
                 return []
 
 

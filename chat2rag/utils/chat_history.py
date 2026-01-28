@@ -123,12 +123,7 @@ class ChatHistory:
     ) -> List[ChatMessage]:
         """get the history messages from the cache"""
 
-        logger.info(
-            "Get the history messages. Prompt name: %s; Chat ID: %s; History messages length: %d",
-            prompt_name,
-            chat_id,
-            rounds,
-        )
+        logger.info(f"Fetched history messages: prompt={prompt_name}, chat_id={chat_id}, rounds={rounds}")
 
         # Prepare system prompt with optional context about collection
         system_context = f"你当前处于{collection}场景下。\n" if collection else ""

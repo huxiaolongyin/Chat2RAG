@@ -150,10 +150,10 @@ class StreamHandler:
 
             # Create metric record
             await metric_service.create(self.metrics)
-            logger.info(f"Performance metrics saved for message {self.message_id}")
+            logger.info(f"Performance metrics saved: message_id={self.message_id}")
 
         except Exception as e:
-            logger.error(f"Failed to save metrics for {self.message_id}: {str(e)}", exc_info=True)
+            logger.exception(f"Failed to save metrics for {self.message_id}")
 
     async def _parse_behavior_tags(self, text: str):
         """
@@ -255,7 +255,7 @@ class StreamHandler:
         """Handle first response and record time metrics"""
         elapsed = perf_counter() - self.stream_start
         self.metrics.first_response_ms = round(elapsed * 1000, 2)
-        logger.info(f"The first reply time of the Agent pipeline. Cost: {elapsed:.3f}s")
+        logger.info(f"Handle first response time: {elapsed:.3f}s")
         return False
 
     async def _yield_data(self, content="", meta=None, **kwargs):

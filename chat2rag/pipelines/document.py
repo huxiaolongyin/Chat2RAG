@@ -54,14 +54,10 @@ class DocumentSearchPipeline(BasePipeline):
             pipeline.add_component("embedder", embedder)
             pipeline.add_component("retriever", retriever)
             pipeline.connect("embedder.embedding", "retriever.query_embedding")
-            logger.debug("The initialization of the Document search pipeline was successful.")
             return pipeline
 
         except Exception as e:
-            logger.error(
-                "Failed to initialize the Document search pipeline. Failure reason: %s",
-                e,
-            )
+            logger.exception("Failed to initialize Document search pipeline")
             raise
 
     async def run(
@@ -84,11 +80,7 @@ class DocumentSearchPipeline(BasePipeline):
             dict: The search results
         """
         logger.info(
-            "Running the Document search pipeline, query: <%s>, top_k: <%s>, score_threshold: <%.2f>, filters: <%s>",
-            query,
-            top_k,
-            score_threshold,
-            filters,
+            f"Document search started: query='{query}', top_k={top_k}, score_threshold={score_threshold:.2f}, filters={filters}"
         )
         start_time = time.time()
         try:
@@ -105,14 +97,12 @@ class DocumentSearchPipeline(BasePipeline):
 
             documents = result.get("retriever", {}).get("documents", [])
             logger.info(
-                "Document search pipeline ran successfully. Cost: %.2f seconds, doc_counts: %d",
-                time.time() - start_time,
-                len(documents),
+                f"Document search completed: found {len(documents)} documents in {time.time() - start_time:.2f}s"
             )
             return result
 
         except Exception as e:
-            logger.error("Failed to run the Document search pipeline. Failure reason: %s", e)
+            logger.exception("Failed to run Document search pipeline")
             raise
 
 
@@ -157,27 +147,19 @@ class DocumentWriterPipeline(BasePipeline):
             return pipeline
 
         except Exception as e:
-            logger.error(
-                "Failed to initialize the DocumentWriter pipeline. Failure reason: %s",
-                e,
-            )
+            logger.exception("Failed to initialize DocumentWriter pipeline")
             raise
 
     async def run(self, documents: List[Document]):
         """
         Run the DocumentWriter pipeline
         """
-        logger.info(f"Running the DocumentWriter pipeline, documents count: <{len(documents)}>")
+        logger.info(f"Document writer started: {len(documents)} documents")
         try:
             result = await self.pipeline.run_async({"embedder": {"documents": documents}})
-            logger.info("DocumentWriter pipeline ran successfully.")
+            logger.info("Document writer completed")
             return result
 
         except Exception as e:
-            logger.error("Failed to run the DocumentWriter pipeline. Failure reason: %s", e)
+            logger.exception("Failed to run DocumentWriter pipeline")
             raise
-
-
-if __name__ == "__main__":
-    doc_search_pipeline = DocumentSearchPipeline("福建省广电集团")
-    print(asyncio.run(doc_search_pipeline.run("省广电五提工程")))

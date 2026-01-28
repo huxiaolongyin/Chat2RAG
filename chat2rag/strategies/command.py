@@ -25,7 +25,7 @@ class CommandStrategy(ResponseStrategy):
         command = await self._match_command(query)
 
         if command:
-            logger.info(f"Command matched: {command.name} (code: {command.code})")
+            logger.info(f"Command matched: {command.name} (code={command.code})")
             reply = command.reply if command.reply else "."
             async for item in self._yield_stream(reply, "Command answer", command=command.code):
                 yield item
@@ -70,5 +70,5 @@ class CommandStrategy(ResponseStrategy):
             return None
 
         except Exception as e:
-            logger.error(f"Error matching command: {str(e)}")
+            logger.exception("Failed to match command")
             return None

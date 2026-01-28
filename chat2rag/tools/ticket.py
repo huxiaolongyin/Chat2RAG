@@ -79,11 +79,11 @@ def find_today_sheet(excel_file):
         if excel_file in _excel_cache:
             cached_mtime, cached_result = _excel_cache[excel_file]
             if cached_mtime == file_mtime:
-                logger.debug(f"使用缓存结果: {excel_file}")
+                logger.debug(f"Using cached result: {excel_file}")
                 return cached_result
 
         # 文件已变更或首次访问，重新读取
-        logger.debug(f"文件已变更或首次读取，重新解析: {excel_file}")
+        logger.debug(f"File changed or first read, re-parsing: {excel_file}")
 
         # 读取Excel文件的所有工作表
         excel_data = pd.ExcelFile(excel_file)
@@ -141,12 +141,12 @@ def find_today_sheet(excel_file):
 
                         except (ValueError, TypeError, pd.errors.OutOfBoundsDatetime) as e:
                             # 日期解析失败，继续下一个工作表
-                            logger.warning(f"解析工作表 {sheet_name} 的日期失败: {q2_value}, 错误: {e}")
+                            logger.exception(f"Failed to parse date in sheet '{sheet_name}': {q2_value}")
                             continue
 
             except Exception as e:
                 # 读取工作表失败，继续下一个
-                logger.warning(f"读取工作表 {sheet_name} 失败: {e}")
+                logger.exception(f"Failed to read sheet '{sheet_name}'")
                 continue
 
         # 如果没找到今天的工作表，返回最后一个工作表（最新的）
@@ -165,7 +165,7 @@ def find_today_sheet(excel_file):
         return result
 
     except Exception as e:
-        logger.warning(f"查找今天工作表时发生错误：{str(e)}")
+        logger.exception("Error occurred while finding today's sheet")
         return None, None
 
 

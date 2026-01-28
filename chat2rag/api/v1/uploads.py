@@ -38,7 +38,9 @@ def safe_move_file(src, dst, max_retries=5, retry_delay=2):
 
             if os.path.exists(dst) and is_file_in_use(dst):
                 if attempt < max_retries - 1:
-                    logger.warning(f"目标文件被占用，等待 {retry_delay} 秒后重试... (尝试 {attempt + 1}/{max_retries})")
+                    logger.warning(
+                        f"Target file is locked, retrying in {retry_delay}s (attempt {attempt + 1}/{max_retries}): {dst}"
+                    )
                     time.sleep(retry_delay)
                     continue
                 else:
@@ -47,7 +49,9 @@ def safe_move_file(src, dst, max_retries=5, retry_delay=2):
             # 检查源文件是否被占用
             if is_file_in_use(src):
                 if attempt < max_retries - 1:
-                    logger.warning(f"源文件被占用，等待 {retry_delay} 秒后重试... (尝试 {attempt + 1}/{max_retries})")
+                    logger.warning(
+                        f"Source file is locked, retrying in {retry_delay}s (attempt {attempt + 1}/{max_retries}): {src}"
+                    )
                     time.sleep(retry_delay)
                     continue
                 else:
@@ -58,7 +62,10 @@ def safe_move_file(src, dst, max_retries=5, retry_delay=2):
 
         except OSError as e:
             if attempt < max_retries - 1:
-                logger.warning(f"移动文件失败，等待 {retry_delay} 秒后重试: {e}")
+                logger.warning(
+                    f"Failed to move file, retrying in {retry_delay}s (attempt {attempt + 1}/{max_retries}): {src} -> {dst}",
+                    exc_info=True,
+                )
                 time.sleep(retry_delay)
             else:
                 raise e
@@ -79,10 +86,10 @@ def safe_remove_file(file_path, max_retries=3, retry_delay=1):
             return True
         except (OSError, PermissionError) as e:
             if attempt < max_retries - 1:
-                logger.warning(f"删除文件失败，等待 {retry_delay} 秒后重试: {e}")
+                logger.warning(f"Failed to delete file, retrying in {retry_delay}s: {file_path}", exc_info=True)
                 time.sleep(retry_delay)
             else:
-                logger.error(f"无法删除临时文件 {file_path}: {e}")
+                logger.exception(f"Failed to delete temporary file: {file_path}")
                 return False
     return False
 
@@ -192,7 +199,9 @@ def validate_date_in_r2(file_path):
                         return True, f"日期校验通过: {sheet_date.strftime('%Y-%m-%d')} (今天)", sheet_name
 
                 except (ValueError, TypeError, pd.errors.OutOfBoundsDatetime) as e:
-                    logger.warning(f"解析{sheet_name}的R2单元格的日期失败: {q2_value}, 错误: {e}")
+                    logger.warning(
+                        f"Failed to parse date in cell R2 of sheet '{sheet_name}': value='{q2_value}', error={str(e)}"
+                    )
                     continue
 
         return False, "未找到今天日期的工作表，请确认表的R2单元格存在今天的日期", ""
@@ -270,7 +279,7 @@ async def upload_ticket_file(file: UploadFile = File(...)):
                 target_dir / f"福州南站综控室班计划作业记录表_backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
             )
             safe_move_file(target_file, backup_file)
-            logger.info(f"原文件已备份到: {backup_file}")
+            logger.info(f"Original job plan backed up: {backup_file}")
 
         safe_move_file(temp_file, target_file)
 
@@ -284,5 +293,5 @@ async def upload_ticket_file(file: UploadFile = File(...)):
         if temp_file and temp_file.exists():
             safe_remove_file(temp_file)
 
-        logger.error(f"上传文件时发生错误: {str(e)}")
+        logger.exception(f"Failed to upload file: {target_file}")
         raise HTTPException(status_code=500, detail=f"服务器内部错误: {str(e)}")

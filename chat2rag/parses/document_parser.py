@@ -100,7 +100,7 @@ class QAPairParser(DocumentParser):
 
             except Exception as e:
                 # 可选：记录错误行并继续处理
-                logger.warning(f"处理第 {idx} 行时出错: {str(e)}")
+                logger.exception(f"Failed to process row {idx}")
                 continue
 
         return documents

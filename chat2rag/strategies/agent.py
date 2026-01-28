@@ -78,11 +78,9 @@ class AgentStrategy(ResponseStrategy):
             new_messages = self._get_latest_user_round(messages)
             if self.request.chat_id and messages:
                 chat_history.add_message(self.request.chat_id, messages=new_messages)
-
-                logger.info(
-                    f"Agent pipeline processed successfully. " f"Answer:({new_messages[-1].text}) Cost: %.2fs",
-                    perf_counter() - self.start_time,
-                )
+                elapsed_time = perf_counter() - self.start_time
+                logger.info(f"Agent pipeline completed in {elapsed_time:.2f}s")
+                logger.debug(f"Answer: {new_messages[-1].text}")
 
             # 更新 token 消费
             input_tokens = 0
@@ -96,7 +94,7 @@ class AgentStrategy(ResponseStrategy):
             self.handler.set_token_info(input_tokens, output_tokens)
 
         except Exception as e:
-            logger.error("Error in pipeline: %s", str(e))
+            logger.exception("Failed to execute agent strategy")
             self.handler.set_error(str(e))
             await self.handler.callback(
                 StreamingChunk(

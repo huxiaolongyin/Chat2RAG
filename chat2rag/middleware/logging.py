@@ -55,6 +55,6 @@ class LoggingMiddleware(BaseHTTPMiddleware):
 
         # 记录响应
         process_time = time.time() - start_time
-        logger.info(f"{method} {path} - 状态码: {response.status_code} - " f"处理时间: {process_time:.3f}s")
+        logger.info(f"{method} {path} {response.status_code} {process_time:.3f}s")
 
         return response

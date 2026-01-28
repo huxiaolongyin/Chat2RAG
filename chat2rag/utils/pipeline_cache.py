@@ -55,7 +55,7 @@ async def create_pipeline(cls: Type[T], *args: Any, **kwargs: Any) -> T:
 
         return pipeline
     except Exception as e:
-        logger.warning(f"Failed to create the cache pipeline：{e}")
+        logger.warning(f"Failed to create the cache pipeline：{str(e)}")
         pipeline = cls(*args, **kwargs)
         await pipeline.initialize()
         return pipeline

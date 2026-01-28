@@ -29,10 +29,8 @@ async def lifespan(app: FastAPI):
     if CONFIG.TELEMETRY_ENABLED:
         from chat2rag.core.telemetry import setup_telemetry
 
-        logger.info("Setting up telemetry...")
-        # 需要先启动 server 服务： python -m phoenix.server.main serve
         setup_telemetry()
-        logger.info("Telemetry setup successfully")
+        logger.info("Telemetry initialized")
 
     # 创建默认提示词
     await prompt_service.ensure_default_prompt()

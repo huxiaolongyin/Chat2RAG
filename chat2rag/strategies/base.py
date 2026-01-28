@@ -75,10 +75,11 @@ class ResponseStrategy(ABC):
                 chat_history.add_message(self.request.chat_id, ChatRole.USER, self.query)
                 chat_history.add_message(self.request.chat_id, ChatRole.ASSISTANT, answer)
 
-            logger.info(f"{source} processed successfully, took %.2fs", perf_counter() - self.start_time)
+            elapsed = perf_counter() - self.start_time
+            logger.info(f"{source} processed in {elapsed:.2f}s")
 
         except Exception as e:
-            logger.error(f"Error in {source} processing: %s", str(e))
+            logger.exception(f"Error in {source} processing")
             await self.handler.callback(
                 StreamingChunk(content=f"处理错误: {str(e)}", meta={"model": "error", "finish_reason": "error"})
             )

@@ -53,7 +53,7 @@ async def match_flow_by_query(query: str, flows: list[FlowData]) -> Optional[str
         matched_flow = await llm_client.acall_llm(messages)
         return matched_flow if matched_flow in flow_names else None
     except Exception as e:
-        logger.error(f"LLM flow matching failed: {e}")
+        logger.exception("LLM flow matching failed")
         return None
 
 
@@ -90,7 +90,7 @@ async def match_state_by_query(query: str, current_node: Node) -> Optional[str]:
         result = await llm_client.acall_llm(messages)
         return result if result in [*available_node_names, "quit", "None"] else None
     except Exception as e:
-        logger.error(f"State transition determination failed: {e}")
+        logger.exception("State transition determination failed")
         return None
 
 
@@ -127,7 +127,7 @@ def _handle_state_response(
     if current_node.state_name == "end":
         responses.append("已退出流程")
         user_states.pop(chat_id, None)
-        logger.info(f"ChatId: {chat_id} exiting flow")
+        logger.info(f"Flow exited: chat_id={chat_id}")
         return responses
 
     # 处理自动转移
@@ -135,14 +135,14 @@ def _handle_state_response(
         next_node_id = current_node.conditions[0].transition_node_id
         next_node = next((n for n in flow_nodes if n.id == next_node_id), None)
 
-        logger.info(f"Auto transition: <{state_name}> -> <{next_node.state_name}>")
+        logger.info(f"Auto transition: {state_name} -> {next_node.state_name}")
         if chat_id in user_states:
             user_states[chat_id].current_state = next_node.state_name
 
             # 递归收集下一个节点的响应
             responses.extend(_handle_state_response(flow_nodes, next_node.state_name, chat_id, _flags, False))
     if _log:
-        logger.debug("".join(responses))
+        logger.debug(f"LLM responses: {''.join(responses)}")
 
     return responses
 
@@ -156,13 +156,13 @@ async def handle_flow(chat_id: str, query: str):
         _, available_flows = await flow_service.get_list(1, 999)
         target_flow_name = await match_flow_by_query(query, available_flows)
         if not target_flow_name:
-            logger.info(f"No matching flow for user {chat_id}")
+            logger.info(f"No matching flow found: chat_id={chat_id}")
             return
 
-        logger.info(f"ChatId <{chat_id}> entering flow <{target_flow_name}>")
+        logger.info(f"Flow entered: chat_id={chat_id}, flow={target_flow_name}")
         flow = await flow_service.get_flow_by_name(target_flow_name)
         if not flow:
-            logger.error(f"Flow <{target_flow_name}> not found")
+            logger.error(f"Flow '{target_flow_name}' not found")
 
         # 用户状态初始化
         user_states[chat_id] = UserFlowState(flow, "start")
@@ -175,16 +175,16 @@ async def handle_flow(chat_id: str, query: str):
     # 场景2: 用户在流程中，处理状态转移
     current_node: Node = next(n for n in flow_state.flow_nodes if n.state_name == flow_state.current_state)
     if not current_node:
-        logger.error(f"Current state node not found: {flow_state.current_state}")
+        logger.error(f"Current state node not found: state={flow_state.current_state}")
         return
 
     transition_result = await match_state_by_query(query, current_node)
     if not transition_result or transition_result == "None":
-        logger.info(f"No state transition for chatId {chat_id}")
+        logger.info(f"No state transition: chat_id={chat_id}")
         return
 
     if transition_result == "quit":
-        logger.info(f"ChatId <{chat_id}> exiting flow")
+        logger.info(f"Flow exited: chat_id={chat_id}")
         user_states.pop(chat_id, None)
         yield "已退出流程"
         return

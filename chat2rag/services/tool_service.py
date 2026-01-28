@@ -65,7 +65,8 @@ class MCPService(CRUDBase[MCPServer, MCPServerCreate, MCPServerUpdate]):
                     tool_instance = getattr(tools_module, tool_name)
                     tool_registry[tool_name] = tool_instance
 
-        logger.info(f"Loaded {len(tool_registry)} builtin tools: {list(tool_registry.keys())}")
+        logger.info(f"Loaded {len(tool_registry)} builtin tools")
+        logger.debug(f"Builtin tool names: {list(tool_registry.keys())}")
         return tool_registry
 
     async def get_by_names(self, names: List[str]) -> List[Any]:
@@ -94,11 +95,11 @@ class MCPService(CRUDBase[MCPServer, MCPServerCreate, MCPServerUpdate]):
             mcp_tools = await self._get_mcp_tools_by_names(names)
             all_tools.extend(mcp_tools)
 
-            logger.info(f"Retrieved {len(all_tools)} tools for names: {names}")
+            logger.info(f"Retrieved {len(all_tools)} tools for names={names}")
             return all_tools
 
         except Exception as e:
-            logger.error(f"Error getting tools by names {names}: {e}")
+            logger.exception(f"Failed to get tools by names: {names}")
             raise ToolServiceError(f"Failed to get tools: {e}") from e
 
     def _get_builtin_tools_by_names(self, names: List[str]) -> List[Any]:
@@ -136,14 +137,14 @@ class MCPService(CRUDBase[MCPServer, MCPServerCreate, MCPServerUpdate]):
 
             for result in results:
                 if isinstance(result, Exception):
-                    logger.error(f"Error getting server tools: {result}")
+                    logger.error(f"Failed to get server tools: {result}")
                     continue
                 all_mcp_tools.extend(result)
 
             return all_mcp_tools
 
         except Exception as e:
-            logger.error(f"Error getting MCP tools: {e}")
+            logger.exception("Failed to get MCP tools")
             return []
 
     def _group_tools_by_server(self, mcp_tools: List[MCPTool]) -> Dict[MCPServer, Set[str]]:
@@ -161,7 +162,7 @@ class MCPService(CRUDBase[MCPServer, MCPServerCreate, MCPServerUpdate]):
         """获取指定服务器的工具"""
         try:
             if not server.is_active:
-                logger.warning(f"Server {server.name} is not active")
+                logger.warning(f"Server '{server.name}' is inactive")
                 return []
 
             toolset = await asyncio.wait_for(connection_manager.get_toolset(server), timeout=TOOL_SYNC_TIMEOUT)
@@ -169,7 +170,7 @@ class MCPService(CRUDBase[MCPServer, MCPServerCreate, MCPServerUpdate]):
             # 只返回请求的工具
             matched_tools = [tool for tool in toolset.tools if tool.name in requested_names and tool.name in tool_names]
 
-            logger.debug(f"Got {len(matched_tools)} tools from server {server.name}")
+            logger.debug(f"Retrieved {len(matched_tools)} tools from server '{server.name}'")
             return matched_tools
 
         except asyncio.TimeoutError:
@@ -215,8 +216,9 @@ class MCPService(CRUDBase[MCPServer, MCPServerCreate, MCPServerUpdate]):
             # 分页
             offset = (page - 1) * page_size
             tools = await query.offset(offset).limit(page_size).all()
+            total_pages = page / (total + page_size - 1) // page_size
 
-            logger.info(f"Retrieved {len(tools)} MCP tools (page {page}/{(total + page_size - 1) // page_size})")
+            logger.info(f"Retrieved {len(tools)} MCP tools: page={page}, total_pages={total_pages}")
             return total, tools
 
         except Exception as e:
@@ -233,7 +235,7 @@ class MCPService(CRUDBase[MCPServer, MCPServerCreate, MCPServerUpdate]):
                 if mcp_server.is_active:
                     await self._sync_tools_with_retry(mcp_server)
 
-                logger.info(f"Created MCP server: {mcp_server.name}")
+                logger.info(f"MCP server created: name='{mcp_server.name}'")
                 return mcp_server
 
         except Exception as e:
@@ -257,9 +259,9 @@ class MCPService(CRUDBase[MCPServer, MCPServerCreate, MCPServerUpdate]):
                 elif hasattr(obj_in, "is_active") and not obj_in.is_active:
                     # 禁用服务器时，禁用所有工具
                     await MCPTool.filter(server=server).update(is_active=False)
-                    logger.info(f"Disabled all tools for server {server.name}")
+                    logger.info(f"Disabled all tools: server='{server.name}'")
 
-                logger.info(f"Updated MCP server: {server.name}")
+                logger.info(f"MCP server updated: name='{server.name}'")
                 return server
 
         except Exception as e:
@@ -286,18 +288,18 @@ class MCPService(CRUDBase[MCPServer, MCPServerCreate, MCPServerUpdate]):
             async with in_transaction():
                 # 删除所有关联的工具
                 deleted_tools = await MCPTool.filter(server=server).delete()
-                logger.info(f"Deleted {deleted_tools} tools for server {server.name}")
+                logger.info(f"Tools deleted: count={deleted_tools}, server='{server.name}'")
 
                 # 删除服务器
                 result = await super().remove(id)
 
                 if result:
-                    logger.info(f"Deleted MCP server: {server.name}")
+                    logger.info(f"MCP server deleted: name='{server.name}'")
 
                 return result
 
         except Exception as e:
-            logger.error(f"Error removing MCP server {id}: {e}")
+            logger.exception(f"MCP server {id} deleted error")
             raise ToolServiceError(f"Failed to remove MCP server: {e}") from e
 
     async def sync_tools(self, server_id: int) -> List[MCPTool]:
@@ -305,7 +307,7 @@ class MCPService(CRUDBase[MCPServer, MCPServerCreate, MCPServerUpdate]):
 
         server = await self.get(server_id)
         tools = await self._sync_tools_with_retry(server)
-        logger.info(f"Manually synced {len(tools)} tools for server {server.name}")
+        logger.info(f"Tools synced: count={len(tools)}, server='{server.name}'")
         return tools
 
     async def _sync_tools_with_retry(self, server: MCPServer) -> List[MCPTool]:
@@ -341,7 +343,7 @@ class MCPService(CRUDBase[MCPServer, MCPServerCreate, MCPServerUpdate]):
             tools_data = [tool.tool_spec for tool in toolset.tools]
 
             if not tools_data:
-                logger.info(f"No tools found for server {server.name}")
+                logger.info(f"No tools found: server='{server.name}'")
                 return []
 
             # 使用事务确保数据一致性
@@ -388,7 +390,7 @@ class MCPService(CRUDBase[MCPServer, MCPServerCreate, MCPServerUpdate]):
             else:
                 logger.debug(f"Updated existing tool: {tool.name}")
 
-        logger.info(f"Synced {len(created_tools)} tools for server {server.name}")
+        logger.info(f"Tools synced: count={len(created_tools)}, server='{server.name}'")
         return created_tools
 
 

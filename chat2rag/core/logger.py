@@ -92,10 +92,8 @@ def initialize_logging():
     logging.config.dictConfig(config)
 
     # 打印banner (只执行一次)
-    logger = logging.getLogger("chat2rag")
     banner = get_banner()
-    logger.info(f"\n{banner}")
-    logger.info("Starting Chat2RAG application")
+    print(banner)
 
     _is_initialized = True
 

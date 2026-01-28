@@ -41,17 +41,12 @@ class BasePipeline(Generic[T], ABC):
         pass
 
     def warm_up(self):
-        """
-        Warm up the RAG pipeline by loading necessary models and resources
-        """
+        """Warm up the RAG pipeline by loading necessary models and resources"""
         try:
             self.pipeline.warm_up()
-            logger.debug(f"The {self.__class__.__name__} has been warmed up successfully")
+            logger.info(f"{self.__class__.__name__} warmed up")
         except Exception as e:
-            logger.error(
-                f"Failed to warm up the {self.__class__.__name__}. Failure reason: %s",
-                e,
-            )
+            logger.exception(f"Failed to warm up {self.__class__.__name__}")
             raise
 
     @abstractmethod

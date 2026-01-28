@@ -15,35 +15,37 @@ async def modify_db(config=None):
         config = CONFIG.TORTOISE_ORM
 
     command = Command(tortoise_config=config, app="app_system")
-    try:
-        # 先初始化 Aerich（创建迁移历史表）
-        await command.init()
-        logger.debug("Aerich 迁移系统初始化完成")
 
-        # 初始化数据库（第一次运行时创建表）
+    # Initialize Aerich migration system
+    try:
+        await command.init()
+        logger.debug("Aerich migration system initialized")
+
         await command.init_db(safe=True)
-        logger.debug("数据库表结构初始化完成")
+        logger.debug("Database schema initialized")
 
     except FileExistsError:
-        logger.debug("迁移配置已存在，跳过初始化")
+        logger.debug("Migration config already exists, skipping initialization")
     except Exception as e:
-        logger.warning(f"初始化过程遇到问题: {e}")
+        logger.warning(f"Initialization encountered an issue: {e}")
 
-    # 检测并生成迁移
+    # Generate migrations
     try:
         migrated = await command.migrate()
         if migrated:
-            logger.debug(f"数据库迁移生成完成: {migrated}")
+            logger.info(f"Migration generated: {migrated}")
     except Exception as e:
-        logger.debug(f"没有需要迁移的内容: {e}")
+        logger.debug(f"No migrations needed: {e}")
 
-    # 应用迁移
+    # Apply migrations
     try:
         upgraded = await command.upgrade(run_in_transaction=True)
         if upgraded:
-            logger.debug(f"数据库升级完成: {upgraded}")
+            logger.info(f"Database upgraded: {upgraded}")
+        else:
+            logger.debug("Database already up to date")
     except OperationalError as e:
-        logger.error(f"数据库升级失败: {e}")
-        raise e
+        logger.exception("Database upgrade failed")
+        raise
     except Exception as e:
-        logger.debug(f"数据库已是最新版本: {e}")
+        logger.debug(f"Database already at latest version: {e}")
