@@ -12,6 +12,16 @@ router = APIRouter()
 @router.post("/chat")
 async def chat(chat_request: ChatRequest):
     """聊天接口"""
-
+    chat_request.model = "Qwen3-235B"
+    chat_request.tools = [
+        "navigate_to_location",
+        "maps_weather",
+        "maps_geo",
+        "maps_direction_transit_integrated",
+        "web_search",
+        "cart_manage",
+        "checkout",
+        "get_train_info",
+    ]
     processor = ChatProcessor(chat_request)
     return StreamingResponse(processor.process(), media_type="text/event-stream")

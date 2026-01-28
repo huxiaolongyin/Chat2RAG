@@ -216,6 +216,7 @@ class TestCommand:
         assert data["data"]["name"] == "帮助指令"
         assert data["data"]["code"] == "help"
         assert data["data"]["priority"] == 10
+        assert data["data"]["commands"]
 
     async def test_create_command_duplicate_name(self, client: AsyncClient, test_command):
         """测试创建重复名称的指令"""

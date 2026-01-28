@@ -22,11 +22,11 @@ from httpx import AsyncClient
 
 @pytest.fixture
 async def test_prompt(client: AsyncClient):
-    """创建测试用提示词"""
+    """创建默认用提示词"""
     response = await client.post(
         "/api/v1/prompts",
         json={
-            "promptName": "测试提示词",
+            "promptName": "默认",
             "promptDesc": "测试提示词",
             "promptText": "你是一个智能助手，请回答用户的问题。",
         },
@@ -38,30 +38,75 @@ async def test_prompt(client: AsyncClient):
 
 
 @pytest.fixture
-async def test_command_with_category(client: AsyncClient):
+async def test_model(client: AsyncClient):
+    """创建默认用提示词"""
+    response = await client.post(
+        "/api/v1/models/provider",
+        json={
+            "name": "硅基流动",
+            "baseUrl": "https://api.siliconflow.cn/v1",
+            "apiKey": "sk-xanhyopslamqkebregfhldoudjkjyunlhebkrcslwlbbsuyu",
+            "enabled": True,
+            "description": "硅基流动",
+        },
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["code"] == "0000"
+    provider_id = data["data"]["id"]
+
+    # 获取模型ID
+    response = await client.get("/api/v1/model/source", params={"nameOrAlias": "Qwen3-32B", "providerId": provider_id})
+    assert response.status_code == 200
+    model_id = response.json()["data"]["items"][0]["id"]
+
+    # 更新模型源
+    response = await client.put(
+        f"/api/v1/models/source/{model_id}",
+        json={
+            "alias": "Qwen3-32B",
+            "enabled": True,
+            "healthy": True,
+            "priority": 10,
+            "generationKwargs": {"extra_body": {"enable_thinking": False}, "temperature": 0.7, "max_tokens": 1000},
+        },
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["code"] == "0000"
+    return data["data"]
+
+
+@pytest.fixture
+async def test_command(client: AsyncClient):
     """创建测试用指令和分类"""
     # 创建分类
     category_response = await client.post(
-        "/api/v1/command/category",
+        "/api/v1/commands/category",
         json={"name": "聊天测试分类", "description": "聊天测试用分类"},
     )
+    assert category_response.status_code == 200
+
     category = category_response.json()["data"]
 
     # 创建指令
     command_response = await client.post(
-        "/api/v1/command/",
+        "/api/v1/commands",
         json={
             "name": "聊天测试指令",
             "code": "chat_test_cmd",
             "categoryId": category["id"],
             "description": "聊天测试指令",
             "commands": "测试指令|test_cmd",
+            "reply": "好的",
             "isActive": True,
             "priority": 10,
         },
     )
-    command = command_response.json()["data"]
-    return {"category": category, "command": command}
+    assert command_response.status_code == 200
+    data = command_response.json()["data"]
+    assert data["commands"]
+    return data
 
 
 @pytest.fixture
@@ -269,7 +314,7 @@ async def parse_stream_response(response):
     return chunks
 
 
-async def parse_sse_events(response):
+async def parse_sse_events(response) -> str:
     """解析 Server-Sent Events (SSE) 格式的响应"""
     events = []
     async for line in response.aiter_lines():
@@ -277,16 +322,18 @@ async def parse_sse_events(response):
             try:
                 data = json.loads(line[6:])  # 去掉 "data: " 前缀
                 events.append(data)
+
             except json.JSONDecodeError:
                 # 如果不是 JSON，保存原始文本
                 events.append(line[6:])
-    return events
+
+    return "".join([i["content"]["text"] for i in events])
 
 
 class TestChatBasic:
     """基础聊天测试"""
 
-    async def test_chat_basic_success(self, client: AsyncClient):
+    async def test_chat_basic_success(self, client: AsyncClient, test_prompt, test_model):
         """测试基础聊天成功"""
         async with client.stream(
             "POST",
@@ -313,7 +360,7 @@ class TestChatBasic:
             content = "".join(chunks)
             assert len(content) > 0
 
-    async def test_chat_with_empty_text(self, client: AsyncClient):
+    async def test_chat_with_empty_text(self, client: AsyncClient, test_prompt, test_model):
         """测试空文本聊天"""
         response = await client.post(
             "/api/v2/chat",
@@ -328,7 +375,7 @@ class TestChatBasic:
         assert response.status_code == 422
         assert "至少需要提供一种内容类型" in str(response.json())
 
-    async def test_chat_batch_mode(self, client: AsyncClient):
+    async def test_chat_batch_mode(self, client: AsyncClient, test_prompt, test_model):
         """测试批处理模式"""
         async with client.stream(
             "POST",
@@ -351,7 +398,7 @@ class TestChatBasic:
 
             assert len(chunks) > 0
 
-    async def test_chat_stream_mode(self, client: AsyncClient):
+    async def test_chat_stream_mode(self, client: AsyncClient, test_prompt, test_model):
         """测试流式模式"""
         async with client.stream(
             "POST",
@@ -375,7 +422,7 @@ class TestChatBasic:
 
             assert chunk_count > 0
 
-    async def test_chat_with_multiple_rounds(self, client: AsyncClient):
+    async def test_chat_with_multiple_rounds(self, client: AsyncClient, test_prompt, test_model):
         """测试多轮对话"""
         # 第一轮
         async with client.stream(
@@ -390,7 +437,8 @@ class TestChatBasic:
             },
         ) as response1:
             assert response1.status_code == 200
-            async for _ in response1.aiter_bytes():
+            async for chunk in response1.aiter_bytes():
+                print(chunk.decode("utf-8"))
                 pass  # 消费第一轮响应
 
         # 第二轮
@@ -406,13 +454,11 @@ class TestChatBasic:
             },
         ) as response2:
             assert response2.status_code == 200
-            chunks = []
-            async for chunk in response2.aiter_bytes():
-                if chunk:
-                    chunks.append(chunk.decode("utf-8"))
+            answer = await parse_sse_events(response2)
 
             # 验证第二轮有响应
-            assert len(chunks) > 0
+            assert len(answer) > 0
+            assert "张三" in answer
 
 
 class TestChatWithCollection:
@@ -478,58 +524,46 @@ class TestChatWithCollection:
 class TestChatWithPrompt:
     """提示词聊天测试"""
 
-    async def test_chat_with_prompt(self, client: AsyncClient, test_prompt):
-        """测试使用提示词聊天"""
-        print(test_prompt)
-        response = await client.post(
-            "/api/v2/chat",
-            json={
-                "chatId": "test_chat_009",
-                "chatRounds": 1,
-                "content": {"text": "使用自定义提示词"},
-                "batchOrStream": "stream",
-                "collections": ["测试数据"],
-                "promptName": test_prompt["promptName"],
-            },
-        )
-        assert response.status_code == 200
-
-    async def test_chat_with_invalid_prompt(self, client: AsyncClient):
+    async def test_chat_with_invalid_prompt(self, client: AsyncClient, test_prompt, test_model):
         """测试使用不存在的提示词"""
         response = await client.post(
             "/api/v2/chat",
             json={
                 "chatId": "test_chat_010",
                 "chatRounds": 1,
-                "content": {"text": "使用不存在的提示词"},
+                "content": {"text": "你好"},
                 "batchOrStream": "stream",
                 "collections": ["测试数据"],
                 "promptName": "不存在的提示词",
             },
         )
-        # 可能使用默认提示词或返回错误
-        assert response.status_code in [200, 400, 422]
+        # 使用默认提示词
+        assert response.status_code == 200
 
 
 class TestChatWithCommand:
     """指令聊天测试"""
 
-    async def test_chat_trigger_command(self, client: AsyncClient, test_command_with_category):
+    async def test_chat_trigger_command(self, client: AsyncClient, test_command, test_prompt, test_model):
         """测试触发指令"""
-        command = test_command_with_category["command"]
+
+        commands: str = test_command["commands"]
         response = await client.post(
             "/api/v2/chat",
             json={
                 "chatId": "test_chat_011",
                 "chatRounds": 1,
-                "content": {"text": "测试指令"},
+                "content": {"text": commands.split("|")[0]},
                 "batchOrStream": "stream",
                 "collections": ["测试数据"],
             },
         )
-        assert response.status_code == 200
 
-    async def test_chat_trigger_command_variant(self, client: AsyncClient, test_command_with_category):
+        assert response.status_code == 200
+        answer = await parse_sse_events(response)
+        assert "好的" in answer
+
+    async def test_chat_trigger_command_variant(self, client: AsyncClient, test_command, test_prompt, test_model):
         """测试触发指令变体"""
         response = await client.post(
             "/api/v2/chat",
@@ -542,23 +576,26 @@ class TestChatWithCommand:
             },
         )
         assert response.status_code == 200
+        answer = await parse_sse_events(response)
+        assert "好的" in answer
 
-    async def test_chat_inactive_command(self, client: AsyncClient):
+    async def test_chat_inactive_command(self, client: AsyncClient, test_prompt, test_model):
         """测试不活跃的指令不被触发"""
         # 创建不活跃的指令
         category_response = await client.post(
-            "/api/v1/command/category",
+            "/api/v1/commands/category",
             json={"name": "不活跃分类", "description": "测试"},
         )
         category = category_response.json()["data"]
 
         await client.post(
-            "/api/v1/command/",
+            "/api/v1/commands",
             json={
                 "name": "不活跃指令",
                 "code": "inactive_cmd",
                 "categoryId": category["id"],
                 "commands": "不活跃",
+                "reply": "好的",
                 "isActive": False,
             },
         )
@@ -574,6 +611,8 @@ class TestChatWithCommand:
             },
         )
         assert response.status_code == 200
+        answer = await parse_sse_events(response)
+        assert "好的" != answer
 
 
 class TestChatWithFlow:
@@ -707,12 +746,10 @@ class TestChatWithExactMatch:
 class TestChatStrategyChain:
     """策略链测试"""
 
-    async def test_strategy_priority_command_first(
-        self, client: AsyncClient, test_command_with_category, test_exact_match
-    ):
+    async def test_strategy_priority_command_first(self, client: AsyncClient, test_command, test_exact_match):
         """测试指令策略优先级最高"""
         # 创建同名的指令和精确匹配
-        command = test_command_with_category["command"]
+        command = test_command["command"]
         await client.post(
             "/api/v1/exact-match",
             json={

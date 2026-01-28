@@ -355,7 +355,9 @@ class StreamHandler:
                         yield data_str
 
                 # Save metrics
+                logger.debug("Received END signal, saving metrics")
                 await self.save_metrics()
+                logger.debug("Metrics saved successfully")
                 break
 
             if not self.model:

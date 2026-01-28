@@ -17,22 +17,22 @@ async def test_category(client: AsyncClient):
     return data["data"]
 
 
-@pytest.fixture
-async def test_word(client: AsyncClient, test_category):
-    """创建测试用敏感词"""
-    response = await client.post(
-        f"{SENSITIVE_BASE_URL}/word",
-        json={
-            "word": "测试敏感词",
-            "categoryId": test_category["id"],
-            "level": 1,
-            "description": "测试描述",
-        },
-    )
-    assert response.status_code == 200
-    data = response.json()
-    assert data["code"] == "0000"
-    return data["data"]
+# @pytest.fixture
+# async def test_word(client: AsyncClient, test_category):
+#     """创建测试用敏感词"""
+#     response = await client.post(
+#         f"{SENSITIVE_BASE_URL}/word",
+#         json={
+#             "word": "测试敏感词",
+#             "categoryId": test_category["id"],
+#             "level": 1,
+#             "description": "测试描述",
+#         },
+#     )
+#     assert response.status_code == 200
+#     data = response.json()
+#     assert data["code"] == "0000"
+#     return data["data"]
 
 
 class TestSensitiveCategory:

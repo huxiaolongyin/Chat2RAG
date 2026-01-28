@@ -67,4 +67,6 @@ class MultiModalStrategy(ResponseStrategy):
                 )
             )
         finally:
+            logger.debug("Sending END signal to stream")
             await self.handler.finish()
+            logger.debug("END signal sent")
