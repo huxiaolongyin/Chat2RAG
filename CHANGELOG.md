@@ -8,41 +8,56 @@
 
 ### Added
 
-- 针对福州南站的作业记录表新增文件上传功能，容器挂载 uploads 目录
-- Documents 的检索方式从 doc_type 改为更通用的 filters 的方式
-- 交互指标从 Dict 存储的，改为 schema 处理，增加表情、动作、图片字段
-- 代码文件夹重构，优化 core 中的代码，尽可能让 core 不引用自己的代码
-- 新增 Agent 管道支持多个知识库的检索
-- 新增 chat_service 进行聊天处理 ChatProcessor
-- 简化 document、flow、metric、sensitive、tool 的接口，将复杂逻辑移入 service 层处理，并添加响应处理
-- 新增知识库文档各类解析器 QA 解析器
-- 新增 UI 界面中知识库文档删除成功时的提示
-- 新增 UI 登录页面
-- 新增热门问题分析，采用 DBCAN+向量化的方式进行处理
-- 优化日志打印，进行精简和国际化
+#### 架构重构
+
+- **服务层重构**: 简化 document、flow、metric、sensitive、tool 接口，将复杂逻辑统一移入 service 层，统一响应处理
+- **Chat 服务**: 新增 chat_service 和 ChatProcessor，支持聊天处理流程
+- **Agent 管道增强**: 支持多知识库检索能力
+
+#### 核心功能
+
+- **文档检索**: 将检索方式从 `doc_type` 改为通用 `filters` 参数
+- **交互指标**: 从 Dict 存储升级为 schema 处理，新增表情、动作、图片字段
+- **文档解析**: 新增 QA 解析器，支持多种文档格式
+- **问题聚类**: 采用 DBSCAN + 向量化方式进行热门问题分析
+- **工具列表解析**: 新增 `ast.literal_eval` 支持，异常情况返回空列表
+
+#### 业务功能
+
+- **文件上传**: 新增福州南站作业记录表文件上传功能（容器挂载 uploads 目录）
+
+#### UI
+
+- **登录页面**: 新增用户登录界面
+- **操作反馈**: 知识库文档删除成功时显示提示信息
 
 ### Fixed
 
-- 修复当没有配置敏感词时的匹配错误
-- 修复 chat 获取 prompt 时的错误
-- 修复 chat V1、document、command 接口输出异常
-- 修复接口输入 batch_or_stream 参数定义错误
-- 修复 str 类型的 tool_list 解析失败的情况，新增 ast.literal_eval 解析及异常下空列表返回
-- 修复删除知识时，内部有 ':' 无法删除的问题
+- **敏感词过滤**: 修复未配置敏感词时的匹配错误
+- **Chat 接口**: 修复获取 prompt 时的异常
+- **接口异常**: 修复 chat V1、document、command 接口输出异常
+- **参数定义**: 修复 `batch_or_stream` 参数定义错误
+- **知识库删除**: 修复知识库名称包含 `:` 时无法删除的问题
+- 修复 Agent 和 MultiModal 策略在使用 asyncio.create_task 处理响应时，存在竞态条件，chunk 走不到 end 的情况
 
 ### Changed
 
+- **代码结构**: 优化 core 模块，减少内部循环依赖
+- **日志系统**: 精简日志输出并支持国际化
+- **Stream 处理**: StreamHandlerV1 现继承 StreamHandler，统一流式处理逻辑
+
 ### Deprecated
+
+- **旧管道系统**: `function` 和 `rag` 管道已标记为废弃，建议迁移至 Agent 管道
 
 ### Removed
 
-- 移除 metric_service 中没有使用或者错误定义的函数
-- 移除 function、rag 管道，使用 Agent 管道进行替代
-- 移除 rag 的 strategies
-- 移除 stream_v1.py，StreamHandlerV1 继承 StreamHandler, 进行功能合并
-- 移除 关于 function、rag 管道 的示例
-- 移除 不再使用的 exception_handler 装饰器
-- 移除 Response 的 Success、Error 响应，改用 BaseResponse 和异常处理替代
+- **旧管道**: 删除 function、rag 管道及相关 strategies
+- **旧处理器**: 删除 stream_v1.py（功能已合并至 StreamHandler）
+- **冗余代码**: 清理 metric_service 中未使用或错误定义的函数
+- **示例代码**: 删除 function、rag 管道相关示例
+- **装饰器**: 移除不再使用的 `exception_handler` 装饰器
+- **旧响应**: 删除 Response 的 Success、Error 响应，统一使用 BaseResponse 和异常处理
 
 ## [V0.3.0rc3] - 2026-01-09
 

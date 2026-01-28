@@ -33,10 +33,15 @@ class AgentStrategy(ResponseStrategy):
             self.request.chat_rounds,
             image=self.request.content.image,
         )
-        asyncio.create_task(self._process_pipeline(query, history_messages))
+        # 保存任务引用
+        task = asyncio.create_task(self._process_pipeline(query, history_messages))
 
-        async for chunk in self.handler.get_stream(self.is_batch):
-            yield chunk
+        try:
+            async for chunk in self.handler.get_stream(self.is_batch):
+                yield chunk
+        finally:
+            # 确保后台任务完成
+            await task
 
     async def _process_pipeline(self, query: str, history_messages: List[ChatMessage]):
         """处理 Agent Pipeline"""

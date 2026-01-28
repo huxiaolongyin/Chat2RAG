@@ -26,10 +26,12 @@ class MultiModalStrategy(ResponseStrategy):
         #     self.request.chat_rounds,
         #     image=self.request.content.get("image", ""),
         # )
-        asyncio.create_task(self._process_pipeline())
-
-        async for chunk in self.handler.get_stream(self.is_batch):
-            yield chunk
+        task = asyncio.create_task(self._process_pipeline())
+        try:
+            async for chunk in self.handler.get_stream(self.is_batch):
+                yield chunk
+        finally:
+            await task
 
     async def _process_pipeline(self):
         try:
