@@ -151,9 +151,13 @@ class QuestionAnalyzer:
                 question_id = documents[0].id
                 question_meta = documents[0].meta
 
+                # 使用按日聚合的方式，大幅减少存储
+                daily_counts = question_meta.get("daily_counts", {})
+                today = datetime.fromisoformat(update_time).date().isoformat()
+                daily_counts[today] = daily_counts.get(today, 0) + 1
+
                 # 更新计数和时间戳
-                new_count = question_meta.get("count", 0) + 1
-                updated_payload = {"meta": {**question_meta, "count": new_count, "update_time": update_time}}
+                updated_payload = {"meta": {**question_meta, "update_time": update_time}}
 
                 # 更新到数据库
                 self.client.set_payload(
@@ -161,15 +165,14 @@ class QuestionAnalyzer:
                     payload=updated_payload,
                     points=Filter(must=[FieldCondition(key="id", match=MatchValue(value=question_id))]),
                 )
-
-            else:
                 # 添加新问题到数据库
                 doc_writer_pipeline = await create_pipeline(DocumentWriterPipeline, qdrant_index=self.collection_name)
+                today = datetime.fromisoformat(create_time).date().isoformat()
                 meta = {
                     "collection_name": collection_name,
                     "create_time": create_time,
                     "update_time": update_time,
-                    "count": 1,
+                    "daily_counts": {today: 1},
                 }
                 await doc_writer_pipeline.run([Document(content=question_text, meta=meta)])
 
@@ -188,25 +191,18 @@ class QuestionAnalyzer:
             热门问题列表
         """
         try:
-
-            # 动态构建过滤条件
-            filter_conditions = []
-
-            if days is not None:
-                cutoff_date = (datetime.now() - timedelta(days=days)).isoformat()
-                filter_conditions.append(FieldCondition(key="meta.update_time", range={"gte": cutoff_date}))
-
+            filter_conditions = []  # 动态构建过滤条件
             if collection_name:
                 filter_conditions.append(FieldCondition(key="meta.collection_name", match={"value": collection_name}))
 
             # 如果有过滤条件则创建 Filter，否则为 None
             scroll_filter = Filter(must=filter_conditions) if filter_conditions else None
 
-            # 搜索并按count排序
+            # 搜索
             search_result = self.client.scroll(
                 collection_name=self.collection_name,
                 scroll_filter=scroll_filter,
-                limit=10000,
+                limit=30000,
                 with_payload=True,
                 with_vectors=True,
             )
@@ -215,22 +211,40 @@ class QuestionAnalyzer:
             if not points:
                 return []
 
+            cutoff_date = None
+            if days is not None:
+                cutoff_date = (datetime.now() - timedelta(days=days)).date().isoformat()
+
             # 准备聚类数据
             vectors = []
             questions_data = []
 
             for point in points:
+                meta = point.payload.get("meta", {})
+
+                # 从daily_counts计算指定时间范围的count
+                daily_counts = meta.get("daily_counts", {})
+
+                if cutoff_date:
+                    actual_count = sum(count for date, count in daily_counts.items() if date >= cutoff_date)
+                    if actual_count == 0:
+                        continue
+                else:
+                    actual_count = sum(daily_counts.values())
 
                 vectors.append(point.vector)
-                meta = point.payload.get("meta", {})
                 questions_data.append(
                     {
                         "id": point.id,
                         "text": point.payload.get("content", ""),
-                        "count": meta.get("count", 0),
+                        "count": actual_count,
                         "collection": meta.get("collection_name", ""),
-                        "create_time": meta.get("create_time", ""),
-                        "update_time": meta.get("update_time", ""),
+                        "create_time": datetime.fromisoformat(meta.get("create_time", "")).strftime(
+                            "%Y-%m-%d %H:%M:%S"
+                        ),
+                        "update_time": datetime.fromisoformat(meta.get("update_time", "")).strftime(
+                            "%Y-%m-%d %H:%M:%S"
+                        ),
                         "point": point,
                     }
                 )

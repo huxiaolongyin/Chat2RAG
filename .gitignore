@@ -37,4 +37,4 @@ uploads
 #=======================#
 #      Evaluation       #
 #=======================#
-**/evaluation_results
+evaluation/rag/results
