@@ -126,9 +126,7 @@ class CollectionService:
                     )
                 )
 
-            doc_write_pipeline = await create_pipeline(
-                DocumentWriterPipeline, qdrant_index=collection_name
-            )
+            doc_write_pipeline = await create_pipeline(DocumentWriterPipeline, qdrant_index=collection_name)
             await doc_write_pipeline.run(documents)
             logger.info(f"Reindexed {points_count} documents")
 
@@ -181,9 +179,7 @@ class CollectionService:
 
         # 按 collection_name 过滤
         if collection_name:
-            items = [
-                item for item in items if collection_name.lower() in item.name.lower()
-            ]
+            items = [item for item in items if collection_name.lower() in item.name.lower()]
 
         total = len(items)
 
@@ -219,9 +215,7 @@ class DocumentService:
     def __init__(self):
         self.client = get_client()
 
-    async def _filter_existing_documents(
-        self, collection_name: str, doc_list: List[DocumentData]
-    ):
+    async def _filter_existing_documents(self, collection_name: str, doc_list: List[DocumentData]):
         """过滤已存在的文档"""
         # 获取集合中所有的 points
         existing_points, _ = await self.client.scroll(
@@ -234,16 +228,12 @@ class DocumentService:
         existing_contents = {point.payload.get("content") for point in existing_points}
 
         # 过滤新文档，只保留不存在的
-        filtered_list = [
-            doc for doc in doc_list if doc.content not in existing_contents
-        ]
+        filtered_list = [doc for doc in doc_list if doc.content not in existing_contents]
 
         return filtered_list
 
     async def _write_document(self, collection_name: str, doc_list: List[DocumentData]):
-        doc_write_pipeline = await create_pipeline(
-            DocumentWriterPipeline, qdrant_index=collection_name
-        )
+        doc_write_pipeline = await create_pipeline(DocumentWriterPipeline, qdrant_index=collection_name)
         documents = [
             Document(
                 id=doc.external_id if doc.external_id else None,
@@ -343,9 +333,7 @@ class DocumentService:
         all_ids_to_delete = set(doc_id_list)
 
         # 获取要删除的文档信息
-        documents = await self.client.retrieve(
-            collection_name=collection_name, ids=doc_id_list
-        )
+        documents = await self.client.retrieve(collection_name=collection_name, ids=doc_id_list)
 
         # 检查是否有QA_PAIR类型文档，找出关联的question文档
         for doc in documents:
@@ -363,12 +351,8 @@ class DocumentService:
                                     key="meta.doc_type",
                                     match=MatchValue(value=DocumentType.QUESTION),
                                 ),
-                                FieldCondition(
-                                    key="content", match=MatchValue(value=question)
-                                ),
-                                FieldCondition(
-                                    key="meta.answer", match=MatchValue(value=answer)
-                                ),
+                                FieldCondition(key="content", match=MatchValue(value=question)),
+                                FieldCondition(key="meta.answer", match=MatchValue(value=answer)),
                             ]
                         ),
                         limit=100,
@@ -377,9 +361,7 @@ class DocumentService:
                     for question_doc in question_docs[0]:
                         all_ids_to_delete.add(question_doc.id)
 
-        return await self.client.delete(
-            collection_name=collection_name, points_selector=list(all_ids_to_delete)
-        )
+        return await self.client.delete(collection_name=collection_name, points_selector=list(all_ids_to_delete))
 
     async def get_list(
         self,
@@ -407,22 +389,14 @@ class DocumentService:
         if not document_list:
             return 0, []
 
-        document_list = [
-            {"id": doc.id, "content": doc.payload["content"]} for doc in document_list
-        ]
+        document_list = [{"id": doc.id, "content": doc.payload["content"]} for doc in document_list]
 
         # 内容过滤
         if document_content:
-            document_list = [
-                doc
-                for doc in document_list
-                if document_content.lower() in doc["content"].lower()
-            ]
+            document_list = [doc for doc in document_list if document_content.lower() in doc["content"].lower()]
 
         # 排序
-        document_list.sort(
-            key=lambda x: x[sort_by], reverse=(sort_order == SortOrder.DESC)
-        )
+        document_list.sort(key=lambda x: x[sort_by], reverse=(sort_order == SortOrder.DESC))
 
         # 计算分页
         total = len(document_list)
@@ -444,14 +418,10 @@ class DocumentService:
         # 设置默认检索阈值
         if not score_threshold:
             score_threshold = (
-                CONFIG.PRECISION_THRESHOLD
-                if doc_type == DocumentType.QUESTION
-                else CONFIG.SCORE_THRESHOLD
+                CONFIG.PRECISION_THRESHOLD if doc_type == DocumentType.QUESTION else CONFIG.SCORE_THRESHOLD
             )
 
-        doc_search_pipeline = await create_pipeline(
-            DocumentSearchPipeline, qdrant_index=collection_name
-        )
+        doc_search_pipeline = await create_pipeline(DocumentSearchPipeline, qdrant_index=collection_name)
         result = await doc_search_pipeline.run(
             query=query,
             top_k=top_k,
@@ -462,9 +432,7 @@ class DocumentService:
 
     async def query_exact(self, collection_name: str, query: str) -> Document | None:
         """通过匹配问题内容，精准检索知识点"""
-        doc_search_pipeline = await create_pipeline(
-            DocumentSearchPipeline, qdrant_index=collection_name
-        )
+        doc_search_pipeline = await create_pipeline(DocumentSearchPipeline, qdrant_index=collection_name)
         result = await doc_search_pipeline.run(
             query=query,
             top_k=1,
@@ -481,8 +449,4 @@ document_service = DocumentService()
 if __name__ == "__main__":
     import asyncio
 
-    print(
-        asyncio.run(
-            document_service.query_exact("测试数据", "预约轮椅服务需要提前多久")
-        )
-    )
+    print(asyncio.run(document_service.query_exact("测试数据", "预约轮椅服务需要提前多久")))
