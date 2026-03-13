@@ -49,25 +49,19 @@ class DocumentSearchPipeline(BasePipeline):
         retrieval_mode (str): The retrieval mode, either "hybrid" or "dense". Defaults to CONFIG.RETRIEVAL_MODE.
     """
 
-    def __init__(
-        self, qdrant_index: str = "Document", retrieval_mode: str | None = None
-    ):
+    def __init__(self, qdrant_index: str = "Document", retrieval_mode: str | None = None):
         super().__init__()
         self._qdrant_index = qdrant_index
         self._retrieval_mode = retrieval_mode or CONFIG.RETRIEVAL_MODE
         if self._retrieval_mode not in ("hybrid", "dense"):
-            raise ValueError(
-                f"Invalid retrieval_mode: {self._retrieval_mode}, must be 'hybrid' or 'dense'"
-            )
+            raise ValueError(f"Invalid retrieval_mode: {self._retrieval_mode}, must be 'hybrid' or 'dense'")
         self._vector_mode: str | None = None
 
     async def _prepare_async_resources(self):
         """检测 collection 的向量模式"""
         client = get_client()
         self._vector_mode = await detect_vector_mode(client, self._qdrant_index)
-        logger.info(
-            f"Detected vector mode for '{self._qdrant_index}': {self._vector_mode}"
-        )
+        logger.info(f"Detected vector mode for '{self._qdrant_index}': {self._vector_mode}")
 
     def _initialize_pipeline(self) -> AsyncPipeline:
         """
@@ -98,7 +92,7 @@ class DocumentSearchPipeline(BasePipeline):
 
             if use_hybrid_retriever:
                 sparse_embedder = CustomerSparseTextEmbedder(
-                    model="C:/Users/Administrator/code/opensearch-neural-sparse-encoding-multilingual-v1"
+                    model="model/opensearch-neural-sparse-encoding-multilingual-v1"
                 )
                 retriever = QdrantHybridRetriever(document_store=document_store)
                 pipeline.add_component("sparse_embedder", sparse_embedder)
@@ -181,9 +175,7 @@ class DocumentWriterPipeline(BasePipeline):
         """检测 collection 的向量模式"""
         client = get_client()
         self._vector_mode = await detect_vector_mode(client, self._qdrant_index)
-        logger.info(
-            f"Detected vector mode for '{self._qdrant_index}': {self._vector_mode}"
-        )
+        logger.info(f"Detected vector mode for '{self._qdrant_index}': {self._vector_mode}")
 
     def _initialize_pipeline(self) -> AsyncPipeline:
         """
@@ -214,7 +206,7 @@ class DocumentWriterPipeline(BasePipeline):
 
             if use_sparse:
                 sparse_embedder = CustomerSparseDocumentEmbedder(
-                    model="C:/Users/Administrator/code/opensearch-neural-sparse-encoding-multilingual-v1"
+                    model="model/opensearch-neural-sparse-encoding-multilingual-v1"
                 )
                 pipeline.add_component("sparse_embedder", sparse_embedder)
                 pipeline.connect("embedder", "sparse_embedder")
@@ -236,9 +228,7 @@ class DocumentWriterPipeline(BasePipeline):
         """
         logger.info(f"Document writer started: {len(documents)} documents")
         try:
-            result = await self.pipeline.run_async(
-                {"embedder": {"documents": documents}}
-            )
+            result = await self.pipeline.run_async({"embedder": {"documents": documents}})
             logger.info("Document writer completed")
             return result
 
