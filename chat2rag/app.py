@@ -36,7 +36,7 @@ async def lifespan(app: FastAPI):
     await prompt_service.ensure_default_prompt()
 
     # 创建后台任务执行同步
-    asyncio.create_task(question_analyzer.sync_from_metrics())
+    # asyncio.create_task(question_analyzer.sync_from_metrics())
 
     # 加载MCP连接
     # ToolManager()

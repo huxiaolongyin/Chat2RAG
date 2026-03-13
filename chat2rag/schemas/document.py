@@ -21,7 +21,9 @@ class CollectionData(BaseSchema):
 class CollectionPaginatedData(BaseSchema):
     """知识库集合分页数据 - 兼容collectionList字段格式"""
 
-    collection_list: List[CollectionData] = Field(default_factory=list, description="知识库列表")
+    collection_list: List[CollectionData] = Field(
+        default_factory=list, description="知识库列表"
+    )
     total: int = Field(default=0, ge=0, description="总记录数")
     current: int = Field(default=1, ge=1, description="当前页码")
     size: int = Field(default=20, ge=1, description="每页条数")
@@ -90,3 +92,11 @@ class DocumentData(BaseSchema):
     version: int = Field(default=1, description="版本号")
     parent_doc_id: str | None = Field(None, description="父文档ID（用于分块）")
     chunk_index: int | None = Field(None, description="分块索引")
+    external_id: str | None = Field(None, description="外部ID（用于指定文档ID）")
+
+
+class ReindexResult(BaseSchema):
+    """重新索引结果"""
+
+    points_count: int = Field(..., description="重新索引的文档数量")
+    backup_file: str | None = Field(None, description="备份文件路径")

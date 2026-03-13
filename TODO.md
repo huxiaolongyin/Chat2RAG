@@ -35,6 +35,7 @@
 - [ ] 🟡P3 在 init 中加入 lazy import，参考：[haystack](https://github.com/deepset-ai/haystack/blob/main/haystack/__init__.py)
 - [x] 🟠P2 auto_log 和 exception_handler 装饰器转为中间件
 - [ ] 🟡P3 去除 RAG 策略，合并到 Agent 策略中，以减少代码维护
+- [ ] 🟡P3 查询问题根据 k:v 缓存 embedding 缓存
 
 ## BUG 修复
 

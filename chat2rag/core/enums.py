@@ -13,6 +13,7 @@ class DocumentType(str, Enum):
     WEB = "web"
     EXCEL = "excel"
     CSV = "csv"
+    TSV = "tsv"
 
 
 class ProcessType(str, Enum):

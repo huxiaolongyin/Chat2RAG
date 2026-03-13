@@ -33,3 +33,8 @@ data/
 **/versions
 migrations**
 uploads
+
+#=======================#
+#      Evaluation       #
+#=======================#
+**/evaluation_results
