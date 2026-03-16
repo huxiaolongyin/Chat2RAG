@@ -256,7 +256,7 @@ class StreamHandler:
             ),
             tool=tool_content,
             link=behavior_data["link"],
-            source=self._source,
+            source=self._source if status == 2 else "",
             document_count=self.doc_length,
             message_id=self.message_id,
         )

@@ -26,8 +26,11 @@ class CommandStrategy(ResponseStrategy):
 
         if command:
             logger.info(f"Command matched: {command.name} (code={command.code})")
+            self.handler.set_source(command.name)
             reply = command.reply if command.reply else "."
-            async for item in self._yield_stream(reply, "Command answer", command=command.code):
+            async for item in self._yield_stream(
+                reply, command.name, command=command.code
+            ):
                 yield item
 
     async def _match_command(self, query: str) -> Optional[object]:
