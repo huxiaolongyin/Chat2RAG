@@ -144,6 +144,12 @@ def render_upload_view():
     if "preview_data" not in st.session_state:
         st.session_state.preview_data = None
 
+    if "import_complete" not in st.session_state:
+        st.session_state.import_complete = False
+
+    if "file_uploader_key" not in st.session_state:
+        st.session_state.file_uploader_key = 0
+
     st.download_button(
         "下载模板",
         data=create_knowledge_template(),
@@ -156,6 +162,7 @@ def render_upload_view():
         "上传知识",
         type=["xlsx", "xls", "csv", "docx", "pdf", "tsv"],
         label_visibility="collapsed",
+        key=f"file_uploader_{st.session_state.file_uploader_key}",
     )
 
     if not uploaded_file:
@@ -253,6 +260,7 @@ def render_upload_view():
 
         if st.session_state.upload_complete:
             st.session_state.upload_complete = False
+            st.session_state.file_uploader_key += 1
             st.toast("知识批量导入成功！", icon="✅")
             time.sleep(1.5)
             st.rerun()
@@ -270,6 +278,7 @@ def render_upload_view():
                     preview=False,
                 )
                 if response.status_code == 200:
+                    st.session_state.file_uploader_key += 1
                     st.toast("知识导入已提交！", icon="✅")
                     time.sleep(1.5)
                     st.rerun()
@@ -277,9 +286,13 @@ def render_upload_view():
                     st.error(f"导入失败: {response.text}")
 
     elif filename.endswith((".docx", ".pdf")):
-        if (
-            st.session_state.preview_data is None
-            or st.session_state.get("last_file") != filename
+        if st.session_state.get("last_file") != filename:
+            st.session_state.preview_data = None
+            st.session_state.cache_id = None
+            st.session_state.import_complete = False
+
+        if st.session_state.preview_data is None and not st.session_state.get(
+            "import_complete"
         ):
             with st.spinner("正在解析文件..."):
                 response = knowledge_service.add_document_by_file(
@@ -290,9 +303,9 @@ def render_upload_view():
                     overlap=overlap,
                 )
                 if response.status_code == 200:
-                    st.session_state.preview_data = response.json()["data"][
-                        "previewList"
-                    ]
+                    data = response.json()["data"]
+                    st.session_state.preview_data = data["previewList"]
+                    st.session_state.cache_id = data.get("cacheId")
                     st.session_state.last_file = filename
                 else:
                     st.error(f"预览失败: {response.text}")
@@ -329,17 +342,28 @@ def render_upload_view():
 
             if st.button("确认导入", key="submit_doc", width="stretch", type="primary"):
                 with st.spinner("正在导入中..."):
-                    uploaded_file.seek(0)
-                    response = knowledge_service.add_document_by_file(
-                        st.session_state["collection_select"],
-                        uploaded_file,
-                        preview=False,
-                        max_chars=max_chars,
-                        overlap=overlap,
-                    )
+                    cache_id = st.session_state.get("cache_id")
+                    if cache_id:
+                        response = knowledge_service.add_document_from_cache(
+                            st.session_state["collection_select"],
+                            cache_id,
+                        )
+                    else:
+                        uploaded_file.seek(0)
+                        response = knowledge_service.add_document_by_file(
+                            st.session_state["collection_select"],
+                            uploaded_file,
+                            preview=False,
+                            max_chars=max_chars,
+                            overlap=overlap,
+                        )
                     if response.status_code == 200:
                         st.session_state.preview_data = None
-                        st.toast("知识导入已提交！", icon="✅")
+                        st.session_state.cache_id = None
+                        st.session_state.last_file = None
+                        st.session_state.import_complete = True
+                        st.session_state.file_uploader_key += 1
+                        st.toast("知识导入成功！", icon="✅")
                         time.sleep(1.5)
                         st.rerun()
                     else:

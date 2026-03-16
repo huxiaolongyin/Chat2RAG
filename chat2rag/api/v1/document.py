@@ -177,18 +177,27 @@ async def create_documents_by_file(
         600, description="分块最大字符数(DOCX/PDF)", alias="maxChars"
     ),
     overlap: int = Query(100, description="分块重叠字符数(DOCX/PDF)"),
+    cache_id: str | None = Query(
+        None, description="缓存ID，从缓存导入时使用", alias="cacheId"
+    ),
 ):
-    if not file:
-        return BaseResponse.error(msg="请上传文件")
-
     if not await collection_service.client.collection_exists(collection_name):
         raise ValueNoExist(f"知识库<{collection_name}>不存在")
 
-    result = await document_service.create(
+    if cache_id and not preview:
+        await document_service.create_from_cache(cache_id, collection_name)
+        return BaseResponse.success(
+            msg="知识内容创建成功", data={"collectionName": collection_name}
+        )
+
+    if not file:
+        return BaseResponse.error(msg="请上传文件")
+
+    cache_id_result, doc_list = await document_service.create(
         collection_name, file, preview=preview, max_chars=max_chars, overlap=overlap
     )
 
-    if preview:
+    if preview and doc_list:
         preview_data = [
             {
                 "docType": doc.doc_type,
@@ -196,11 +205,15 @@ async def create_documents_by_file(
                 "answer": doc.answer,
                 "source": doc.source.model_dump() if doc.source else None,
             }
-            for doc in result or []
+            for doc in doc_list
         ]
         return BaseResponse.success(
             msg="预览成功",
-            data={"collectionName": collection_name, "previewList": preview_data},
+            data={
+                "collectionName": collection_name,
+                "previewList": preview_data,
+                "cacheId": cache_id_result,
+            },
         )
 
     return BaseResponse.success(

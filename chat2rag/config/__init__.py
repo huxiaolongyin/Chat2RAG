@@ -11,12 +11,8 @@ PROMPT_PATH = Path(__file__).parent.parent / "prompt"
 
 _load_str_env = lambda name: os.environ.get(name)
 _load_int_env = lambda name: int(os.environ.get(name)) if os.environ.get(name) else None
-_load_list_env = (
-    lambda name: os.environ.get(name).split(",") if os.environ.get(name) else None
-)
-_load_float_env = (
-    lambda name: float(os.environ.get(name)) if os.environ.get(name) else None
-)
+_load_list_env = lambda name: os.environ.get(name).split(",") if os.environ.get(name) else None
+_load_float_env = lambda name: float(os.environ.get(name)) if os.environ.get(name) else None
 
 
 def _load_bool_env(name: str, default: bool = False) -> bool:

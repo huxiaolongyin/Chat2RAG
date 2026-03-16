@@ -1,9 +1,11 @@
+import asyncio
 import json
 import os
+import time
 import uuid
 from datetime import datetime
 from pathlib import Path
-from typing import List
+from typing import Dict, List
 
 from fastapi import UploadFile
 from haystack.dataclasses import Document
@@ -33,10 +35,13 @@ from chat2rag.schemas.document import (
     ReindexResult,
     SourceLocation,
 )
+from chat2rag.services.contextual_retrieval import ContextualRetrieval
 from chat2rag.utils.pipeline_cache import create_pipeline
 from chat2rag.utils.qdrant_store import get_client
 
 logger = get_logger(__name__)
+
+_preview_cache: Dict[str, dict] = {}
 
 
 class CollectionService:
@@ -312,9 +317,15 @@ class DocumentService:
         preview: bool = False,
         max_chars: int = 600,
         overlap: int = 100,
-    ) -> List[DocumentData] | None:
-        """通过文件 创建知识点"""
+    ) -> tuple[str | None, List[DocumentData] | None]:
+        """
+        通过文件创建知识点
 
+        Returns:
+            tuple: (cache_id, doc_list)
+            - preview=True: 返回 (cache_id, doc_list)，缓存解析结果
+            - preview=False: 返回 (None, None)，直接写入数据库
+        """
         if not file or not file.filename:
             raise ValueError("文件名为空")
         filename = file.filename
@@ -330,37 +341,74 @@ class DocumentService:
         with open(file_path, "wb") as f:
             f.write(content)
 
-        if filename.endswith((".csv", ".xlsx")):
-            parser = QAPairParser()
-            doc_list = await parser.parse(file_path)
-        elif filename.endswith(".docx"):
-            parser = WordParser(max_chars=max_chars, overlap=overlap)
-            doc_list = await parser.parse(file_path)
-        elif filename.endswith(".pdf"):
-            parser = PDFParser(max_chars=max_chars, overlap=overlap)
-            doc_list = await parser.parse(file_path)
-        elif filename.endswith(".tsv"):
-            parser = TSVParser()
-            doc_list = await parser.parse(file_path)
-        else:
-            msg = f"不支持的文件格式: {file_path}"
-            logger.warning(msg)
-            raise ValueError(msg)
+        context_generator = ContextualRetrieval()
+
+        try:
+            if filename.endswith((".csv", ".xlsx")):
+                parser = QAPairParser()
+                doc_list = await parser.parse(file_path)
+            elif filename.endswith(".docx"):
+                parser = WordParser(max_chars=max_chars, overlap=overlap)
+                doc_list = await parser.parse_with_context(file_path, context_generator)
+            elif filename.endswith(".pdf"):
+                parser = PDFParser(max_chars=max_chars, overlap=overlap)
+                doc_list = await parser.parse_with_context(file_path, context_generator)
+            elif filename.endswith(".tsv"):
+                parser = TSVParser()
+                doc_list = await parser.parse(file_path)
+            else:
+                os.remove(file_path)
+                msg = f"不支持的文件格式: {filename}"
+                logger.warning(msg)
+                raise ValueError(msg)
+        except Exception as e:
+            os.remove(file_path)
+            logger.exception(f"文档解析失败: {e}")
+            raise ValueError(f"文档解析失败: {str(e)}")
 
         if not doc_list:
-            msg = f"文件解析失败或为空: {file_path}"
+            os.remove(file_path)
+            msg = f"文件解析失败或为空: {filename}"
             logger.warning(msg)
             raise ValueError(msg)
 
         if preview:
             os.remove(file_path)
-            return doc_list
+            cache_id = str(uuid.uuid4())
+            _preview_cache[cache_id] = {
+                "doc_list": doc_list,
+                "file_path": file_path,
+                "created_at": time.time(),
+                "collection_name": collection_name,
+            }
+            return cache_id, doc_list
 
         doc_list = await self._filter_existing_documents(collection_name, doc_list)
         if not doc_list:
             msg = f"没有新知识点写入: {file_path}"
             logger.warning(msg)
             os.remove(file_path)
+            raise ValueNoExist(msg)
+
+        os.remove(file_path)
+        return await self._write_document(collection_name, doc_list)
+
+    async def create_from_cache(
+        self,
+        cache_id: str,
+        collection_name: str,
+    ) -> bool:
+        """从缓存创建知识点"""
+        if cache_id not in _preview_cache:
+            raise ValueNoExist(f"缓存不存在或已过期: {cache_id}")
+
+        cache_data = _preview_cache.pop(cache_id)
+        doc_list = cache_data["doc_list"]
+
+        doc_list = await self._filter_existing_documents(collection_name, doc_list)
+        if not doc_list:
+            msg = f"没有新知识点写入"
+            logger.warning(msg)
             raise ValueNoExist(msg)
 
         return await self._write_document(collection_name, doc_list)

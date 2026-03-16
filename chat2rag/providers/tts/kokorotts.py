@@ -87,9 +87,7 @@ class KokoroTTS(BaseTTS):
             logger.error("文本转换语音失败: %s", e)
             raise
 
-    async def stream_speak(
-        self, text: str, voice: str = None
-    ) -> AsyncGenerator[bytes, None]:
+    async def stream_speak(self, text: str, voice: str = None) -> AsyncGenerator[bytes, None]:
         """
         异步方法：将文本转换为语音数据流
 
@@ -124,9 +122,7 @@ class KokoroTTS(BaseTTS):
 
                 # 转换为WAV
                 wav_buffer = io.BytesIO()
-                await loop.run_in_executor(
-                    None, lambda: sf.write(wav_buffer, numpy_array, 24000, format="WAV")
-                )
+                await loop.run_in_executor(None, lambda: sf.write(wav_buffer, numpy_array, 24000, format="WAV"))
                 wav_buffer.seek(0)
 
                 # 读取WAV数据
@@ -144,7 +140,7 @@ class KokoroTTS(BaseTTS):
         Returns:
             语音信息列表
         """
-        voices_dir = Path("model") / "Kokoro-82M-v1.1-zh" / "voices"
+        voices_dir = Path("models") / "Kokoro-82M-v1.1-zh" / "voices"
 
         # 检查目录是否存在
         if not voices_dir.exists():

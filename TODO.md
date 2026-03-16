@@ -10,16 +10,16 @@
 ## 功能新增
 
 - [ ] 🟡P3 新增 用户登录界面(预计: 3 天)
-- [ ] 🟠P2 新增 表情管理(预计: 2 天)
+- [x] 🟠P2 新增 表情管理(预计: 2 天)
   - [x] 🟡P3 设计表情数据结构
   - [x] 🟡P3 表情列表添加到 prompt 中
-  - [ ] 🟢P4 表情使用频率统计 --> timescaledb 增加表情字段，埋点交互记录
+  - [x] 🟢P4 表情使用频率统计 --> timescaledb 增加表情字段，埋点交互记录
 - [x] 🟠P2 新增 动作管理 (预计: 2 天)
   - [x] 🟡P3 设计动作数据结构
   - [x] 🟡P3 动作列表添加到 prompt 中
-  - [ ] 🟢P4 动作使用频率统计 --> timescaledb 增加动作字段，埋点交互记录
+  - [x] 🟢P4 动作使用频率统计 --> timescaledb 增加动作字段，埋点交互记录
 - [ ] 🟡P3 新增 用户问题自动识别扩展，问题扩写，加强交互
-- [ ] 🟡P3 新增 doc、pdf 等其他知识文件处理(预计: 2 天)
+- [x] 🟡P3 新增 doc、pdf 等其他知识文件处理(预计: 2 天)
 - [ ] 🟠P2 新增 语音识别 ASR、语音合成 TTS
 - [ ] 🟡P3 新增 大模型长期记忆、历史消息动态摘要处理
 - [x] 🟡P3 新增 RRF 检索排行
@@ -33,19 +33,18 @@
 
 ## 性能优化
 
-- [ ] 🟠P2 进行缓存优化，解决首次提问出现卡顿
-- [ ] 🟡P3 在 init 中加入 lazy import，参考：[haystack](https://github.com/deepset-ai/haystack/blob/main/haystack/__init__.py)
+<!-- - [ ] 🟠P2 进行缓存优化，解决首次提问出现卡顿，(有点难办) -->
+<!-- - [ ] 🟡P3 在 init 中加入 lazy import，参考：[haystack](https://github.com/deepset-ai/haystack/blob/main/haystack/__init__.py)(意义不大) -->
+
 - [x] 🟠P2 auto_log 和 exception_handler 装饰器转为中间件
-- [ ] 🟡P3 去除 RAG 策略，合并到 Agent 策略中，以减少代码维护
+- [x] 🟡P3 去除 RAG 策略，合并到 Agent 策略中，以减少代码维护
 - [ ] 🟡P3 查询问题根据 k:v 缓存 embedding 缓存
 
 ## BUG 修复
 
 - [ ] 🟢P4 docker 镜像启动顺序影响 后端程序运行
-- [ ] 🔴P1 存在 Chat 调用时，没有将交互记录存到数据库的情况
+<!-- - [ ] 🔴P1 存在 Chat 调用时，没有将交互记录存到数据库的情况(未发现代码问题，后续持续观察) -->
 
 ## 测试相关
 
 - [ ] 🟡P3 增加性能压力测试
-
-我是弄服务型机器人的，现在和大模型、rag、agent 设计人机交互系统，现在完成了诸多模块内容：安全敏感词管理->基于规则匹配的固定命令词->基于 FSM 的流程库->基于 Bert 微调的意图识别->RAG(知识库)+AGENT(MCP Tool+API Tool)的主要功能

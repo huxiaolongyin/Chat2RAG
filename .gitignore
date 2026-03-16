@@ -10,7 +10,7 @@ tmp
 temp*
 **_pycache__
 .pytest_cache
-model
+models
 audio_chat
 .continue
 

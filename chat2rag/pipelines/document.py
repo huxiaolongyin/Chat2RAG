@@ -210,6 +210,7 @@ class DocumentWriterPipeline(BasePipeline):
             if use_sparse:
                 sparse_embedder = CustomerSparseDocumentEmbedder(model=CONFIG.SPARSE_MODEL_PATH)
                 pipeline.add_component("sparse_embedder", sparse_embedder)
+                pipeline.add_component("writer", writer)
                 pipeline.connect("embedder", "sparse_embedder")
                 pipeline.connect("sparse_embedder", "writer")
             else:

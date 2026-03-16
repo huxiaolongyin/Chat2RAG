@@ -84,6 +84,17 @@ class KnowledgeService:
         )
         return response
 
+    def add_document_from_cache(self, collection_name: str, cache_id: str):
+        response = requests.post(
+            f"{self.doc_base_url}/file",
+            params={
+                "collectionName": collection_name,
+                "preview": False,
+                "cacheId": cache_id,
+            },
+        )
+        return response
+
     def delete_documents(self, collection_name: str, document_id: List[str]):
         response = requests.delete(
             self.doc_base_url,
