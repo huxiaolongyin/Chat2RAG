@@ -30,10 +30,14 @@ class QuestionAnalyzer:
         self.collection_name = "questions"
         self.client = QdrantClient(location=CONFIG.QDRANT_LOCATION)
         if not self.client.collection_exists(self.collection_name):
-            logger.warning(f"Collection '{self.collection_name}' does not exist, creating new one")
+            logger.warning(
+                f"Collection '{self.collection_name}' does not exist, creating new one"
+            )
             self.client.create_collection(
                 self.collection_name,
-                vectors_config=VectorParams(size=CONFIG.EMBEDDING_DIMENSIONS, distance=Distance.COSINE),
+                vectors_config=VectorParams(
+                    size=CONFIG.EMBEDDING_DIMENSIONS, distance=Distance.COSINE
+                ),
             )
 
         self.checkpoint_file = Path("data/checkpoint/metric_sync_checkpoint.json")
@@ -77,12 +81,24 @@ class QuestionAnalyzer:
 
         # 去除URL链接
         cleaned = re.sub(
-            r"http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+", "", cleaned
+            r"http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+",
+            "",
+            cleaned,
         )
 
         # 全角转半角
-        cleaned = cleaned.replace("？", "?").replace("！", "!").replace("，", ",").replace("。", ".")
-        cleaned = cleaned.replace("（", "(").replace("）", ")").replace("【", "[").replace("】", "]")
+        cleaned = (
+            cleaned.replace("？", "?")
+            .replace("！", "!")
+            .replace("，", ",")
+            .replace("。", ".")
+        )
+        cleaned = (
+            cleaned.replace("（", "(")
+            .replace("）", ")")
+            .replace("【", "[")
+            .replace("】", "]")
+        )
 
         # 统一多个问号/感叹号为单个
         cleaned = re.sub(r"[?？]+", "?", cleaned)
@@ -139,34 +155,51 @@ class QuestionAnalyzer:
                 return
 
             # 检查是否存在相似问题
-            doc_search_pipeline = await create_pipeline(DocumentSearchPipeline, qdrant_index=self.collection_name)
+            doc_search_pipeline = await create_pipeline(
+                DocumentSearchPipeline, qdrant_index=self.collection_name
+            )
             response = await doc_search_pipeline.run(
                 question_text,
                 top_k=1,
                 score_threshold=0.95,
-                filters={"field": "meta.collection_name", "operator": "==", "value": collection_name},
+                filters={
+                    "field": "meta.collection_name",
+                    "operator": "==",
+                    "value": collection_name,
+                },
             )
             documents = response.get("retriever", {}).get("documents", "")
             if documents:
                 question_id = documents[0].id
                 question_meta = documents[0].meta
 
-                # 使用按日聚合的方式，大幅减少存储
                 daily_counts = question_meta.get("daily_counts", {})
                 today = datetime.fromisoformat(update_time).date().isoformat()
                 daily_counts[today] = daily_counts.get(today, 0) + 1
 
-                # 更新计数和时间戳
-                updated_payload = {"meta": {**question_meta, "update_time": update_time}}
+                updated_payload = {
+                    "meta": {
+                        **question_meta,
+                        "update_time": update_time,
+                        "daily_counts": daily_counts,
+                    }
+                }
 
-                # 更新到数据库
                 self.client.set_payload(
                     collection_name=self.collection_name,
                     payload=updated_payload,
-                    points=Filter(must=[FieldCondition(key="id", match=MatchValue(value=question_id))]),
+                    points=Filter(
+                        must=[
+                            FieldCondition(
+                                key="id", match=MatchValue(value=question_id)
+                            )
+                        ]
+                    ),
                 )
-                # 添加新问题到数据库
-                doc_writer_pipeline = await create_pipeline(DocumentWriterPipeline, qdrant_index=self.collection_name)
+            else:
+                doc_writer_pipeline = await create_pipeline(
+                    DocumentWriterPipeline, qdrant_index=self.collection_name
+                )
                 today = datetime.fromisoformat(create_time).date().isoformat()
                 meta = {
                     "collection_name": collection_name,
@@ -174,12 +207,19 @@ class QuestionAnalyzer:
                     "update_time": update_time,
                     "daily_counts": {today: 1},
                 }
-                await doc_writer_pipeline.run([Document(content=question_text, meta=meta)])
+                await doc_writer_pipeline.run(
+                    [Document(content=question_text, meta=meta)]
+                )
 
         except Exception as e:
             logger.exception("Failed to add or update questions")
 
-    def get_hot_questions(self, collection_name: str | None = None, days: int | None = None, limit: int | None = None):
+    def get_hot_questions(
+        self,
+        collection_name: str | None = None,
+        days: int | None = None,
+        limit: int | None = None,
+    ):
         """
         获取热门问题
 
@@ -193,10 +233,16 @@ class QuestionAnalyzer:
         try:
             filter_conditions = []  # 动态构建过滤条件
             if collection_name:
-                filter_conditions.append(FieldCondition(key="meta.collection_name", match={"value": collection_name}))
+                filter_conditions.append(
+                    FieldCondition(
+                        key="meta.collection_name", match={"value": collection_name}
+                    )
+                )
 
             # 如果有过滤条件则创建 Filter，否则为 None
-            scroll_filter = Filter(must=filter_conditions) if filter_conditions else None
+            scroll_filter = (
+                Filter(must=filter_conditions) if filter_conditions else None
+            )
 
             # 搜索
             search_result = self.client.scroll(
@@ -226,7 +272,11 @@ class QuestionAnalyzer:
                 daily_counts = meta.get("daily_counts", {})
 
                 if cutoff_date:
-                    actual_count = sum(count for date, count in daily_counts.items() if date >= cutoff_date)
+                    actual_count = sum(
+                        count
+                        for date, count in daily_counts.items()
+                        if date >= cutoff_date
+                    )
                     if actual_count == 0:
                         continue
                 else:
@@ -239,12 +289,12 @@ class QuestionAnalyzer:
                         "text": point.payload.get("content", ""),
                         "count": actual_count,
                         "collection": meta.get("collection_name", ""),
-                        "create_time": datetime.fromisoformat(meta.get("create_time", "")).strftime(
-                            "%Y-%m-%d %H:%M:%S"
-                        ),
-                        "update_time": datetime.fromisoformat(meta.get("update_time", "")).strftime(
-                            "%Y-%m-%d %H:%M:%S"
-                        ),
+                        "create_time": datetime.fromisoformat(
+                            meta.get("create_time", "")
+                        ).strftime("%Y-%m-%d %H:%M:%S"),
+                        "update_time": datetime.fromisoformat(
+                            meta.get("update_time", "")
+                        ).strftime("%Y-%m-%d %H:%M:%S"),
                         "point": point,
                     }
                 )
@@ -315,7 +365,9 @@ class QuestionAnalyzer:
                 cluster_representatives.append(noise_representative)
 
             # 按总count排序并返回前N个
-            hot_questions = sorted(cluster_representatives, key=lambda x: x.count, reverse=True)[:limit]
+            hot_questions = sorted(
+                cluster_representatives, key=lambda x: x.count, reverse=True
+            )[:limit]
 
             return hot_questions
 
@@ -358,7 +410,11 @@ class QuestionAnalyzer:
                 # 将ISO格式字符串转换为datetime对象
                 last_sync_time = datetime.fromisoformat(last_sync_time_str)
                 # 修正查询操作符：glt -> gt (greater than)
-                metrics = await Metric.filter(Q(create_time__gt=last_sync_time)).all().order_by("create_time")
+                metrics = (
+                    await Metric.filter(Q(create_time__gt=last_sync_time))
+                    .all()
+                    .order_by("create_time")
+                )
                 logger.info(f"Incremental sync started from {last_sync_time_str}")
             else:
                 metrics = await Metric.all().order_by("create_time")
@@ -367,7 +423,10 @@ class QuestionAnalyzer:
             # 同步数据
             for metric in metrics:
                 await self.add_or_update_question(
-                    metric.collections, metric.question, metric.create_time.isoformat(), metric.update_time.isoformat()
+                    metric.collections,
+                    metric.question,
+                    metric.create_time.isoformat(),
+                    metric.update_time.isoformat(),
                 )
 
             # 同步成功后保存checkpoint
