@@ -49,9 +49,7 @@ class IntentRecognizer:
     def __init__(self):
         self.llm_client = LLMClient()
 
-    async def recognize(
-        self, user_input: str, commands: list
-    ) -> Optional[IntentResult]:
+    async def recognize(self, user_input: str, commands: list) -> Optional[IntentResult]:
         """
         使用 LLM 识别用户意图
 
@@ -64,14 +62,13 @@ class IntentRecognizer:
         """
         try:
             commands_info = self._format_commands(commands)
-            prompt = INTENT_PROMPT.format(
-                commands_info=commands_info, user_input=user_input
-            )
+            prompt = INTENT_PROMPT.format(commands_info=commands_info, user_input=user_input)
 
             response = await self.llm_client.acall_llm(
                 messages=[{"role": "user", "content": prompt}],
                 max_tokens=200,
                 temperature=0.0,
+                extra_log="Command Intent Stage",
             )
 
             result = self._parse_response(response)
@@ -144,9 +141,7 @@ def calculate_similarity(s1: str, s2: str) -> float:
     return SequenceMatcher(None, s1, s2).ratio()
 
 
-def fuzzy_match(
-    query: str, candidates: list, threshold: float = 0.7
-) -> Optional[tuple]:
+def fuzzy_match(query: str, candidates: list, threshold: float = 0.7) -> Optional[tuple]:
     """
     模糊匹配：找到最佳匹配项
 

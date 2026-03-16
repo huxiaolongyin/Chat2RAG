@@ -15,10 +15,13 @@ class LLMClient:
         model: str = CONFIG.PROCESS_MODEL,
         max_tokens: int = 20,
         temperature: float = 0.0,
+        extra_log: str = "LLM",
     ) -> str:
         """异步调用 LLM"""
 
-        model_source: ModelSource = await model_source_service.get_best_source(model, extra_log="Flow Stage")
+        model_source: ModelSource = await model_source_service.get_best_source(
+            model, extra_log=extra_log
+        )
         model_provider: ModelProvider = await model_source.provider
         self.client = AsyncOpenAI(
             api_key=model_provider.api_key,

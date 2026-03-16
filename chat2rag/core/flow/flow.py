@@ -34,7 +34,9 @@ async def match_flow_by_query(query: str, flows: list[FlowData]) -> Optional[str
         return None
 
     flow_names = {flow.name for flow in flows}
-    flows_description = "\n".join([f"{idx + 1}. {flow.name} - {flow.desc}" for idx, flow in enumerate(flows)])
+    flows_description = "\n".join(
+        [f"{idx + 1}. {flow.name} - {flow.desc}" for idx, flow in enumerate(flows)]
+    )
 
     system_prompt = f"""
 你是流程匹配助手。根据用户问题判断是否符合以下流程：
@@ -50,7 +52,7 @@ async def match_flow_by_query(query: str, flows: list[FlowData]) -> Optional[str
     ]
 
     try:
-        matched_flow = await llm_client.acall_llm(messages)
+        matched_flow = await llm_client.acall_llm(messages, extra_log="Flow Stage")
         return matched_flow if matched_flow in flow_names else None
     except Exception as e:
         logger.exception("LLM flow matching failed")
@@ -67,7 +69,10 @@ async def match_state_by_query(query: str, current_node: Node) -> Optional[str]:
     available_node_names = [con.transition_node_state_name for con in conditions]
     # 构建条件描述
     conditions_text = "\n".join(
-        [f"- 如果满足：{cond.trigger}，则输出状态名:{cond.transition_node_state_name}" for cond in conditions]
+        [
+            f"- 如果满足：{cond.trigger}，则输出状态名:{cond.transition_node_state_name}"
+            for cond in conditions
+        ]
     )
 
     system_prompt = f"""
@@ -87,7 +92,7 @@ async def match_state_by_query(query: str, current_node: Node) -> Optional[str]:
     ]
 
     try:
-        result = await llm_client.acall_llm(messages)
+        result = await llm_client.acall_llm(messages, extra_log="Flow Stage")
         return result if result in [*available_node_names, "quit", "None"] else None
     except Exception as e:
         logger.exception("State transition determination failed")
@@ -106,7 +111,9 @@ def _handle_state_response(
         _flags = {"emoji_found": False, "action_found": False}
 
     responses = []
-    current_node: Node = next((n for n in flow_nodes if n.state_name == state_name), None)
+    current_node: Node = next(
+        (n for n in flow_nodes if n.state_name == state_name), None
+    )
 
     if not current_node:
         logger.warning(f"State '{state_name}' not found in flow")
@@ -140,7 +147,11 @@ def _handle_state_response(
             user_states[chat_id].current_state = next_node.state_name
 
             # 递归收集下一个节点的响应
-            responses.extend(_handle_state_response(flow_nodes, next_node.state_name, chat_id, _flags, False))
+            responses.extend(
+                _handle_state_response(
+                    flow_nodes, next_node.state_name, chat_id, _flags, False
+                )
+            )
     if _log:
         logger.debug(f"LLM responses: {''.join(responses)}")
 
@@ -166,14 +177,18 @@ async def handle_flow(chat_id: str, query: str):
 
         # 用户状态初始化
         user_states[chat_id] = UserFlowState(flow, "start")
-        responses = _handle_state_response(user_states[chat_id].flow_nodes, "start", chat_id)
+        responses = _handle_state_response(
+            user_states[chat_id].flow_nodes, "start", chat_id
+        )
 
         for response in responses:
             yield response
         return
 
     # 场景2: 用户在流程中，处理状态转移
-    current_node: Node = next(n for n in flow_state.flow_nodes if n.state_name == flow_state.current_state)
+    current_node: Node = next(
+        n for n in flow_state.flow_nodes if n.state_name == flow_state.current_state
+    )
     if not current_node:
         logger.error(f"Current state node not found: state={flow_state.current_state}")
         return
@@ -190,7 +205,9 @@ async def handle_flow(chat_id: str, query: str):
         return
 
     user_states[chat_id].current_state = transition_result
-    responses = _handle_state_response(user_states[chat_id].flow_nodes, transition_result, chat_id)
+    responses = _handle_state_response(
+        user_states[chat_id].flow_nodes, transition_result, chat_id
+    )
     for response in responses:
         yield response
     return
