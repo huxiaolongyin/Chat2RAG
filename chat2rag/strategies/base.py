@@ -39,14 +39,19 @@ class ResponseStrategy(ABC):
         """执行策略并返回流式结果"""
         pass
 
-    async def _yield_stream(self, answer: str, source: str, **kwargs) -> AsyncIterator[str]:
+    async def _yield_stream(
+        self, answer: str, source: str, **kwargs
+    ) -> AsyncIterator[str]:
         """统一的流式输出"""
         asyncio.create_task(self._stream_answer(answer, source, **kwargs))
-        async for chunk in self.handler.get_stream(self.is_batch, query={"text": self.query}):
+        async for chunk in self.handler.get_stream(
+            self.is_batch, query={"text": self.query}
+        ):
             yield chunk
 
     async def _stream_answer(self, answer: str, source: str, **kwargs):
         """流式发送答案"""
+        arguments = kwargs.get("arguments", {})
 
         try:
             logger.debug(f"Processing {source}: {answer}")
@@ -57,7 +62,12 @@ class ResponseStrategy(ABC):
                 await self.handler.callback(
                     StreamingChunk(
                         content=chunk,
-                        meta={"model": "", "answer_source": source, "finish_reason": "none", **kwargs},
+                        meta={
+                            "model": "",
+                            "answer_source": source,
+                            "finish_reason": "none",
+                            **kwargs,
+                        },
                     )
                 )
                 await asyncio.sleep(0.001)
@@ -66,14 +76,23 @@ class ResponseStrategy(ABC):
             await self.handler.callback(
                 StreamingChunk(
                     content="",
-                    meta={"model": "", "answer_source": source, "finish_reason": "stop"},
+                    meta={
+                        "model": "",
+                        "answer_source": source,
+                        "finish_reason": "stop",
+                        "arguments": arguments,
+                    },
                 )
             )
 
             # 更新聊天历史
             if self.request.chat_id:
-                chat_history.add_message(self.request.chat_id, ChatRole.USER, self.query)
-                chat_history.add_message(self.request.chat_id, ChatRole.ASSISTANT, answer)
+                chat_history.add_message(
+                    self.request.chat_id, ChatRole.USER, self.query
+                )
+                chat_history.add_message(
+                    self.request.chat_id, ChatRole.ASSISTANT, answer
+                )
 
             elapsed = perf_counter() - self.start_time
             logger.info(f"{source} processed in {elapsed:.2f}s")
@@ -81,7 +100,10 @@ class ResponseStrategy(ABC):
         except Exception as e:
             logger.exception(f"Error in {source} processing")
             await self.handler.callback(
-                StreamingChunk(content=f"处理错误: {str(e)}", meta={"model": "error", "finish_reason": "error"})
+                StreamingChunk(
+                    content=f"处理错误: {str(e)}",
+                    meta={"model": "error", "finish_reason": "error"},
+                )
             )
         finally:
             await self.handler.finish()

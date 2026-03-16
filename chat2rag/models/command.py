@@ -1,6 +1,16 @@
+import enum
+
 from tortoise import fields
 
 from .base import BaseModel, TimestampMixin
+
+
+class ParamType(str, enum.Enum):
+    """参数类型枚举"""
+
+    NONE = "none"
+    NUMBER = "number"
+    TEXT = "text"
 
 
 class CommandCategory(BaseModel, TimestampMixin):
@@ -35,12 +45,18 @@ class Command(BaseModel, TimestampMixin):
     priority = fields.IntField(default=0, description="优先级，数字越大优先级越高")
     description = fields.CharField(max_length=255, null=True, description="描述信息")
     is_active = fields.BooleanField(default=True, db_index=True, description="是否启用")
+    param_type = fields.CharEnumField(
+        ParamType, default=ParamType.NONE, description="参数类型"
+    )
+    examples = fields.JSONField(
+        null=True, default=[], description="示例说法列表，用于LLM few-shot识别"
+    )
 
     class Meta:
         table = "commands"
         indexes = [
-            ("is_active", "priority"),  # 复合索引：查询启用指令并排序
-            ("category", "is_active"),  # 按分类查询启用指令
+            ("is_active", "priority"),
+            ("category", "is_active"),
         ]
 
 
@@ -52,6 +68,9 @@ class CommandVariant(BaseModel, TimestampMixin):
         "app_system.Command", related_name="variants", on_delete=fields.CASCADE
     )
     text = fields.CharField(max_length=255, db_index=True, description="指令文本")
+    pattern = fields.CharField(
+        max_length=255, null=True, description="参数匹配模式，如：音量调整到{num}"
+    )
 
     class Meta:
         table = "command_variants"

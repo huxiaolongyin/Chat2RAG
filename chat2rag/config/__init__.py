@@ -89,6 +89,10 @@ class Config:
 
     IS_FLOW = _load_bool_env("IS_FLOW") or False
 
+    # 命令匹配配置
+    COMMAND_LLM_FALLBACK = _load_bool_env("COMMAND_LLM_FALLBACK") or True
+    COMMAND_FUZZY_THRESHOLD = _load_float_env("COMMAND_FUZZY_THRESHOLD") or 0.7
+
     DATABASE_URL = DATABASE_URL
     TORTOISE_ORM = TORTOISE_ORM
 

@@ -214,6 +214,8 @@ class StreamHandler:
         if command:
             tool = command
             tool_type = "command"
+            if meta.get("arguments"):
+                arguments = meta.get("arguments")
         if meta.get("finish_reason") == "stop":
             status = 2
         elif is_start:
