@@ -17,11 +17,13 @@ _load_list_env = (
 _load_float_env = (
     lambda name: float(os.environ.get(name)) if os.environ.get(name) else None
 )
-_load_bool_env = (
-    lambda name: os.environ.get(name).lower() in ["true", "1", "yes"]
-    if os.environ.get(name)
-    else None
-)
+
+
+def _load_bool_env(name: str, default: bool = False) -> bool:
+    value = os.environ.get(name)
+    if value is None:
+        return default
+    return value.lower() in ["true", "1", "yes"]
 
 
 def load_prompt(file_name: str, required: bool = False) -> str:
@@ -74,7 +76,7 @@ class Config:
 
     PROMPT_NAME = _load_str_env("PROMPT_NAME") or "默认"
 
-    FUNCTION_ENABLED = _load_bool_env("FUNCTION_ENABLED") or False
+    FUNCTION_ENABLED = _load_bool_env("FUNCTION_ENABLED")
 
     BATCH_OR_STREAM = _load_str_env("BATCH_OR_STREAM") or "batch"
 
@@ -85,12 +87,11 @@ class Config:
     WEB_ROUTE_PREFIX = _load_str_env("WEB_ROUTE_PREFIX") or "/api"
     BACKEND_PORT = _load_int_env("BACKEND_PORT") or 8000
 
-    TELEMETRY_ENABLED = _load_bool_env("TELEMETRY_ENABLED") or False
+    TELEMETRY_ENABLED = _load_bool_env("TELEMETRY_ENABLED")
 
-    IS_FLOW = _load_bool_env("IS_FLOW") or False
+    IS_FLOW = _load_bool_env("IS_FLOW")
 
-    # 命令匹配配置
-    COMMAND_LLM_FALLBACK = _load_bool_env("COMMAND_LLM_FALLBACK") or True
+    COMMAND_LLM_FALLBACK = _load_bool_env("COMMAND_LLM_FALLBACK", default=True)
     COMMAND_FUZZY_THRESHOLD = _load_float_env("COMMAND_FUZZY_THRESHOLD") or 0.7
 
     DATABASE_URL = DATABASE_URL
