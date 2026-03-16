@@ -170,14 +170,38 @@ async def create_documents_by_file(
     background_tasks: BackgroundTasks,
     collection_name: str = Query(description="知识库名称", alias="collectionName"),
     file: UploadFile | None = File(
-        None, description="上传知识文件 (CSV/XLSX/PDF/DOCX)"
+        None, description="上传知识文件 (CSV/XLSX/PDF/DOCX/TSV)"
     ),
+    preview: bool = Query(False, description="是否仅预览，不实际导入"),
+    max_chars: int = Query(
+        600, description="分块最大字符数(DOCX/PDF)", alias="maxChars"
+    ),
+    overlap: int = Query(100, description="分块重叠字符数(DOCX/PDF)"),
 ):
+    if not file:
+        return BaseResponse.error(msg="请上传文件")
+
     if not await collection_service.client.collection_exists(collection_name):
         raise ValueNoExist(f"知识库<{collection_name}>不存在")
 
-    # 后台执行内容创建
-    background_tasks.add_task(document_service.create, collection_name, file)
+    result = await document_service.create(
+        collection_name, file, preview=preview, max_chars=max_chars, overlap=overlap
+    )
+
+    if preview:
+        preview_data = [
+            {
+                "docType": doc.doc_type,
+                "content": doc.content,
+                "answer": doc.answer,
+                "source": doc.source.model_dump() if doc.source else None,
+            }
+            for doc in result or []
+        ]
+        return BaseResponse.success(
+            msg="预览成功",
+            data={"collectionName": collection_name, "previewList": preview_data},
+        )
 
     return BaseResponse.success(
         msg="知识内容创建中", data={"collectionName": collection_name}

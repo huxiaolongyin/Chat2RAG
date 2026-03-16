@@ -305,37 +305,39 @@ class DocumentService:
 
         return await self._write_document(collection_name, doc_list)
 
-    async def create(self, collection_name: str, file: UploadFile):
+    async def create(
+        self,
+        collection_name: str,
+        file: UploadFile | None,
+        preview: bool = False,
+        max_chars: int = 600,
+        overlap: int = 100,
+    ) -> List[DocumentData] | None:
         """通过文件 创建知识点"""
 
-        # 检查文件名
-        if not file.filename:
+        if not file or not file.filename:
             raise ValueError("文件名为空")
         filename = file.filename
 
-        # 创建目录（如果不存在）
         upload_dir = "uploads/documents"
         Path(upload_dir).mkdir(parents=True, exist_ok=True)
 
-        # 保存上传的文件
         name, ext = os.path.splitext(filename)
-        timestamp = int(datetime.now().timestamp() * 1000)  # 毫秒级
+        timestamp = int(datetime.now().timestamp() * 1000)
         file_path = os.path.join(upload_dir, f"{name}_{timestamp}{ext}")
 
-        # 读取并保存文件
         content = await file.read()
         with open(file_path, "wb") as f:
             f.write(content)
 
-        """处理各个格式的文件成 DocumentData"""
         if filename.endswith((".csv", ".xlsx")):
             parser = QAPairParser()
             doc_list = await parser.parse(file_path)
-        elif filename.endswith((".docx")):
-            parser = WordParser()
+        elif filename.endswith(".docx"):
+            parser = WordParser(max_chars=max_chars, overlap=overlap)
             doc_list = await parser.parse(file_path)
         elif filename.endswith(".pdf"):
-            parser = PDFParser()
+            parser = PDFParser(max_chars=max_chars, overlap=overlap)
             doc_list = await parser.parse(file_path)
         elif filename.endswith(".tsv"):
             parser = TSVParser()
@@ -345,18 +347,19 @@ class DocumentService:
             logger.warning(msg)
             raise ValueError(msg)
 
-        # 验证是否成功解析
         if not doc_list:
             msg = f"文件解析失败或为空: {file_path}"
             logger.warning(msg)
             raise ValueError(msg)
 
-        # 比对已有知识内容，保留没有的知识点
+        if preview:
+            os.remove(file_path)
+            return doc_list
+
         doc_list = await self._filter_existing_documents(collection_name, doc_list)
         if not doc_list:
             msg = f"没有新知识点写入: {file_path}"
             logger.warning(msg)
-            # 删除文件
             os.remove(file_path)
             raise ValueNoExist(msg)
 

@@ -33,54 +33,103 @@ class DocumentParser(ABC):
 class PDFParser(DocumentParser):
     """PDF解析器"""
 
-    doc_converter = (
-        DocumentConverter(  # all of the below is optional, has internal defaults.
-            allowed_formats=[
-                InputFormat.PDF
-            ],  # whitelist formats, non-matching files are ignored.
-            format_options={
-                InputFormat.PDF: PdfFormatOption(
-                    pipeline_cls=StandardPdfPipeline, backend=PyPdfiumDocumentBackend
-                )
-            },
-        )
+    doc_converter = DocumentConverter(
+        allowed_formats=[InputFormat.PDF],
+        format_options={
+            InputFormat.PDF: PdfFormatOption(
+                pipeline_cls=StandardPdfPipeline, backend=PyPdfiumDocumentBackend
+            )
+        },
     )
 
-    def _flush(self, file_path: str, page_num: int, result: list[str], buf: list[str]):
-        """刷新buf"""
+    def __init__(self, max_chars: int = 600, overlap: int = 100):
+        if overlap >= max_chars:
+            raise ValueError(
+                f"overlap ({overlap}) must be less than max_chars ({max_chars})"
+            )
+        self._max_chars = max_chars
+        self._overlap = overlap
+
+    def _split_by_chars(self, text: str, max_chars: int, overlap: int) -> List[str]:
+        text = text.strip()
+        if not text:
+            return []
+        if len(text) <= max_chars:
+            return [text]
+
+        chunks: List[str] = []
+        start = 0
+        text_len = len(text)
+
+        while start < text_len:
+            end = min(text_len, start + max_chars)
+            chunks.append(text[start:end])
+
+            if end >= text_len:
+                break
+            start = end - overlap
+
+        return chunks
+
+    def _flush(
+        self, file_path: str, page_num: int, result: List[DocumentData], buf: list[str]
+    ):
         if buf:
             content = "".join(buf).strip()
-            result.append(
-                DocumentData(
-                    doc_type=DocumentType.WORD,
-                    content=content,
-                    source=SourceLocation(
-                        file_path=file_path,
-                        page_num=page_num,
-                    ),
+            if len(content) <= self._max_chars:
+                result.append(
+                    DocumentData(
+                        doc_type=DocumentType.WORD,
+                        content=content,
+                        source=SourceLocation(
+                            file_path=file_path,
+                            page_num=page_num,
+                        ),
+                        answer=None,
+                        parent_doc_id=None,
+                        chunk_index=None,
+                        external_id=None,
+                    )
                 )
-            )
+            else:
+                chunks = self._split_by_chars(content, self._max_chars, self._overlap)
+                for chunk in chunks:
+                    result.append(
+                        DocumentData(
+                            doc_type=DocumentType.WORD,
+                            content=chunk,
+                            source=SourceLocation(
+                                file_path=file_path,
+                                page_num=page_num,
+                            ),
+                            answer=None,
+                            parent_doc_id=None,
+                            chunk_index=None,
+                            external_id=None,
+                        )
+                    )
             buf.clear()
 
     async def parse(self, file_path: str) -> List[DocumentData]:
-        result: list[str] = []
+        result: List[DocumentData] = []
         buf: list[str] = []
+        page_no = 0
 
         doc = self.doc_converter.convert(file_path)
 
-        for item, *_ in doc.document.iterate_items():  # 不构建 items 列表，直接迭代
+        for item, *_ in doc.document.iterate_items():
             try:
                 page_no = item.prov[0].page_no
             except:
                 page_no = 0
 
             if isinstance(item, PictureItem):
-                continue  # 目前跳过图片；需要的话可改成插入占位符
+                continue
 
             if isinstance(item, SectionHeaderItem):
                 self._flush(
-                    file_path="测试", page_num=page_no, result=result, buf=buf
-                )  # 先结束上一段
+                    file_path=file_path, page_num=page_no, result=result, buf=buf
+                )
                 buf.append(item.text)
                 buf.append("\n")
                 continue
@@ -89,9 +138,7 @@ class PDFParser(DocumentParser):
                 buf.append(item.text)
                 continue
 
-        self._flush(
-            file_path="测试", page_num=page_no, result=result, buf=buf
-        )  # 处理最后残留
+        self._flush(file_path=file_path, page_num=page_no, result=result, buf=buf)
         return result
 
 

@@ -66,7 +66,6 @@ def process_uploaded_file(file) -> List[QADocument]:
     """
     处理上传的Excel或CSV文件
     """
-    # 判断文件类型并读取
     if file.name.endswith(".csv"):
         df = pd.read_csv(file, sep=";")
     else:
@@ -80,6 +79,17 @@ def process_uploaded_file(file) -> List[QADocument]:
     return result
 
 
+def process_tsv_file(file) -> pd.DataFrame:
+    """
+    处理上传的TSV文件
+    格式: id\tcontent
+    """
+    df = pd.read_csv(file, sep="\t", header=None, names=["id", "content"])
+    df = df.dropna(subset=["content"])
+    df["content"] = df["content"].astype(str)
+    return df
+
+
 @st.dialog("确认删除知识", width="small")
 def del_knowledge_dialog(data):
     """
@@ -88,7 +98,9 @@ def del_knowledge_dialog(data):
     st.write([item["content"] for item in data])
     data_id = [item["id"] for item in data]
     if st.button("确认删除", width="stretch", type="primary"):
-        if knowledge_service.delete_documents(st.session_state["collection_select"], data_id):
+        if knowledge_service.delete_documents(
+            st.session_state["collection_select"], data_id
+        ):
             st.toast("删除成功！", icon="✅")
             time.sleep(1)
         else:
@@ -112,10 +124,12 @@ def get_documents_list():
     """
     获取知识库文档数据到session
     """
-    st.session_state["doc_list"], st.session_state["doc_total"] = knowledge_service.get_documents(
-        collection_name=st.session_state["collection_select"],
-        current=st.session_state["current"],
-        document_content=st.session_state["document_content"],
+    st.session_state["doc_list"], st.session_state["doc_total"] = (
+        knowledge_service.get_documents(
+            collection_name=st.session_state["collection_select"],
+            current=st.session_state["current"],
+            document_content=st.session_state["document_content"],
+        )
     )
     st.session_state["current"] = 1
 
@@ -127,6 +141,9 @@ def render_upload_view():
     if "upload_complete" not in st.session_state:
         st.session_state.upload_complete = False
 
+    if "preview_data" not in st.session_state:
+        st.session_state.preview_data = None
+
     st.download_button(
         "下载模板",
         data=create_knowledge_template(),
@@ -135,25 +152,52 @@ def render_upload_view():
         type="primary",
     )
 
-    uploaded_file = st.file_uploader("上传知识", type=["xlsx", "xls", "csv"], label_visibility="collapsed")
+    uploaded_file = st.file_uploader(
+        "上传知识",
+        type=["xlsx", "xls", "csv", "docx", "pdf", "tsv"],
+        label_visibility="collapsed",
+    )
 
-    if uploaded_file:
+    if not uploaded_file:
+        return
+
+    filename = uploaded_file.name.lower()
+
+    max_chars = 600
+    overlap = 100
+
+    if filename.endswith((".docx", ".pdf")):
+        st.markdown("#### 分块参数设置")
+        col1, col2 = st.columns(2)
+        with col1:
+            max_chars = st.number_input(
+                "分块最大字符数",
+                min_value=100,
+                max_value=2000,
+                value=600,
+                key="max_chars",
+            )
+        with col2:
+            overlap = st.number_input(
+                "分块重叠字符数", min_value=0, max_value=500, value=100, key="overlap"
+            )
+
+    if filename.endswith((".xlsx", ".xls", ".csv")):
         process_document_list = process_uploaded_file(uploaded_file)
 
         questions = [item.question for item in process_document_list]
         answers = [item.answer for item in process_document_list]
 
-        # 转换为Series以便使用isna()检测
         questions_series = pd.Series(questions)
         answers_series = pd.Series(answers)
 
         if questions_series.isna().any() or "" in questions:
             st.error("问题列不能包含空值")
-            return False
+            return
 
         if answers_series.isna().any() or "" in answers:
             st.error("答案列不能包含空值")
-            return False
+            return
 
         process_df = pd.DataFrame({"问题": questions, "答案": answers})
         st.dataframe(process_df, hide_index=True, width="stretch")
@@ -165,22 +209,14 @@ def render_upload_view():
         def upload_with_progress():
             total_records = len(process_df)
             batch_size = 8
-
-            # 计算总批次数
             total_batches = (total_records + batch_size - 1) // batch_size
-
-            # 记录开始时间
             start_time = time.time()
 
             for batch_num in range(total_batches):
-                # 计算当前批次的起止索引
                 start_idx = batch_num * batch_size
                 end_idx = min(start_idx + batch_size, total_records)
-
-                # 获取当前批次数据
                 batch_data = process_document_list[start_idx:end_idx]
 
-                # 计算预计剩余时间
                 if batch_num > 0:
                     elapsed_time = time.time() - start_time
                     avg_time_per_batch = elapsed_time / batch_num
@@ -190,13 +226,15 @@ def render_upload_view():
                 else:
                     time_str = "计算预计时间..."
 
-                # 更新进度
                 progress = int((batch_num + 1) / total_batches * 100)
                 progress_bar.progress(progress)
-                status_text.text(f"正在上传第{start_idx+1}-{end_idx}条数据... {progress}% | {time_str}")
+                status_text.text(
+                    f"正在上传第{start_idx+1}-{end_idx}条数据... {progress}% | {time_str}"
+                )
 
-                # 上传当前批次
-                knowledge_service.add_document(st.session_state["collection_select"], batch_data)
+                knowledge_service.add_document(
+                    st.session_state["collection_select"], batch_data
+                )
 
             total_time = time.time() - start_time
             progress_bar.progress(100)
@@ -213,12 +251,99 @@ def render_upload_view():
                 type="primary",
             )
 
-        # 上传完成后自动刷新
         if st.session_state.upload_complete:
             st.session_state.upload_complete = False
             st.toast("知识批量导入成功！", icon="✅")
             time.sleep(1.5)
             st.rerun()
+
+    elif filename.endswith(".tsv"):
+        tsv_df = process_tsv_file(uploaded_file)
+        st.dataframe(tsv_df, hide_index=True, width="stretch")
+        st.markdown(f"知识总数：{len(tsv_df)}")
+
+        if st.button("确认上传", key="submit_tsv", width="stretch", type="primary"):
+            with st.spinner("正在导入中..."):
+                response = knowledge_service.add_document_by_file(
+                    st.session_state["collection_select"],
+                    uploaded_file,
+                    preview=False,
+                )
+                if response.status_code == 200:
+                    st.toast("知识导入已提交！", icon="✅")
+                    time.sleep(1.5)
+                    st.rerun()
+                else:
+                    st.error(f"导入失败: {response.text}")
+
+    elif filename.endswith((".docx", ".pdf")):
+        if (
+            st.session_state.preview_data is None
+            or st.session_state.get("last_file") != filename
+        ):
+            with st.spinner("正在解析文件..."):
+                response = knowledge_service.add_document_by_file(
+                    st.session_state["collection_select"],
+                    uploaded_file,
+                    preview=True,
+                    max_chars=max_chars,
+                    overlap=overlap,
+                )
+                if response.status_code == 200:
+                    st.session_state.preview_data = response.json()["data"][
+                        "previewList"
+                    ]
+                    st.session_state.last_file = filename
+                else:
+                    st.error(f"预览失败: {response.text}")
+                    return
+
+        if st.session_state.preview_data:
+            preview_list = st.session_state.preview_data
+            st.markdown(f"#### 预览分块结果 (共 {len(preview_list)} 个分块)")
+
+            preview_df = pd.DataFrame(
+                [
+                    {
+                        "序号": i + 1,
+                        "内容预览": item["content"][:100] + "..."
+                        if len(item["content"]) > 100
+                        else item["content"],
+                        "完整内容": item["content"],
+                    }
+                    for i, item in enumerate(preview_list)
+                ]
+            )
+            st.dataframe(
+                preview_df[["序号", "内容预览"]],
+                hide_index=True,
+                width="stretch",
+                use_container_width=True,
+            )
+
+            with st.expander("查看完整分块内容"):
+                for i, item in enumerate(preview_list):
+                    st.markdown(f"**分块 {i + 1}**")
+                    st.text(item["content"])
+                    st.divider()
+
+            if st.button("确认导入", key="submit_doc", width="stretch", type="primary"):
+                with st.spinner("正在导入中..."):
+                    uploaded_file.seek(0)
+                    response = knowledge_service.add_document_by_file(
+                        st.session_state["collection_select"],
+                        uploaded_file,
+                        preview=False,
+                        max_chars=max_chars,
+                        overlap=overlap,
+                    )
+                    if response.status_code == 200:
+                        st.session_state.preview_data = None
+                        st.toast("知识导入已提交！", icon="✅")
+                        time.sleep(1.5)
+                        st.rerun()
+                    else:
+                        st.error(f"导入失败: {response.text}")
 
 
 def render_knowledge_view():
@@ -242,12 +367,16 @@ def render_knowledge_view():
 
     get_documents_list()
 
-    data_with_select = [{"select": False, **item} for item in st.session_state["doc_list"]]
+    data_with_select = [
+        {"select": False, **item} for item in st.session_state["doc_list"]
+    ]
 
     knowledge_table = st.data_editor(
         data_with_select,
         column_config={
-            "select": st.column_config.CheckboxColumn("选择", help="选择要操作的知识", width=10),
+            "select": st.column_config.CheckboxColumn(
+                "选择", help="选择要操作的知识", width=10
+            ),
             "id": st.column_config.TextColumn("ID", width=10),
             "content": st.column_config.TextColumn("内容", width=500),
         },

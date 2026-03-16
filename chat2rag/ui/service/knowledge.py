@@ -18,7 +18,9 @@ class KnowledgeService:
 
     def get_collection_list(self) -> list:
         """获取知识库列表"""
-        response = requests.get(self.collect_base_url, params={"current": 1, "size": 100})
+        response = requests.get(
+            self.collect_base_url, params={"current": 1, "size": 100}
+        )
         if response.status_code == 200:
             result = response.json()["data"]["collectionList"]
             return [item["collectionName"] for item in result]
@@ -61,6 +63,27 @@ class KnowledgeService:
             json=[asdict(doc) for doc in document],
         )
 
+    def add_document_by_file(
+        self,
+        collection_name: str,
+        file,
+        preview: bool = False,
+        max_chars: int = 600,
+        overlap: int = 100,
+    ):
+        files = {"file": (file.name, file, "application/octet-stream")}
+        response = requests.post(
+            f"{self.doc_base_url}/file",
+            params={
+                "collectionName": collection_name,
+                "preview": preview,
+                "maxChars": max_chars,
+                "overlap": overlap,
+            },
+            files=files,
+        )
+        return response
+
     def delete_documents(self, collection_name: str, document_id: List[str]):
         response = requests.delete(
             self.doc_base_url,
@@ -91,7 +114,9 @@ class KnowledgeService:
                 response_data = response.json()
 
                 # 如果精确查询没有结果，自动降级到模糊查询
-                if response.status_code == 200 and not response_data.get("data", {}).get("docList", []):
+                if response.status_code == 200 and not response_data.get(
+                    "data", {}
+                ).get("docList", []):
                     precision_mode = False
 
             # 模糊查询
@@ -110,7 +135,9 @@ class KnowledgeService:
             if response.status_code == 200:
                 return response_data.get("data", {}).get("docList", [])
             else:
-                logging.warning(f"Query document failed with status code: {response.status_code}")
+                logging.warning(
+                    f"Query document failed with status code: {response.status_code}"
+                )
                 return []
 
         except requests.exceptions.RequestException as e:
