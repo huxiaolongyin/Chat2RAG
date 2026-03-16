@@ -69,34 +69,34 @@ class MCPService(CRUDBase[MCPServer, MCPServerCreate, MCPServerUpdate]):
         logger.debug(f"Builtin tool names: {list(tool_registry.keys())}")
         return tool_registry
 
-    async def get_by_names(self, names: List[str]) -> List[Any]:
+    async def get_by_names(self, names: List[str]) -> Tuple[List[Any], Dict[str, str]]:
         """根据名称获取工具列表（内置工具 + MCP工具）
 
         Args:
             names: 工具名称列表
 
         Returns:
-            匹配的工具实例列表
+            (工具列表, {工具名称: MCP服务器名称})
 
         Raises:
             ToolServiceError: 获取工具时发生错误
         """
         if not names:
-            return []
+            return [], {}
 
         all_tools = []
+        tool_sources: Dict[str, str] = {}
 
         try:
-            # 获取内置工具
             builtin_tools = self._get_builtin_tools_by_names(names)
             all_tools.extend(builtin_tools)
 
-            # 获取MCP工具
-            mcp_tools = await self._get_mcp_tools_by_names(names)
+            mcp_tools, mcp_tool_sources = await self._get_mcp_tools_by_names(names)
             all_tools.extend(mcp_tools)
+            tool_sources.update(mcp_tool_sources)
 
             logger.info(f"Retrieved {len(all_tools)} tools for names={names}")
-            return all_tools
+            return all_tools, tool_sources
 
         except Exception as e:
             logger.exception(f"Failed to get tools by names: {names}")
@@ -115,23 +115,33 @@ class MCPService(CRUDBase[MCPServer, MCPServerCreate, MCPServerUpdate]):
 
         return builtin_tools
 
-    async def _get_mcp_tools_by_names(self, names: List[str]) -> List[Any]:
-        """获取MCP工具"""
-        try:
-            # 查询数据库中的MCP工具
-            mcp_tools_query = MCPTool.filter(name__in=names, is_active=True).prefetch_related("server")
+    async def _get_mcp_tools_by_names(
+        self, names: List[str]
+    ) -> Tuple[List[Any], Dict[str, str]]:
+        """获取MCP工具
 
-            mcp_tools = await mcp_tools_query.all()
+        Returns:
+            (工具列表, {工具名称: MCP服务器名称})
+        """
+        try:
+            mcp_tools = (
+                await MCPTool.filter(name__in=names, is_active=True)
+                .prefetch_related("server")
+                .all()
+            )
 
             if not mcp_tools:
-                return []
+                return [], {}
 
-            # 按服务器分组工具
+            tool_sources = {tool.name: tool.server.name for tool in mcp_tools}
+
             servers_tools = self._group_tools_by_server(mcp_tools)
 
-            # 并发获取所有服务器的工具
             all_mcp_tools = []
-            tasks = [self._get_server_tools(server, tool_names, names) for server, tool_names in servers_tools.items()]
+            tasks = [
+                self._get_server_tools(server, tool_names, names)
+                for server, tool_names in servers_tools.items()
+            ]
 
             results = await asyncio.gather(*tasks, return_exceptions=True)
 
@@ -141,13 +151,15 @@ class MCPService(CRUDBase[MCPServer, MCPServerCreate, MCPServerUpdate]):
                     continue
                 all_mcp_tools.extend(result)
 
-            return all_mcp_tools
+            return all_mcp_tools, tool_sources
 
         except Exception as e:
             logger.exception("Failed to get MCP tools")
-            return []
+            return [], {}
 
-    def _group_tools_by_server(self, mcp_tools: List[MCPTool]) -> Dict[MCPServer, Set[str]]:
+    def _group_tools_by_server(
+        self, mcp_tools: List[MCPTool]
+    ) -> Dict[MCPServer, Set[str]]:
         """按服务器分组工具"""
         servers_tools: Dict[MCPServer, Set[str]] = {}
 
@@ -158,19 +170,29 @@ class MCPService(CRUDBase[MCPServer, MCPServerCreate, MCPServerUpdate]):
 
         return servers_tools
 
-    async def _get_server_tools(self, server: MCPServer, tool_names: Set[str], requested_names: List[str]) -> List[Any]:
+    async def _get_server_tools(
+        self, server: MCPServer, tool_names: Set[str], requested_names: List[str]
+    ) -> List[Any]:
         """获取指定服务器的工具"""
         try:
             if not server.is_active:
                 logger.warning(f"Server '{server.name}' is inactive")
                 return []
 
-            toolset = await asyncio.wait_for(connection_manager.get_toolset(server), timeout=TOOL_SYNC_TIMEOUT)
+            toolset = await asyncio.wait_for(
+                connection_manager.get_toolset(server), timeout=TOOL_SYNC_TIMEOUT
+            )
 
             # 只返回请求的工具
-            matched_tools = [tool for tool in toolset.tools if tool.name in requested_names and tool.name in tool_names]
+            matched_tools = [
+                tool
+                for tool in toolset.tools
+                if tool.name in requested_names and tool.name in tool_names
+            ]
 
-            logger.debug(f"Retrieved {len(matched_tools)} tools from server '{server.name}'")
+            logger.debug(
+                f"Retrieved {len(matched_tools)} tools from server '{server.name}'"
+            )
             return matched_tools
 
         except asyncio.TimeoutError:
@@ -218,14 +240,18 @@ class MCPService(CRUDBase[MCPServer, MCPServerCreate, MCPServerUpdate]):
             tools = await query.offset(offset).limit(page_size).all()
             total_pages = page / (total + page_size - 1) // page_size
 
-            logger.info(f"Retrieved {len(tools)} MCP tools: page={page}, total_pages={total_pages}")
+            logger.info(
+                f"Retrieved {len(tools)} MCP tools: page={page}, total_pages={total_pages}"
+            )
             return total, tools
 
         except Exception as e:
             logger.error(f"Error getting MCP tool list: {e}")
             raise ToolServiceError(f"Failed to get MCP tool list: {e}") from e
 
-    async def create(self, obj_in: MCPServerCreate, exclude: List[str] | None = None) -> MCPServer:
+    async def create(
+        self, obj_in: MCPServerCreate, exclude: List[str] | None = None
+    ) -> MCPServer:
         """创建MCP服务器并同步工具"""
         try:
             async with in_transaction():
@@ -242,7 +268,9 @@ class MCPService(CRUDBase[MCPServer, MCPServerCreate, MCPServerUpdate]):
             logger.error(f"Error creating MCP server: {e}")
             raise ToolServiceError(f"Failed to create MCP server: {e}") from e
 
-    async def update(self, id: int, obj_in: MCPServerUpdate, exclude: List[str] | None = None) -> MCPServer | None:
+    async def update(
+        self, id: int, obj_in: MCPServerUpdate, exclude: List[str] | None = None
+    ) -> MCPServer | None:
         """更新MCP服务器"""
         try:
             old_server = await self.get(id)
@@ -271,7 +299,10 @@ class MCPService(CRUDBase[MCPServer, MCPServerCreate, MCPServerUpdate]):
     def _should_resync_tools(self, obj_in: MCPServerUpdate) -> bool:
         """检查是否需要重新同步工具"""
         config_fields = ["url", "command", "args", "env", "mcp_type"]
-        config_changed = any(hasattr(obj_in, attr) and getattr(obj_in, attr) is not None for attr in config_fields)
+        config_changed = any(
+            hasattr(obj_in, attr) and getattr(obj_in, attr) is not None
+            for attr in config_fields
+        )
 
         is_activated = hasattr(obj_in, "is_active") and obj_in.is_active
 
@@ -288,7 +319,9 @@ class MCPService(CRUDBase[MCPServer, MCPServerCreate, MCPServerUpdate]):
             async with in_transaction():
                 # 删除所有关联的工具
                 deleted_tools = await MCPTool.filter(server=server).delete()
-                logger.info(f"Tools deleted: count={deleted_tools}, server='{server.name}'")
+                logger.info(
+                    f"Tools deleted: count={deleted_tools}, server='{server.name}'"
+                )
 
                 # 删除服务器
                 result = await super().remove(id)
@@ -326,9 +359,13 @@ class MCPService(CRUDBase[MCPServer, MCPServerCreate, MCPServerUpdate]):
                     )
                     await asyncio.sleep(wait_time)
                 else:
-                    logger.error(f"All {MAX_RETRY_ATTEMPTS} sync attempts failed for {server.name}")
+                    logger.error(
+                        f"All {MAX_RETRY_ATTEMPTS} sync attempts failed for {server.name}"
+                    )
 
-        raise ToolSyncError(f"Failed to sync tools after {MAX_RETRY_ATTEMPTS} attempts: {last_error}")
+        raise ToolSyncError(
+            f"Failed to sync tools after {MAX_RETRY_ATTEMPTS} attempts: {last_error}"
+        )
 
     async def _sync_tools(self, server: MCPServer) -> List[MCPTool]:
         """从MCP服务器同步工具到数据库"""
@@ -338,7 +375,9 @@ class MCPService(CRUDBase[MCPServer, MCPServerCreate, MCPServerUpdate]):
                 return []
 
             # 获取工具集
-            toolset = await asyncio.wait_for(connection_manager.get_toolset(server), timeout=TOOL_SYNC_TIMEOUT)
+            toolset = await asyncio.wait_for(
+                connection_manager.get_toolset(server), timeout=TOOL_SYNC_TIMEOUT
+            )
 
             tools_data = [tool.tool_spec for tool in toolset.tools]
 
@@ -355,7 +394,9 @@ class MCPService(CRUDBase[MCPServer, MCPServerCreate, MCPServerUpdate]):
         except Exception as e:
             raise ToolSyncError(f"Failed to sync tools for server {server.name}: {e}")
 
-    async def _update_server_tools(self, server: MCPServer, tools_data: List[Dict[str, Any]]) -> List[MCPTool]:
+    async def _update_server_tools(
+        self, server: MCPServer, tools_data: List[Dict[str, Any]]
+    ) -> List[MCPTool]:
         """更新服务器的工具列表"""
         # 获取现有工具
         existing_tools = await MCPTool.filter(server=server).all()
@@ -367,8 +408,12 @@ class MCPService(CRUDBase[MCPServer, MCPServerCreate, MCPServerUpdate]):
         # 删除不再存在的工具
         tools_to_delete = existing_tool_names - new_tool_names
         if tools_to_delete:
-            deleted_count = await MCPTool.filter(server=server, name__in=list(tools_to_delete)).delete()
-            logger.info(f"Deleted {deleted_count} obsolete tools for server {server.name}")
+            deleted_count = await MCPTool.filter(
+                server=server, name__in=list(tools_to_delete)
+            ).delete()
+            logger.info(
+                f"Deleted {deleted_count} obsolete tools for server {server.name}"
+            )
 
         # 批量更新或创建工具
         created_tools = []
@@ -407,7 +452,9 @@ class ToolService:
 
             return await mcp_service.create(request.data)
 
-    async def update(self, tool_id: int, tool_type: str, request: CombinedUpdateRequest):
+    async def update(
+        self, tool_id: int, tool_type: str, request: CombinedUpdateRequest
+    ):
         if tool_type == "api":
             if not isinstance(request, APIToolUpdateRequest):
                 raise ParameterException(msg="API工具输入参数错误")
@@ -416,7 +463,11 @@ class ToolService:
 
             # 检查名称是否已被其他工具使用
             if request.data.name:
-                if await APITool.filter(name=request.data.name).exclude(id=tool_id).exists():
+                if (
+                    await APITool.filter(name=request.data.name)
+                    .exclude(id=tool_id)
+                    .exists()
+                ):
                     raise ValueAlreadyExist("工具名已存在")
 
             return await api_service.update(tool_id, request.data)
@@ -427,7 +478,11 @@ class ToolService:
             await mcp_service.get(tool_id)
 
             if request.data.name:
-                if await MCPServer.filter(name=request.data.name).exclude(id=tool_id).exists():
+                if (
+                    await MCPServer.filter(name=request.data.name)
+                    .exclude(id=tool_id)
+                    .exists()
+                ):
                     raise ValueAlreadyExist("工具名已存在")
 
             return await mcp_service.update(tool_id, request.data)
@@ -466,13 +521,19 @@ class ToolService:
         if tool_type in ["api", "all"]:
             # 获取API工具
             api_total, api_tools = await api_service.get_list(1, 999, search, order)
-            tool_list.extend([{**await tool.to_dict(), "tool_type": "api"} for tool in api_tools])
+            tool_list.extend(
+                [{**await tool.to_dict(), "tool_type": "api"} for tool in api_tools]
+            )
             total += api_total
 
         if tool_type in ["mcp", "all"]:
             # 获取MCP工具
-            mcp_total, mcp_tools = await mcp_service.get_mcp_tool_list(1, 999, search, order)
-            tool_list.extend([{**await tool.to_dict(), "tool_type": "mcp"} for tool in mcp_tools])
+            mcp_total, mcp_tools = await mcp_service.get_mcp_tool_list(
+                1, 999, search, order
+            )
+            tool_list.extend(
+                [{**await tool.to_dict(), "tool_type": "mcp"} for tool in mcp_tools]
+            )
             total += mcp_total
 
         # 如果是获取全部工具，需要重新排序和分页

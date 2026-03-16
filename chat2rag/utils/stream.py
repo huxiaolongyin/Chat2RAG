@@ -4,6 +4,7 @@ import json
 import re
 import uuid
 from time import perf_counter
+from typing import Dict
 
 from haystack.dataclasses import StreamingChunk
 
@@ -54,11 +55,12 @@ class StreamHandler:
         self.doc_length = 0
         self.message_id = str(uuid.uuid4().hex[:16])
 
-        # Initialize the performance metric
         self.metrics = MetricCreate(message_id=self.message_id)
 
-        self._execute_tools_list = []  # Use list to collect executed tools
-        self._answer_parts = []  # Use list to collect answer fragments
+        self._execute_tools_list = []
+        self._answer_parts = []
+        self._source = ""
+        self._tool_sources: Dict[str, str] = {}
 
     async def callback(self, chunk: StreamingChunk):
         await self.queue.put(chunk)
@@ -130,7 +132,19 @@ class StreamHandler:
         self.metrics.input_tokens += input_tokens
         self.metrics.output_tokens += output_tokens
 
-    def set_behavior(self, expression: RobotExpression | None = None, action: RobotAction | None = None):
+    def set_source(self, source: str):
+        """Set information source"""
+        self._source = source
+
+    def set_tool_sources(self, tool_sources: Dict[str, str]):
+        """Set tool sources mapping {tool_name: mcp_server_name}"""
+        self._tool_sources = tool_sources
+
+    def set_behavior(
+        self,
+        expression: RobotExpression | None = None,
+        action: RobotAction | None = None,
+    ):
         """Set behavior data"""
         if expression:
             self.metrics.expression = expression
@@ -221,18 +235,28 @@ class StreamHandler:
             self.metrics.answer = "".join(self._answer_parts)
 
         if tool:
-            tool_content = ToolSchema(tool_name=tool, tool_type=tool_type, arguments=arguments, tool_result=tool_result)
+            tool_content = ToolSchema(
+                tool_name=tool,
+                tool_type=tool_type,
+                arguments=arguments,
+                tool_result=tool_result,
+            )
         else:
             tool_content = {}
 
         return StreamChunkV2(
             input=query,
-            content=ContentSchema(text=behavior_data["clean_text"], image=behavior_data["image"]),
+            content=ContentSchema(
+                text=behavior_data["clean_text"], image=behavior_data["image"]
+            ),
             model=self.model,
             status=status,
-            behavior=BehaviorSchema(emoji=behavior_data["emoji"], action=behavior_data["action"]),
+            behavior=BehaviorSchema(
+                emoji=behavior_data["emoji"], action=behavior_data["action"]
+            ),
             tool=tool_content,
             link=behavior_data["link"],
+            source=self._source,
             document_count=self.doc_length,
             message_id=self.message_id,
         )
@@ -280,14 +304,20 @@ class StreamHandler:
         if tool_result:
             try:
                 tool_result = json.loads(str(tool_result))
-                tool_result.get("content")[0]["text"] = json.loads(tool_result.get("content")[0]["text"])
+                tool_result.get("content")[0]["text"] = json.loads(
+                    tool_result.get("content")[0]["text"]
+                )
                 tool_result["content"] = tool_result.get("content")[0]
 
             except Exception:
-                logger.warning("Failed to parse tool call result as JSON. Using original result")
+                logger.warning(
+                    "Failed to parse tool call result as JSON. Using original result"
+                )
 
             # Record tool result
-            self.metrics.tool_result = tool_result if isinstance(tool_result, dict) else {}
+            self.metrics.tool_result = (
+                tool_result if isinstance(tool_result, dict) else {}
+            )
 
         async for data_str in self._yield_data(
             "", chunk.meta, tool=tool_name, arguments=arguments, tool_result=tool_result
@@ -342,19 +372,33 @@ class StreamHandler:
                 continue
 
             if chunk == StreamControl.END:
-                # In batch mode, process the last batch of data
+                if self._execute_tools_list:
+                    sources = []
+                    seen = set()
+                    for tool_name in self._execute_tools_list:
+                        if tool_name in seen:
+                            continue
+                        seen.add(tool_name)
+                        server_name = self._tool_sources.get(tool_name, "")
+                        if server_name:
+                            sources.append(f"{server_name} ({tool_name})")
+                    if sources:
+                        self._source = ", ".join(sources)
+
                 if is_batch and current_batch:
                     combined_content = "".join([c.content for c in current_batch])
 
-                    async for data_str in self._yield_data(combined_content, current_batch[-1].meta):
+                    async for data_str in self._yield_data(
+                        combined_content, current_batch[-1].meta
+                    ):
                         yield data_str
 
-                # Send end message
                 if is_batch:
-                    async for data_str in self._yield_data("", meta={"finish_reason": "stop", "model": ""}):
+                    async for data_str in self._yield_data(
+                        "", meta={"finish_reason": "stop", "model": ""}
+                    ):
                         yield data_str
 
-                # Save metrics
                 logger.debug("Received END signal, saving metrics")
                 await self.save_metrics()
                 logger.debug("Metrics saved successfully")
@@ -384,7 +428,9 @@ class StreamHandler:
 
             else:
                 # Batch processing mode
-                first_response, results = await self._process_batch_content(chunk, current_batch, first_response)
+                first_response, results = await self._process_batch_content(
+                    chunk, current_batch, first_response
+                )
                 for data_str in results:
                     yield data_str
 
@@ -396,7 +442,6 @@ class StreamHandler:
 
 
 class StreamHandlerV1(StreamHandler):
-
     async def _create_message(self, *args, **kwargs) -> StreamChunkV1:
         """创建消息格式"""
         res: StreamChunkV2 = await super()._create_message(*args, **kwargs)

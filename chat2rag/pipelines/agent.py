@@ -52,13 +52,15 @@ class AgentPipeline(BasePipeline[AsyncPipeline]):
         self._generation_kwargs = recursive_tuple_to_dict(generation_kwargs)
         self._retrieval_mode = retrieval_mode or CONFIG.RETRIEVAL_MODE
         self._vector_modes: Dict[str, str] = {}
+        self._tool_sources: Dict[str, str] = {}
 
     async def _prepare_async_resources(self):
         """异步加载工具并检测向量模式"""
         if self._tool_list:
-            loaded_tools = await mcp_service.get_by_names(self._tool_list)
+            loaded_tools, tool_sources = await mcp_service.get_by_names(self._tool_list)
             if loaded_tools:
                 self._tools.extend(loaded_tools)
+                self._tool_sources = tool_sources
             else:
                 logger.warning(f"Failed to load tools: {self._tool_list}")
 
@@ -158,7 +160,7 @@ class AgentPipeline(BasePipeline[AsyncPipeline]):
         return await self.pipeline.run_async(
             {
                 "embedder": {"text": query},
-                **retriever_params,  # 展开所有 retriever 的参数
+                **retriever_params,
                 "builder": {
                     "template": messages,
                     "template_variables": {"query": query} | extra_params,
@@ -167,5 +169,9 @@ class AgentPipeline(BasePipeline[AsyncPipeline]):
                     "streaming_callback": streaming_callback,
                 },
             },
-            # include_outputs_from=set("doc_joiner"),
+            include_outputs_from={"doc_joiner"},
         )
+
+    def get_tool_sources(self) -> Dict[str, str]:
+        """获取工具来源映射 {工具名称: MCP服务器名称}"""
+        return self._tool_sources

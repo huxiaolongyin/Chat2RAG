@@ -1,4 +1,6 @@
 import asyncio
+import os
+import re
 from datetime import datetime
 from time import perf_counter
 from typing import AsyncIterator, List
@@ -68,15 +70,29 @@ class AgentStrategy(ResponseStrategy):
                 generation_kwargs=generation_kwargs,
             )
 
+            tool_sources = pipeline.get_tool_sources()
+            self.handler.set_tool_sources(tool_sources)
+
             result = await pipeline.run(
                 query=query,
                 top_k=self.request.top_k,
                 score_threshold=self.request.score_threshold,
-                filters={"field": "meta.doc_type", "operator": "==", "value": "qa_pair"},
+                filters={
+                    "field": "meta.doc_type",
+                    "operator": "==",
+                    "value": "qa_pair",
+                },
                 messages=history_messages,
                 extra_params=self.request.extra_params | current_time,
                 streaming_callback=self.handler.callback,
             )
+
+            documents = result.get("doc_joiner", {}).get("documents", [])
+            doc_sources = self._extract_sources(documents)
+            if doc_sources and not self.handler._execute_tools_list:
+                self.handler.set_source(", ".join(doc_sources))
+            elif not self.handler._execute_tools_list:
+                self.handler.set_source("大模型生成")
 
             # 更新聊天历史
             messages: list = result.get("agent", {}).get("messages", [])
@@ -122,3 +138,44 @@ class AgentStrategy(ResponseStrategy):
                 return messages[i:]
 
         return []
+
+    def _extract_sources(self, documents: list) -> List[str]:
+        """从文档中提取来源信息"""
+        sources = []
+        seen = set()
+        for doc in documents:
+            meta = getattr(doc, "meta", {}) or {}
+            source_info = meta.get("source", {})
+            file_path = (
+                source_info.get("file_path", "")
+                if isinstance(source_info, dict)
+                else ""
+            )
+
+            # 从文档 meta 中获取知识库名称
+            collection = meta.get("collection_name", "")
+
+            # 清理文件名：去除文件夹路径和时间戳
+            if file_path:
+                # 获取文件名（去除路径）
+                file_name = os.path.basename(file_path)
+                # 去除时间戳后缀（格式：_数字）
+                file_name = re.sub(r"_\d+(\.[^.]+)$", r"\1", file_name)
+            else:
+                file_name = ""
+
+            # 构建来源字符串
+            if collection and file_name:
+                source_str = f"{collection}-{file_name}"
+            elif collection:
+                source_str = collection
+            elif file_name:
+                source_str = file_name
+            else:
+                continue
+
+            if source_str not in seen:
+                seen.add(source_str)
+                sources.append(source_str)
+
+        return sources
