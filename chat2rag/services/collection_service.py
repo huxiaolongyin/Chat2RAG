@@ -1,5 +1,6 @@
 import json
 import os
+import uuid
 from datetime import datetime
 from pathlib import Path
 from typing import List
@@ -190,13 +191,24 @@ class CollectionService:
         # 获取详细信息
         for item in items:
             collection_info = await self.client.get_collection(item.name)
+            vectors = collection_info.config.params.vectors
+            if vectors is None:
+                embedding_size = 0
+                distance_str = ""
+            elif isinstance(vectors, dict):
+                first_vector = next(iter(vectors.values()))
+                embedding_size = first_vector.size
+                distance_str = str(first_vector.distance)
+            else:
+                embedding_size = vectors.size
+                distance_str = str(vectors.distance)
             result.append(
                 CollectionData(
                     collection_name=item.name,
                     status=collection_info.status,
-                    documents_count=collection_info.points_count,
-                    embedding_size=collection_info.config.params.vectors.size,
-                    distance=collection_info.config.params.vectors.distance,
+                    documents_count=collection_info.points_count or 0,
+                    embedding_size=embedding_size,
+                    distance=distance_str,
                 )
             )
         # 排序
@@ -231,7 +243,9 @@ class DocumentService:
         )
 
         # 提取已存在的 content
-        existing_contents = {point.payload.get("content") for point in existing_points}
+        existing_contents = {
+            point.payload.get("content") for point in existing_points if point.payload
+        }
 
         # 过滤新文档，只保留不存在的
         filtered_list = [
@@ -246,9 +260,9 @@ class DocumentService:
         )
         documents = [
             Document(
-                id=doc.external_id if doc.external_id else None,
+                id=doc.external_id or str(uuid.uuid4()),
                 content=doc.content,
-                meta=doc.model_dump(exclude=["content", "external_id"])
+                meta=doc.model_dump(exclude={"content", "external_id"})
                 | {"collection_name": collection_name},
             )
             for doc in doc_list
@@ -265,11 +279,18 @@ class DocumentService:
                         content=doc.question,
                         answer=doc.answer,
                         source=SourceLocation(file_path="json"),
+                        parent_doc_id=None,
+                        chunk_index=None,
+                        external_id=None,
                     ),
                     DocumentData(
                         doc_type=DocumentType.QA_PAIR,
                         content=f"{doc.question}:{doc.answer}",
+                        answer=None,
                         source=SourceLocation(file_path="json"),
+                        parent_doc_id=None,
+                        chunk_index=None,
+                        external_id=None,
                     ),
                 ]
             )
@@ -287,12 +308,17 @@ class DocumentService:
     async def create(self, collection_name: str, file: UploadFile):
         """通过文件 创建知识点"""
 
+        # 检查文件名
+        if not file.filename:
+            raise ValueError("文件名为空")
+        filename = file.filename
+
         # 创建目录（如果不存在）
         upload_dir = "uploads/documents"
         Path(upload_dir).mkdir(parents=True, exist_ok=True)
 
         # 保存上传的文件
-        name, ext = os.path.splitext(file.filename)
+        name, ext = os.path.splitext(filename)
         timestamp = int(datetime.now().timestamp() * 1000)  # 毫秒级
         file_path = os.path.join(upload_dir, f"{name}_{timestamp}{ext}")
 
@@ -302,16 +328,16 @@ class DocumentService:
             f.write(content)
 
         """处理各个格式的文件成 DocumentData"""
-        if file.filename.endswith((".csv", ".xlsx")):
+        if filename.endswith((".csv", ".xlsx")):
             parser = QAPairParser()
             doc_list = await parser.parse(file_path)
-        elif file.filename.endswith((".docx")):
+        elif filename.endswith((".docx")):
             parser = WordParser()
             doc_list = await parser.parse(file_path)
-        elif file.filename.endswith(".pdf"):
+        elif filename.endswith(".pdf"):
             parser = PDFParser()
             doc_list = await parser.parse(file_path)
-        elif file.filename.endswith(".tsv"):
+        elif filename.endswith(".tsv"):
             parser = TSVParser()
             doc_list = await parser.parse(file_path)
         else:
@@ -350,8 +376,9 @@ class DocumentService:
 
         # 检查是否有QA_PAIR类型文档，找出关联的question文档
         for doc in documents:
-            if doc.payload.get("meta", {}).get("doc_type") == DocumentType.QA_PAIR:
-                qa_content = doc.payload.get("content", "")
+            payload = doc.payload or {}
+            if payload.get("meta", {}).get("doc_type") == DocumentType.QA_PAIR:
+                qa_content = payload.get("content", "")
                 if qa_content:
                     question = qa_content.split(":")[0]
                     answer = qa_content[len(question) + 1 :]
@@ -375,7 +402,7 @@ class DocumentService:
                         limit=100,
                     )
                     # 将找到的question文档ID加入删除列表
-                    for question_doc in question_docs[0]:
+                    for question_doc in question_docs[0] or []:
                         all_ids_to_delete.add(question_doc.id)
 
         return await self.client.delete(
@@ -409,7 +436,8 @@ class DocumentService:
             return 0, []
 
         document_list = [
-            {"id": doc.id, "content": doc.payload["content"]} for doc in document_list
+            {"id": doc.id, "content": (doc.payload or {}).get("content", "")}
+            for doc in document_list
         ]
 
         # 内容过滤
