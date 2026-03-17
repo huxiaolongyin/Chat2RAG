@@ -35,15 +35,23 @@ class MultiModalStrategy(ResponseStrategy):
 
     async def _process_pipeline(self):
         try:
-            image_data = self.request.content.get("image", {})
+            image_data = self.request.content.image
             multiModal = OpenAIChatGenerator(
                 model="qwen3-vl-235b-a22b-instruct",
                 api_base_url="https://dashscope.aliyuncs.com/compatible-mode/v1",
                 api_key=Secret.from_token("sk-09986c3ceb3842569f0b22cb158f34f2"),
                 streaming_callback=self.handler.callback,
-                generation_kwargs={"extra_body": {"stream_options": {"include_usage": True}}},
+                generation_kwargs={
+                    "extra_body": {"stream_options": {"include_usage": True}}
+                },
             )
-            image = ImageContent.from_url(image_data, detail="low")
+            if image_data.startswith(("http://", "https://")):
+                image = ImageContent.from_url(image_data, detail="low")
+            else:
+                if image_data.startswith("data:image"):
+                    image_data = image_data.split(",", 1)[1]
+                image = ImageContent(base64_image=image_data, detail="low")
+
             user_message = ChatMessage.from_user(content_parts=[self.query, image])
             result = await multiModal.run_async([user_message])
             message = result.get("replies")[0]
@@ -55,7 +63,9 @@ class MultiModalStrategy(ResponseStrategy):
                 output_tokens = int(usage.get("completion_tokens", 0))
                 self.handler.set_token_info(input_tokens, output_tokens)
 
-            logger.info(f"MultiModal processed: answer='{message.text}', cost={perf_counter() - self.start_time:.2f}s")
+            logger.info(
+                f"MultiModal processed: answer='{message.text}', cost={perf_counter() - self.start_time:.2f}s"
+            )
 
         except Exception as e:
             logger.exception("Failed to execute multimodal strategy")

@@ -1,7 +1,9 @@
 import type {
   BaseResponse,
   KnowledgeCollection,
-  ModelOption
+  ModelOption,
+  Prompt,
+  Tool
 } from '@/types/api'
 import type { ChatRequest, StreamChunk } from '@/types/chat'
 
@@ -23,6 +25,18 @@ export async function getKnowledgeCollections (
   const data: BaseResponse<{ collectionList: KnowledgeCollection[] }> =
     await response.json()
   return data.data?.collectionList || []
+}
+
+export async function getTools (): Promise<Tool[]> {
+  const response = await fetch(`${BASE_URL}/v1/tools?size=100`)
+  const data: BaseResponse<{ items: Tool[] }> = await response.json()
+  return data.data?.items?.filter(t => t.isActive) || []
+}
+
+export async function getPrompts (): Promise<Prompt[]> {
+  const response = await fetch(`${BASE_URL}/v1/prompts?size=100`)
+  const data: BaseResponse<{ promptList: Prompt[] }> = await response.json()
+  return data.data?.promptList || []
 }
 
 export interface ChatStreamOptions {

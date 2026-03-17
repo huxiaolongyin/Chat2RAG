@@ -7,9 +7,8 @@ export interface QueryContent {
 
 export interface GenerationKwargs {
   temperature?: number
-  maxTokens?: number
+
   top_p?: number
-  frequencyPenalty?: number
 }
 
 export interface ChatRequest {
@@ -68,10 +67,12 @@ export interface Message {
   content: string
   timestamp: Date
   latency?: number
+  firstTokenLatency?: number
   source?: string
   documents?: DocumentSource[]
   behavior?: BehaviorSchema
   tool?: ToolSchema
+  image?: string
 }
 
 export interface DocumentSource {
@@ -90,9 +91,8 @@ export interface SystemPrompt {
 
 export interface GenerationParams {
   temperature: number
-  maxTokens: number
+
   topP: number
-  frequencyPenalty: number
 }
 
 export interface TokenUsage {

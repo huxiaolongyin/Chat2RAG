@@ -54,8 +54,9 @@ export interface Tool {
 export interface Prompt {
   id: number
   promptName: string
-  promptDesc?: string
-  content: string
+  promptDesc: string
+  promptText: string
+  currentVersion: number
   version: number
 }
 
