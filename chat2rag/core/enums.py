@@ -63,3 +63,21 @@ class ToolType(str, Enum):
     API = "api"
     MCP = "mcp"
     ALL = "all"
+
+
+class FileType(str, Enum):
+    PDF = "pdf"
+    DOCX = "docx"
+    XLSX = "xlsx"
+    XLS = "xls"
+    CSV = "csv"
+    TSV = "tsv"
+    JSON = "json"
+    UNKNOWN = "unknown"
+
+
+class FileStatus(str, Enum):
+    PENDING = "pending"
+    PARSING = "parsing"
+    PARSED = "parsed"
+    FAILED = "failed"

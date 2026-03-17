@@ -3,7 +3,7 @@ from typing import List
 
 from pydantic import Field, computed_field
 
-from chat2rag.core.enums import DocumentType
+from chat2rag.core.enums import DocumentType, FileStatus, FileType
 
 from .base import BaseSchema
 
@@ -49,13 +49,13 @@ class CollectionPaginatedData(BaseSchema):
 class SourceLocation(BaseSchema):
     """来源位置 - 精确定位文档内容"""
 
-    file_path: str  # 文件路径
-    page_num: int | None = None  # 页码
-    section: str | None = None  # 章节/标题
-    paragraph_num: int | None = None  # 段落号
-    line_num: int | None = None  # 行号
-    table_name: str | None = None  # 表格名称
-    url: str | None = None  # 网页URL
+    file_path: str
+    page_num: int | None = None
+    section: str | None = None
+    paragraph_num: int | None = None
+    line_num: int | None = None
+    table_name: str | None = None
+    url: str | None = None
 
     def __str__(self) -> str:
         """生成可读的位置信息"""
@@ -73,22 +73,12 @@ class DocumentData(BaseSchema):
     """统一的文档模型"""
 
     doc_type: DocumentType
-
-    # 内容
     content: str = Field(..., description="用于向量化的内容")
     answer: str | None = Field(None, description="直接回复内容（QUESTION类型使用）")
-
-    # 来源信息
-    source: SourceLocation = Field(..., description="数据来源")  # 精确的来源位置
-
-    # 质量指标
+    source: SourceLocation = Field(..., description="数据来源")
     retrieval_count: int = Field(default=0, description="检索次数")
-
-    # 时间信息
     create_time: datetime = Field(default_factory=datetime.now)
     update_time: datetime = Field(default_factory=datetime.now)
-
-    # 增强字段
     version: int = Field(default=1, description="版本号")
     parent_doc_id: str | None = Field(None, description="父文档ID（用于分块）")
     chunk_index: int | None = Field(None, description="分块索引")
@@ -100,3 +90,40 @@ class ReindexResult(BaseSchema):
 
     points_count: int = Field(..., description="重新索引的文档数量")
     backup_file: str | None = Field(None, description="备份文件路径")
+
+
+class FileData(BaseSchema):
+    """文件数据"""
+
+    id: int = Field(..., description="文件ID")
+    collection_name: str = Field(..., description="所属知识库")
+    filename: str = Field(..., description="文件名")
+    file_type: FileType = Field(..., description="文件类型")
+    file_size: int = Field(default=0, description="文件大小(字节)")
+    status: FileStatus = Field(..., description="状态")
+    version: int = Field(default=1, description="当前版本")
+    chunk_count: int = Field(default=0, description="分块数量")
+    parse_config: dict | None = Field(None, description="解析配置")
+    error_message: str | None = Field(None, description="错误信息")
+    create_time: datetime | None = Field(None, description="创建时间")
+    update_time: datetime | None = Field(None, description="更新时间")
+
+
+class FileVersionData(BaseSchema):
+    """文件版本数据"""
+
+    id: int = Field(..., description="版本ID")
+    version: int = Field(..., description="版本号")
+    file_size: int = Field(default=0, description="文件大小(字节)")
+    change_note: str | None = Field(None, description="变更说明")
+    chunk_count: int = Field(default=0, description="分块数量")
+    parse_config: dict | None = Field(None, description="解析配置")
+    create_time: datetime | None = Field(None, description="创建时间")
+
+
+class ChunkData(BaseSchema):
+    """知识分块数据"""
+
+    id: str = Field(..., description="分块ID")
+    content: str = Field(..., description="内容")
+    chunk_index: int | None = Field(None, description="分块索引")
