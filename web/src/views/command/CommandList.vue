@@ -29,6 +29,10 @@ const moveDrawerVisible = ref(false);
 const moveDrawerLoading = ref(false);
 const targetCategoryId = ref<number | null>(null);
 
+const exportLoading = ref(false);
+const importLoading = ref(false);
+const importDrawerVisible = ref(false);
+
 const defaultForm = () => ({
   name: "",
   code: "",
@@ -65,8 +69,8 @@ const isActiveOptions = [
 const filteredCategories = computed(() => {
   let result = [
     { id: 0, name: "全部分类" },
-    ...categories.value,
     { id: -1, name: "未分类" },
+    ...categories.value,
   ];
   if (categorySearchKeyword.value.trim()) {
     const keyword = categorySearchKeyword.value.toLowerCase();
@@ -349,6 +353,98 @@ async function handleMove() {
   }
 }
 
+async function handleExport(format: "xlsx" | "csv") {
+  exportLoading.value = true;
+  try {
+    const response = await commandApi.exportCommands({
+      format,
+      commandIds: selectedRowKeys.value.length > 0 ? selectedRowKeys.value : undefined,
+      categoryId:
+        selectedRowKeys.value.length > 0
+          ? undefined
+          : selectedCategoryId.value || undefined,
+      isActive:
+        selectedRowKeys.value.length > 0
+          ? undefined
+          : isActiveFilter.value === ""
+          ? undefined
+          : isActiveFilter.value,
+    });
+    const blob = new Blob([response.data], {
+      type:
+        format === "csv"
+          ? "text/csv"
+          : "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = format === "csv" ? "commands.csv" : "commands.xlsx";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+    Message.success("导出成功");
+  } catch (e) {
+    console.error("Failed to export commands:", e);
+    Message.error("导出失败");
+  } finally {
+    exportLoading.value = false;
+  }
+}
+
+async function handleDownloadTemplate() {
+  try {
+    const response = await commandApi.downloadTemplate();
+    const blob = new Blob([response.data], {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "command_template.xlsx";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+  } catch (e) {
+    console.error("Failed to download template:", e);
+    Message.error("下载模板失败");
+  }
+}
+
+function openImportDrawer() {
+  importDrawerVisible.value = true;
+}
+
+function closeImportDrawer() {
+  importDrawerVisible.value = false;
+}
+
+async function handleImport(file: File) {
+  importLoading.value = true;
+  try {
+    const result = await commandApi.importCommands(file);
+    if (result.code === "0000") {
+      Message.success(result.msg);
+      closeImportDrawer();
+      loadCommands();
+    } else {
+      Message.error(result.msg);
+    }
+  } catch (e) {
+    console.error("Failed to import commands:", e);
+    Message.error("导入失败");
+  } finally {
+    importLoading.value = false;
+  }
+  return false;
+}
+
+function handleUploadRequest(option: { fileItem: { file: File } }) {
+  handleImport(option.fileItem.file);
+}
+
 watch(isActiveFilter, () => {
   pagination.current = 1;
   loadCommands();
@@ -399,22 +495,28 @@ onMounted(() => {
             <span class="text-sm text-slate-700 dark:text-slate-200">{{
               category.name
             }}</span>
-            <div
-              v-if="category.id !== 0"
-              class="hidden group-hover:flex items-center gap-1"
-            >
+            <div class="flex items-center gap-1">
               <a-button
+                v-if="category.id !== 0 && category.id !== -1"
                 type="text"
                 size="mini"
+                class="opacity-0 group-hover:opacity-100"
                 @click.stop="openEditCategoryDrawer(category)"
               >
                 <template #icon><Icon icon="mdi:pencil" class="text-sm" /></template>
               </a-button>
               <a-popconfirm
+                v-if="category.id !== 0 && category.id !== -1"
                 content="确定删除此分类吗？"
                 @ok="deleteCategory(category.id)"
               >
-                <a-button type="text" size="mini" status="danger" @click.stop>
+                <a-button
+                  type="text"
+                  size="mini"
+                  status="danger"
+                  class="opacity-0 group-hover:opacity-100"
+                  @click.stop
+                >
                   <template #icon><Icon icon="mdi:delete" class="text-sm" /></template>
                 </a-button>
               </a-popconfirm>
@@ -460,6 +562,26 @@ onMounted(() => {
             >
               <template #icon><Icon icon="mdi:folder-move" /></template>
               移动 ({{ selectedRowKeys.length }})
+            </a-button>
+            <a-dropdown>
+              <a-button type="outline" :loading="exportLoading">
+                <template #icon><Icon icon="mdi:download" /></template>
+                导出
+              </a-button>
+              <template #content>
+                <a-doption @click="handleExport('xlsx')">
+                  <template #icon><Icon icon="mdi:file-excel" /></template>
+                  导出为 Excel
+                </a-doption>
+                <a-doption @click="handleExport('csv')">
+                  <template #icon><Icon icon="mdi:file-export" /></template>
+                  导出为 CSV
+                </a-doption>
+              </template>
+            </a-dropdown>
+            <a-button type="outline" @click="openImportDrawer">
+              <template #icon><Icon icon="mdi:upload" /></template>
+              导入
             </a-button>
           </div>
           <a-button type="primary" @click="openCreateDrawer">
@@ -590,6 +712,7 @@ onMounted(() => {
                   </a-button>
                   <a-popconfirm
                     content="确定删除此命令吗？"
+                    popup-container="body"
                     @ok="deleteCommand(record.id)"
                   >
                     <a-button type="text" size="small" status="danger">
@@ -771,6 +894,48 @@ onMounted(() => {
           </a-button>
         </a-space>
       </template>
+    </a-drawer>
+
+    <a-drawer
+      v-model:visible="importDrawerVisible"
+      title="导入命令"
+      :width="400"
+      :footer="false"
+      @cancel="closeImportDrawer"
+    >
+      <div class="space-y-4">
+        <a-alert type="info">
+          <template #title>导入说明</template>
+          <ul class="list-disc pl-4 text-sm">
+            <li>支持 Excel (.xlsx, .xls) 和 CSV 文件</li>
+            <li>根据「代码」字段判断，存在则更新，不存在则新增</li>
+            <li>分类名称需与系统中的分类名称完全匹配</li>
+          </ul>
+        </a-alert>
+
+        <a-upload
+          :auto-upload="true"
+          :show-file-list="false"
+          accept=".xlsx,.xls,.csv"
+          :custom-request="handleUploadRequest"
+        >
+          <template #upload-button>
+            <a-button type="primary" :loading="importLoading">
+              <template #icon><Icon icon="mdi:upload" /></template>
+              选择文件导入
+            </a-button>
+          </template>
+        </a-upload>
+
+        <a-divider />
+
+        <div class="text-center">
+          <a-button type="text" @click="handleDownloadTemplate">
+            <template #icon><Icon icon="mdi:download" /></template>
+            下载导入模板
+          </a-button>
+        </div>
+      </div>
     </a-drawer>
   </div>
 </template>

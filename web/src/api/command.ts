@@ -109,5 +109,41 @@ export const commandApi = {
       categoryId: typeof categoryId === 'number' ? categoryId : null
     })
     return data
+  },
+
+  exportCommands: async (params: {
+    format?: 'xlsx' | 'csv'
+    categoryId?: number
+    isActive?: boolean
+    commandIds?: number[]
+  }) => {
+    const response = await api.get('/v1/commands/export', {
+      params: {
+        format: params.format || 'xlsx',
+        categoryId: params.commandIds ? undefined : params.categoryId,
+        isActive: params.commandIds ? undefined : params.isActive,
+        commandIds: params.commandIds?.join(',')
+      },
+      responseType: 'blob'
+    })
+    return response
+  },
+
+  downloadTemplate: async () => {
+    const response = await api.get('/v1/commands/template', {
+      responseType: 'blob'
+    })
+    return response
+  },
+
+  importCommands: async (file: File) => {
+    const formData = new FormData()
+    formData.append('file', file)
+    const { data } = await api.post<BaseResponse>('/v1/commands/import', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    })
+    return data
   }
 }

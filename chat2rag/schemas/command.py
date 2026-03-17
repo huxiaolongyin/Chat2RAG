@@ -64,12 +64,11 @@ class CommandBase(BaseSchema):
         examples=["再左转一下|向左|向左边转"],
     )
     param_type: ParamType = Field(ParamType.NONE, description="参数类型")
-    examples: list[str] = Field(default_factory=list, description="示例说法列表，用于LLM few-shot识别")
+    examples: list[str] | None = Field(None, description="示例说法列表，用于LLM few-shot识别")
 
 
 class CommandData(CommandBase, IDMixin, TimestampMixin):
     variants: list[CommandVariantData] = Field(default_factory=list, description="指令变体列表")
-    examples: dict | None = Field(None, description="示例说法列表，用于LLM few-shot识别")
 
 
 class CommandCreate(CommandBase):
