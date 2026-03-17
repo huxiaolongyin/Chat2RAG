@@ -95,6 +95,7 @@ class StreamHandler:
 
         # Knowledge base
         if isinstance(collections, list):
+            print(collections)
             collections = ",".join(collections)
         if collections:
             self.metrics.collections = collections
@@ -248,14 +249,10 @@ class StreamHandler:
 
         return StreamChunkV2(
             input=query,
-            content=ContentSchema(
-                text=behavior_data["clean_text"], image=behavior_data["image"]
-            ),
+            content=ContentSchema(text=behavior_data["clean_text"], image=behavior_data["image"]),
             model=self.model,
             status=status,
-            behavior=BehaviorSchema(
-                emoji=behavior_data["emoji"], action=behavior_data["action"]
-            ),
+            behavior=BehaviorSchema(emoji=behavior_data["emoji"], action=behavior_data["action"]),
             tool=tool_content,
             link=behavior_data["link"],
             source=self._source if status == 2 else "",
@@ -306,20 +303,14 @@ class StreamHandler:
         if tool_result:
             try:
                 tool_result = json.loads(str(tool_result))
-                tool_result.get("content")[0]["text"] = json.loads(
-                    tool_result.get("content")[0]["text"]
-                )
+                tool_result.get("content")[0]["text"] = json.loads(tool_result.get("content")[0]["text"])
                 tool_result["content"] = tool_result.get("content")[0]
 
             except Exception:
-                logger.warning(
-                    "Failed to parse tool call result as JSON. Using original result"
-                )
+                logger.warning("Failed to parse tool call result as JSON. Using original result")
 
             # Record tool result
-            self.metrics.tool_result = (
-                tool_result if isinstance(tool_result, dict) else {}
-            )
+            self.metrics.tool_result = tool_result if isinstance(tool_result, dict) else {}
 
         async for data_str in self._yield_data(
             "", chunk.meta, tool=tool_name, arguments=arguments, tool_result=tool_result
@@ -390,15 +381,11 @@ class StreamHandler:
                 if is_batch and current_batch:
                     combined_content = "".join([c.content for c in current_batch])
 
-                    async for data_str in self._yield_data(
-                        combined_content, current_batch[-1].meta
-                    ):
+                    async for data_str in self._yield_data(combined_content, current_batch[-1].meta):
                         yield data_str
 
                 if is_batch:
-                    async for data_str in self._yield_data(
-                        "", meta={"finish_reason": "stop", "model": ""}
-                    ):
+                    async for data_str in self._yield_data("", meta={"finish_reason": "stop", "model": ""}):
                         yield data_str
 
                 logger.debug("Received END signal, saving metrics")
@@ -430,9 +417,7 @@ class StreamHandler:
 
             else:
                 # Batch processing mode
-                first_response, results = await self._process_batch_content(
-                    chunk, current_batch, first_response
-                )
+                first_response, results = await self._process_batch_content(chunk, current_batch, first_response)
                 for data_str in results:
                     yield data_str
 
