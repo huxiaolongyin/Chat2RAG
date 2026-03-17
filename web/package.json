@@ -1,0 +1,34 @@
+{
+  "name": "chat2rag-web",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vue-tsc -b && vite build",
+    "preview": "vite preview",
+    "lint": "eslint . --ext .vue,.js,.jsx,.cjs,.mjs,.ts,.tsx,.cts,.mts --fix",
+    "typecheck": "vue-tsc --noEmit"
+  },
+  "dependencies": {
+    "@arco-design/web-vue": "^2.55.0",
+    "@iconify/vue": "^5.0.0",
+    "axios": "^1.6.8",
+    "pinia": "^2.1.7",
+    "pinia-plugin-persistedstate": "^3.2.1",
+    "vue": "^3.4.21",
+    "vue-router": "^4.3.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.12.7",
+    "@vitejs/plugin-vue": "^5.0.4",
+    "@vue/tsconfig": "^0.5.1",
+    "autoprefixer": "^10.4.19",
+    "postcss": "^8.4.38",
+    "tailwindcss": "^3.4.1",
+    "typescript": "~5.4.0",
+    "vite": "^5.2.0",
+    "vite-plugin-vue-devtools": "^7.7.9",
+    "vue-tsc": "^2.0.0"
+  }
+}

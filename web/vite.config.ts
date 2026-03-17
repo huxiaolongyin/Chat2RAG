@@ -1,0 +1,31 @@
+import vue from '@vitejs/plugin-vue'
+import { resolve } from 'path'
+import { defineConfig } from 'vite'
+import VueDevTools from 'vite-plugin-vue-devtools'
+
+export default defineConfig({
+  plugins: [vue(), VueDevTools()],
+  resolve: {
+    alias: {
+      '@': resolve(__dirname, 'src')
+    }
+  },
+  server: {
+    port: 3000,
+    open: true,
+    proxy: {
+      '/v1': {
+        target: 'http://localhost:8000/api/',
+        changeOrigin: true
+      },
+      '/v2': {
+        target: 'http://localhost:8000/api/',
+        changeOrigin: true
+      }
+    }
+  },
+  build: {
+    target: 'esnext',
+    sourcemap: true
+  }
+})
