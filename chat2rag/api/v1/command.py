@@ -4,6 +4,7 @@ from tortoise.expressions import Q
 from chat2rag.core.logger import get_logger
 from chat2rag.schemas.base import BaseResponse, PaginatedResponse
 from chat2rag.schemas.command import (
+    CommandBatchMove,
     CommandCategoryCreate,
     CommandCategoryData,
     CommandCategoryIdData,
@@ -21,13 +22,18 @@ router = APIRouter()
 
 
 # ==================== CommandCategory APIs ====================
-@router.get("/category", response_model=PaginatedResponse[CommandCategoryData], summary="获取指令分类列表")
+@router.get(
+    "/category",
+    response_model=PaginatedResponse[CommandCategoryData],
+    summary="获取指令分类列表",
+)
 async def get_command_category_list(
     current: Current = 1,
     size: Size = 10,
-    name_or_desc: str = Query(None, description="名称或描述", alias="nameOrDesc", max_length=50),
+    name_or_desc: str = Query(
+        None, description="名称或描述", alias="nameOrDesc", max_length=50
+    ),
 ):
-
     q = Q()
     if name_or_desc:
         q &= Q(name__icontains=name_or_desc) | Q(description__icontains=name_or_desc)
@@ -35,11 +41,18 @@ async def get_command_category_list(
     total, categories = await category_service.get_list(current, size, q)
 
     return PaginatedResponse.create(
-        items=[CommandCategoryData.model_validate(item) for item in categories], total=total, current=current, size=size
+        items=[CommandCategoryData.model_validate(item) for item in categories],
+        total=total,
+        current=current,
+        size=size,
     )
 
 
-@router.get("/category/{category_id}", response_model=BaseResponse[CommandCategoryData], summary="获取指令分类详情")
+@router.get(
+    "/category/{category_id}",
+    response_model=BaseResponse[CommandCategoryData],
+    summary="获取指令分类详情",
+)
 async def get_command_category_detail(category_id: int):
     category = await category_service.get(category_id)
     return BaseResponse.success(data=CommandCategoryData.model_validate(category))
@@ -51,13 +64,21 @@ async def create_command_category(category_in: CommandCategoryCreate):
     return BaseResponse.success(data=CommandCategoryData.model_validate(category))
 
 
-@router.put("/category/{category_id}", response_model=BaseResponse[CommandCategoryIdData], summary="更新指令分类")
+@router.put(
+    "/category/{category_id}",
+    response_model=BaseResponse[CommandCategoryIdData],
+    summary="更新指令分类",
+)
 async def update_command_category(category_id: int, category_in: CommandCategoryUpdate):
     category = await category_service.update(category_id, category_in)
-    return BaseResponse.success(data=CommandCategoryIdData(category_id=category.id), msg="更新指令分类成功")
+    return BaseResponse.success(
+        data=CommandCategoryIdData(category_id=category.id), msg="更新指令分类成功"
+    )
 
 
-@router.delete("/category/{category_id}", response_model=BaseResponse, summary="删除指令分类")
+@router.delete(
+    "/category/{category_id}", response_model=BaseResponse, summary="删除指令分类"
+)
 async def delete_command_category(category_id: int):
     await category_service.remove(category_id)
     return BaseResponse.success(msg="删除成功")
@@ -72,12 +93,14 @@ async def get_command_list(
     category_id: int = Query(None, description="分类ID", alias="categoryId"),
     is_active: bool = Query(None, description="是否启用", alias="isActive"),
 ):
-
     q = Q()
     if keyword:
         q &= Q(name__icontains=keyword) | Q(code__icontains=keyword)
-    if category_id:
-        q &= Q(category_id=category_id)
+    if category_id is not None:
+        if category_id == -1:
+            q &= Q(category_id=None)
+        elif category_id > 0:
+            q &= Q(category_id=category_id)
     if is_active is not None:
         q &= Q(is_active=is_active)
 
@@ -97,15 +120,18 @@ async def get_command_list(
         data = await command.to_dict()
         data["commands"] = variant_texts
         commandList.append(data)
-
     return PaginatedResponse.create(
-        items=[CommandData.model_validate(c) for c in commandList], total=total, current=current, size=size
+        items=[CommandData.model_validate(c) for c in commandList],
+        total=total,
+        current=current,
+        size=size,
     )
 
 
-@router.get("/{command_id}", response_model=BaseResponse[CommandData], summary="获取指令详情")
+@router.get(
+    "/{command_id}", response_model=BaseResponse[CommandData], summary="获取指令详情"
+)
 async def get_command_detail(command_id: int):
-
     command = await command_service.get(command_id)
 
     # 获取所有变体指令
@@ -124,7 +150,24 @@ async def create_command(command_in: CommandCreate):
     return BaseResponse.success(data=CommandData.model_validate(command_dict))
 
 
-@router.put("/{command_id}", response_model=BaseResponse[CommandData], summary="更新指令")
+@router.put(
+    "/batch-move", response_model=BaseResponse, summary="批量移动命令到指定分类"
+)
+async def batch_move_commands(data: CommandBatchMove):
+    from chat2rag.models import Command
+
+    if not data.command_ids:
+        return BaseResponse.error(msg="请选择要移动的命令")
+
+    count = await Command.filter(id__in=data.command_ids).update(
+        category_id=data.category_id
+    )
+    return BaseResponse.success(msg=f"成功移动 {count} 个命令")
+
+
+@router.put(
+    "/{command_id}", response_model=BaseResponse[CommandData], summary="更新指令"
+)
 async def update_command(command_id: int, command_in: CommandUpdate):
     command = await command_service.update(command_id, command_in)
     command_dict = {**command.__dict__, "commands": command_in.commands}
