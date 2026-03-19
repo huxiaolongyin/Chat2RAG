@@ -4,7 +4,7 @@ import json
 import re
 import uuid
 from time import perf_counter
-from typing import Dict
+from typing import Dict, List
 
 from haystack.dataclasses import StreamingChunk
 
@@ -16,6 +16,9 @@ from chat2rag.schemas.chat import (
     BehaviorSchema,
     ContentSchema,
     QueryContent,
+    SourceItem,
+    SourceSchema,
+    SourceType,
     StreamChunkV1,
     StreamChunkV2,
     ToolSchema,
@@ -52,22 +55,26 @@ class StreamHandler:
         self.queue = asyncio.Queue()
         self.model = None
         self.config = config or StreamConfig()
-        self.doc_length = 0
         self.message_id = str(uuid.uuid4().hex[:16])
 
         self.metrics = MetricCreate(message_id=self.message_id)
 
         self._execute_tools_list = []
         self._answer_parts = []
-        self._source = ""
+        self._source_items: list[SourceItem] = []
         self._tool_sources: Dict[str, str] = {}
+        self._retrieval_documents: Dict[str, List[Dict]] = {}
+
+        self._tag_buffer = ""
+        self._accumulated_behavior = {
+            "emoji": "",
+            "action": "",
+            "link": "",
+            "image": "",
+        }
 
     async def callback(self, chunk: StreamingChunk):
         await self.queue.put(chunk)
-
-    async def set_doc_info(self, doc_count: int):
-        await self.queue.put({"type": "doc_info", "count": doc_count})
-        self.metrics.document_count = doc_count
 
     def set_query_info(
         self,
@@ -95,7 +102,6 @@ class StreamHandler:
 
         # Knowledge base
         if isinstance(collections, list):
-            print(collections)
             collections = ",".join(collections)
         if collections:
             self.metrics.collections = collections
@@ -134,12 +140,22 @@ class StreamHandler:
         self.metrics.output_tokens += output_tokens
 
     def set_source(self, source: str):
-        """Set information source"""
-        self._source = source
+        """Set information source (deprecated, use add_source instead)"""
+        self._source_items = [SourceItem(type=SourceType.LLM, display=source)]
+
+    def add_source(self, source_type: SourceType, display: str, detail: str = ""):
+        """Add information source"""
+        self._source_items.append(
+            SourceItem(type=source_type, display=display, detail=detail)
+        )
 
     def set_tool_sources(self, tool_sources: Dict[str, str]):
         """Set tool sources mapping {tool_name: mcp_server_name}"""
         self._tool_sources = tool_sources
+
+    def set_retrieval_documents(self, documents: Dict[str, List[Dict]]):
+        """Set retrieval documents grouped by collection"""
+        self._retrieval_documents = documents
 
     def set_behavior(
         self,
@@ -162,6 +178,17 @@ class StreamHandler:
             # Calculate total response time
             total_time = perf_counter() - self.stream_start
             self.metrics.total_ms = round(total_time * 1000, 2)
+
+            # Save source items
+            if self._source_items:
+                self.metrics.source = [item.model_dump() for item in self._source_items]
+
+            # Save retrieval documents
+            if self._retrieval_documents:
+                self.metrics.retrieval_documents = self._retrieval_documents
+                self.metrics.document_count = sum(
+                    len(docs) for docs in self._retrieval_documents.values()
+                )
 
             # Create metric record
             await metric_service.create(self.metrics)
@@ -196,6 +223,72 @@ class StreamHandler:
             "clean_text": clean_text,
         }
 
+    def _extract_complete_tags(self, text: str):
+        """
+        Extract complete behavior tags from text and return clean text with remaining buffer.
+
+        Returns:
+            tuple: (clean_text, remaining_buffer, extracted_tags)
+        """
+        clean_text = ""
+        remaining_buffer = ""
+        extracted_tags = {"emoji": "", "action": "", "link": "", "image": ""}
+
+        i = 0
+        while i < len(text):
+            if text[i] == "[":
+                bracket_start = i
+                tag_end = text.find("]", i)
+
+                if tag_end == -1:
+                    remaining_buffer = text[bracket_start:]
+                    break
+
+                tag_content = text[i + 1 : tag_end]
+
+                if ":" in tag_content:
+                    tag_type, tag_value = tag_content.split(":", 1)
+                    if tag_type in ("EMOJI", "ACTION", "LINK", "IMAGE"):
+                        if tag_type == "EMOJI" and not extracted_tags["emoji"]:
+                            extracted_tags["emoji"] = tag_value
+                        elif tag_type == "ACTION" and not extracted_tags["action"]:
+                            extracted_tags["action"] = tag_value
+                        elif tag_type == "LINK" and not extracted_tags["link"]:
+                            extracted_tags["link"] = tag_value
+                        elif tag_type == "IMAGE" and not extracted_tags["image"]:
+                            extracted_tags["image"] = tag_value
+                        i = tag_end + 1
+                        continue
+
+                clean_text += text[i]
+                i += 1
+            else:
+                clean_text += text[i]
+                i += 1
+
+        return clean_text, remaining_buffer, extracted_tags
+
+    async def _process_content_with_tag_buffer(self, content: str):
+        """
+        Process content with tag buffer for streaming mode.
+
+        Returns:
+            tuple: (clean_text, has_behavior, extracted_tags)
+        """
+        combined = self._tag_buffer + content
+
+        clean_text, remaining, tags = self._extract_complete_tags(combined)
+
+        self._tag_buffer = remaining
+
+        has_behavior = any(tags.values())
+        if has_behavior:
+            for key in tags:
+                if tags[key]:
+                    self._accumulated_behavior[key] = tags[key]
+
+        return clean_text, has_behavior, tags
+
     async def _create_message(
         self,
         content: str,
@@ -205,6 +298,7 @@ class StreamHandler:
         tool_result: dict = {},
         is_start: int = 0,
         query: dict = {},
+        behavior_data: dict = None,
     ) -> StreamChunkV2:
         """Create message format"""
         if meta is None:
@@ -225,11 +319,18 @@ class StreamHandler:
             status = 1
 
         # Parse behavior tags
-        behavior_data = (
-            await self._parse_behavior_tags(content)
-            if content
-            else {"clean_text": "", "emoji": "", "action": "", "link": "", "image": ""}
-        )
+        if behavior_data is None:
+            behavior_data = (
+                await self._parse_behavior_tags(content)
+                if content
+                else {
+                    "clean_text": "",
+                    "emoji": "",
+                    "action": "",
+                    "link": "",
+                    "image": "",
+                }
+            )
         clean_content = behavior_data["clean_text"]
 
         # Accumulate answer content
@@ -249,14 +350,20 @@ class StreamHandler:
 
         return StreamChunkV2(
             input=query,
-            content=ContentSchema(text=behavior_data["clean_text"], image=behavior_data["image"]),
+            content=ContentSchema(
+                text=behavior_data["clean_text"], image=behavior_data["image"]
+            ),
             model=self.model,
             status=status,
-            behavior=BehaviorSchema(emoji=behavior_data["emoji"], action=behavior_data["action"]),
+            behavior=BehaviorSchema(
+                emoji=behavior_data["emoji"], action=behavior_data["action"]
+            ),
             tool=tool_content,
             link=behavior_data["link"],
-            source=self._source if status == 2 else "",
-            document_count=self.doc_length,
+            source=SourceSchema(items=self._source_items)
+            if status == 2
+            else SourceSchema(),
+            document=self._retrieval_documents if self._retrieval_documents else None,
             message_id=self.message_id,
         )
 
@@ -300,17 +407,27 @@ class StreamHandler:
             # Record tool call information
             self.set_tool_info(tool_name)
 
+            # Record tool arguments
+            if arguments:
+                self.metrics.tool_arguments = arguments
+
         if tool_result:
             try:
                 tool_result = json.loads(str(tool_result))
-                tool_result.get("content")[0]["text"] = json.loads(tool_result.get("content")[0]["text"])
+                tool_result.get("content")[0]["text"] = json.loads(
+                    tool_result.get("content")[0]["text"]
+                )
                 tool_result["content"] = tool_result.get("content")[0]
 
             except Exception:
-                logger.warning("Failed to parse tool call result as JSON. Using original result")
+                logger.warning(
+                    "Failed to parse tool call result as JSON. Using original result"
+                )
 
             # Record tool result
-            self.metrics.tool_result = tool_result if isinstance(tool_result, dict) else {}
+            self.metrics.tool_result = (
+                tool_result if isinstance(tool_result, dict) else {}
+            )
 
         async for data_str in self._yield_data(
             "", chunk.meta, tool=tool_name, arguments=arguments, tool_result=tool_result
@@ -348,49 +465,57 @@ class StreamHandler:
         return first_response, results
 
     async def get_stream(self, is_batch: bool = False, query: dict = {}):
-        first_response = True  # Add flag to track first response
+        first_response = True
         current_batch = []
+        logger.debug(f"[{self.message_id}] get_stream started, waiting for chunks...")
 
         while True:
             chunk = await self.queue.get()
 
-            # Handle special control messages
-            if isinstance(chunk, dict) and chunk.get("type") == "doc_info":
-                self.doc_length = chunk["count"]
-                continue
-
             if chunk == StreamControl.START:
+                logger.debug(f"[{self.message_id}] Received START signal")
                 async for data_str in self._yield_data("", is_start=1, query=query):
                     yield data_str
                 continue
 
             if chunk == StreamControl.END:
+                logger.debug(
+                    f"[{self.message_id}] Received END signal, processing final data"
+                )
                 if self._execute_tools_list:
-                    sources = []
                     seen = set()
                     for tool_name in self._execute_tools_list:
                         if tool_name in seen:
                             continue
                         seen.add(tool_name)
                         server_name = self._tool_sources.get(tool_name, "")
-                        if server_name:
-                            sources.append(f"{server_name} ({tool_name})")
-                    if sources:
-                        self._source = ", ".join(sources)
+                        detail = f"server: {server_name}" if server_name else ""
+                        self.add_source(SourceType.TOOL, tool_name, detail)
+
+                emoji_obj = await robot_expression_service.get_code_by_name(
+                    self._accumulated_behavior.get("emoji", "")
+                )
+                action_obj = await robot_action_service.get_code_by_name(
+                    self._accumulated_behavior.get("action", "")
+                )
+                self.set_behavior(emoji_obj, action_obj)
 
                 if is_batch and current_batch:
                     combined_content = "".join([c.content for c in current_batch])
 
-                    async for data_str in self._yield_data(combined_content, current_batch[-1].meta):
+                    async for data_str in self._yield_data(
+                        combined_content, current_batch[-1].meta
+                    ):
                         yield data_str
 
-                if is_batch:
-                    async for data_str in self._yield_data("", meta={"finish_reason": "stop", "model": ""}):
-                        yield data_str
+                async for data_str in self._yield_data(
+                    "", meta={"finish_reason": "stop", "model": ""}
+                ):
+                    yield data_str
 
-                logger.debug("Received END signal, saving metrics")
+                logger.debug(f"[{self.message_id}] Saving metrics...")
                 await self.save_metrics()
-                logger.debug("Metrics saved successfully")
+                logger.info(f"[{self.message_id}] Stream completed, metrics saved")
                 break
 
             if not self.model:
@@ -404,20 +529,64 @@ class StreamHandler:
 
             # Process content
             if not is_batch:
-                # Single streaming mode
-                if first_response:
-                    first_response = self._handle_first_response()
+                # Single streaming mode with tag buffer
+                if chunk.content:
+                    (
+                        clean_text,
+                        has_behavior,
+                        tags,
+                    ) = await self._process_content_with_tag_buffer(chunk.content)
 
-                    async for data_str in self._yield_data(chunk.content, chunk.meta):
-                        yield data_str
-                    continue
-                if chunk.content or chunk.meta.get("finish_reason") == "stop":
-                    async for data_str in self._yield_data(chunk.content, chunk.meta):
-                        yield data_str
+                    if has_behavior:
+                        emoji_code = ""
+                        action_code = ""
+                        if tags.get("emoji"):
+                            emoji = await robot_expression_service.get_code_by_name(
+                                tags["emoji"]
+                            )
+                            emoji_code = emoji.code if emoji else ""
+                        if tags.get("action"):
+                            action = await robot_action_service.get_code_by_name(
+                                tags["action"]
+                            )
+                            action_code = action.code if action else ""
+
+                        if first_response:
+                            first_response = self._handle_first_response()
+
+                        behavior_msg = {
+                            "clean_text": "",
+                            "emoji": emoji_code,
+                            "action": action_code,
+                            "link": tags.get("link", ""),
+                            "image": tags.get("image", ""),
+                        }
+                        async for data_str in self._yield_data(
+                            "", chunk.meta, behavior_data=behavior_msg
+                        ):
+                            yield data_str
+
+                    if clean_text:
+                        if first_response:
+                            first_response = self._handle_first_response()
+
+                        behavior_data = {
+                            "clean_text": clean_text,
+                            "emoji": "",
+                            "action": "",
+                            "link": "",
+                            "image": "",
+                        }
+                        async for data_str in self._yield_data(
+                            clean_text, chunk.meta, behavior_data=behavior_data
+                        ):
+                            yield data_str
 
             else:
                 # Batch processing mode
-                first_response, results = await self._process_batch_content(chunk, current_batch, first_response)
+                first_response, results = await self._process_batch_content(
+                    chunk, current_batch, first_response
+                )
                 for data_str in results:
                     yield data_str
 

@@ -1,7 +1,8 @@
 import ast
 import json
 from datetime import datetime
-from typing import Any
+from enum import Enum
+from typing import Any, Dict, List
 
 from pydantic import Field, field_validator, model_validator
 
@@ -214,6 +215,23 @@ class ToolSchema(BaseSchema):
     tool_result: Any = Field("", description="工具结果")
 
 
+class SourceType(str, Enum):
+    COMMAND = "command"
+    DOCUMENT = "document"
+    TOOL = "tool"
+    LLM = "llm"
+
+
+class SourceItem(BaseSchema):
+    type: SourceType = Field(..., description="来源类型")
+    display: str = Field(..., description="显示内容")
+    detail: str = Field("", description="详细信息")
+
+
+class SourceSchema(BaseSchema):
+    items: list[SourceItem] = Field(default_factory=list, description="来源列表")
+
+
 class StreamChunkV2(BaseSchema):
     object: str = Field("message", description="数据类型", examples=["message"])
     input: dict = Field(
@@ -227,18 +245,24 @@ class StreamChunkV2(BaseSchema):
     behavior: BehaviorSchema = Field(..., description="行为数据，包含表情和动作")
     tool: ToolSchema = Field(..., description="工具调用内容")
     link: str = Field("", description="相关链接信息")
-    source: str = Field("大模型生成", description="信息来源")
-    document_count: int = Field(..., description="文档的检索数量", examples=[5])
+    source: SourceSchema = Field(default_factory=SourceSchema, description="信息来源")
+    document: Dict[str, List[Dict[str, Any]]] | None = Field(
+        default=None, description="检索的文档，按知识库分组"
+    )
     create_time: str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     message_id: str = Field(
         ..., description="响应消息的唯一ID", examples=["9d0cc3bc43d845ef"]
     )
 
     def to_stream_chunk_v1(self):
+        doc_count = 0
+        if self.document:
+            for docs in self.document.values():
+                doc_count += len(docs)
         return StreamChunkV1(
             content=self.content.text,
             model=self.model,
             status=self.status,
-            document_count=self.document_count,
+            document_count=doc_count,
             message_id=self.message_id,
         )

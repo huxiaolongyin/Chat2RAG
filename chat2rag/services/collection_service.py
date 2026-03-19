@@ -59,10 +59,6 @@ class CollectionService:
                     distance=models.Distance.COSINE,
                 )
             },
-            # vectors_config=VectorParams(size=CONFIG.EMBEDDING_DIMENSIONS, distance=Distance.COSINE),
-            sparse_vectors_config={
-                "text-sparse": models.SparseVectorParams(),
-            },
         )
 
     async def remove(self, collection_name: str):
@@ -128,7 +124,7 @@ class CollectionService:
                     Document(
                         id=str(point.id),
                         content=content,
-                        meta=meta,
+                        meta=meta | {"collection_name": collection_name},
                     )
                 )
 
@@ -538,7 +534,8 @@ class DocumentService:
             score_threshold=score_threshold,
             filters={"field": "meta.doc_type", "operator": "==", "value": doc_type},
         )
-        return result["retriever"]["documents"]
+        output_key = "ranker" if CONFIG.RERANK_ENABLED else "retriever"
+        return result[output_key]["documents"]
 
     async def query_exact(self, collection_name: str, query: str) -> Document | None:
         """通过匹配问题内容，精准检索知识点"""
@@ -552,7 +549,8 @@ class DocumentService:
             filters={"field": "meta.doc_type", "operator": "==", "value": "question"},
         )
 
-        return next(iter(result["retriever"]["documents"]), None)
+        output_key = "ranker" if CONFIG.RERANK_ENABLED else "retriever"
+        return next(iter(result[output_key]["documents"]), None)
 
 
 collection_service = CollectionService()

@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 from haystack.dataclasses import Document
-from qdrant_client import QdrantClient
+from qdrant_client import AsyncQdrantClient
 from qdrant_client.models import (
     Distance,
     FieldCondition,
@@ -26,21 +26,39 @@ logger = get_logger(__name__)
 
 
 class QuestionAnalyzer:
+    _instance = None
+
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+            cls._instance._initialized = False
+        return cls._instance
+
     def __init__(self):
+        if self._initialized:
+            return
         self.collection_name = "questions"
-        self.client = QdrantClient(location=CONFIG.QDRANT_LOCATION)
-        if not self.client.collection_exists(self.collection_name):
+        self._client = None
+        self.checkpoint_file = Path("data/checkpoint/metric_sync_checkpoint.json")
+        self._initialized = True
+
+    async def _get_client(self) -> AsyncQdrantClient:
+        if self._client is None:
+            self._client = AsyncQdrantClient(location=CONFIG.QDRANT_LOCATION)
+        return self._client
+
+    async def ensure_collection(self):
+        client = await self._get_client()
+        if not await client.collection_exists(self.collection_name):
             logger.warning(
                 f"Collection '{self.collection_name}' does not exist, creating new one"
             )
-            self.client.create_collection(
+            await client.create_collection(
                 self.collection_name,
                 vectors_config=VectorParams(
                     size=CONFIG.EMBEDDING_DIMENSIONS, distance=Distance.COSINE
                 ),
             )
-
-        self.checkpoint_file = Path("data/checkpoint/metric_sync_checkpoint.json")
 
     @staticmethod
     def clean_text(text: str, level: str = "standard") -> str:
@@ -185,7 +203,8 @@ class QuestionAnalyzer:
                     }
                 }
 
-                self.client.set_payload(
+                client = await self._get_client()
+                await client.set_payload(
                     collection_name=self.collection_name,
                     payload=updated_payload,
                     points=Filter(
@@ -214,7 +233,7 @@ class QuestionAnalyzer:
         except Exception as e:
             logger.exception("Failed to add or update questions")
 
-    def get_hot_questions(
+    async def get_hot_questions(
         self,
         collection_name: str | None = None,
         days: int | None = None,
@@ -231,7 +250,8 @@ class QuestionAnalyzer:
             热门问题列表
         """
         try:
-            filter_conditions = []  # 动态构建过滤条件
+            client = await self._get_client()
+            filter_conditions = []
             if collection_name:
                 filter_conditions.append(
                     FieldCondition(
@@ -239,13 +259,11 @@ class QuestionAnalyzer:
                     )
                 )
 
-            # 如果有过滤条件则创建 Filter，否则为 None
             scroll_filter = (
                 Filter(must=filter_conditions) if filter_conditions else None
             )
 
-            # 搜索
-            search_result = self.client.scroll(
+            search_result = await client.scroll(
                 collection_name=self.collection_name,
                 scroll_filter=scroll_filter,
                 limit=30000,
@@ -438,6 +456,3 @@ class QuestionAnalyzer:
         except Exception as e:
             logger.exception("Sync failed")
             return False
-
-
-question_analyzer = QuestionAnalyzer()

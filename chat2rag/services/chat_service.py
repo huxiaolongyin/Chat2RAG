@@ -3,7 +3,7 @@ from typing import AsyncIterator
 
 from chat2rag.core.enums import ProcessType
 from chat2rag.schemas.chat import ChatRequest
-from chat2rag.services.question_analyzer import question_analyzer
+from chat2rag.services.question_analyzer import QuestionAnalyzer
 from chat2rag.strategies import (
     AgentStrategy,
     CommandStrategy,
@@ -38,19 +38,34 @@ class ChatProcessor:
             yield chunk
 
         # 记录热门问题分析
-        await question_analyzer.add_or_update_question(",".join(self.request.collections), question_text=self.query)
+        question_analyzer = QuestionAnalyzer()
+        await question_analyzer.add_or_update_question(
+            ",".join(self.request.collections), question_text=self.query
+        )
         question_analyzer._save_checkpoint()
 
     def _build_strategy_chain(self) -> StrategyChain:
         """构建策略链"""
         return StrategyChain(
             [
-                SensitiveWordStrategy(self.request, self.handler, self.start_time, self.is_batch),
-                CommandStrategy(self.request, self.handler, self.start_time, self.is_batch),
-                FlowStrategy(self.request, self.handler, self.start_time, self.is_batch),
-                ExactMatchStrategy(self.request, self.handler, self.start_time, self.is_batch),
-                MultiModalStrategy(self.request, self.handler, self.start_time, self.is_batch),
-                AgentStrategy(self.request, self.handler, self.start_time, self.is_batch),
+                SensitiveWordStrategy(
+                    self.request, self.handler, self.start_time, self.is_batch
+                ),
+                CommandStrategy(
+                    self.request, self.handler, self.start_time, self.is_batch
+                ),
+                FlowStrategy(
+                    self.request, self.handler, self.start_time, self.is_batch
+                ),
+                ExactMatchStrategy(
+                    self.request, self.handler, self.start_time, self.is_batch
+                ),
+                MultiModalStrategy(
+                    self.request, self.handler, self.start_time, self.is_batch
+                ),
+                AgentStrategy(
+                    self.request, self.handler, self.start_time, self.is_batch
+                ),
             ]
         )
 
@@ -88,7 +103,11 @@ class ChatProcessorV1(ChatProcessor):
 
         return StrategyChain(
             [
-                ExactMatchStrategy(self.request, self.handler, self.start_time, self.is_batch),
-                AgentStrategy(self.request, self.handler, self.start_time, self.is_batch),
+                ExactMatchStrategy(
+                    self.request, self.handler, self.start_time, self.is_batch
+                ),
+                AgentStrategy(
+                    self.request, self.handler, self.start_time, self.is_batch
+                ),
             ]
         )
