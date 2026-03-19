@@ -265,7 +265,6 @@ async def checkout(user_id: Vin, confirmed: bool = False) -> Dict[str, Any]:
         items_list = []
         total_price = 0.0
         for key, value in cart.items():
-            print(key)
             unit_price = float(key.price)
             sub_total = value * unit_price
             total_price += sub_total

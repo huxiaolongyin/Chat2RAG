@@ -24,9 +24,9 @@ async def detect_vector_mode(client: AsyncQdrantClient, collection_name: str) ->
     """
     if not await client.collection_exists(collection_name):
         logger.debug(
-            f"Collection '{collection_name}' does not exist, will use hybrid mode"
+            f"Collection '{collection_name}' does not exist, will use dense mode"
         )
-        return "hybrid"
+        return "dense"
 
     collection_info = await client.get_collection(collection_name)
     vectors = collection_info.config.params.vectors

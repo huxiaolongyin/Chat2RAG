@@ -14,7 +14,6 @@ from docling_core.types.doc.document import PictureItem, SectionHeaderItem, Text
 from docx import Document
 from docx.document import Document as DocumentObject
 
-from chat2rag.config import CONFIG
 from chat2rag.core.enums import DocumentType
 from chat2rag.core.logger import get_logger
 from chat2rag.schemas.document import DocumentData, SourceLocation
@@ -40,17 +39,13 @@ class PDFParser(DocumentParser):
     doc_converter = DocumentConverter(
         allowed_formats=[InputFormat.PDF],
         format_options={
-            InputFormat.PDF: PdfFormatOption(
-                pipeline_cls=StandardPdfPipeline, backend=PyPdfiumDocumentBackend
-            )
+            InputFormat.PDF: PdfFormatOption(pipeline_cls=StandardPdfPipeline, backend=PyPdfiumDocumentBackend)
         },
     )
 
     def __init__(self, max_chars: int = 600, overlap: int = 100):
         if overlap >= max_chars:
-            raise ValueError(
-                f"overlap ({overlap}) must be less than max_chars ({max_chars})"
-            )
+            raise ValueError(f"overlap ({overlap}) must be less than max_chars ({max_chars})")
         self._max_chars = max_chars
         self._overlap = overlap
 
@@ -234,9 +229,7 @@ class WordParser(DocumentParser):
         preserve_hierarchy: bool = True,
     ):
         if overlap >= max_chars:
-            raise ValueError(
-                f"overlap ({overlap}) must be less than max_chars ({max_chars})"
-            )
+            raise ValueError(f"overlap ({overlap}) must be less than max_chars ({max_chars})")
         self._max_chars = max_chars
         self._overlap = overlap
         self._preserve_hierarchy = preserve_hierarchy
@@ -399,9 +392,7 @@ class WordParser(DocumentParser):
                 current_section = " > ".join(h[1] for h in heading_stack)
             elif section_match:
                 if content_buffer:
-                    chunks.append(
-                        self._make_chunk(content_buffer, file_path, section=None)
-                    )
+                    chunks.append(self._make_chunk(content_buffer, file_path, section=None))
                     content_buffer.clear()
 
                 content_buffer.append(text)
@@ -438,26 +429,20 @@ class WordParser(DocumentParser):
             external_id=None,
         )
 
-    def _chunk_by_size(
-        self, chunks: List[DocumentData], file_path: str
-    ) -> List[DocumentData]:
+    def _chunk_by_size(self, chunks: List[DocumentData], file_path: str) -> List[DocumentData]:
         final_chunks: List[DocumentData] = []
 
         for chunk in chunks:
             if len(chunk.content) <= self._max_chars:
                 final_chunks.append(chunk)
             else:
-                parts = self._split_by_chars(
-                    chunk.content, self._max_chars, self._overlap
-                )
+                parts = self._split_by_chars(chunk.content, self._max_chars, self._overlap)
                 for part in parts:
                     final_chunks.append(
                         DocumentData(
                             doc_type=DocumentType.WORD,
                             content=part,
-                            source=SourceLocation(
-                                file_path=file_path, section=chunk.source.section
-                            ),
+                            source=SourceLocation(file_path=file_path, section=chunk.source.section),
                             answer=None,
                             parent_doc_id=None,
                             chunk_index=None,

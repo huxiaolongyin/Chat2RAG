@@ -13,7 +13,6 @@ from chat2rag.core.logger import get_logger
 from chat2rag.middleware import ExceptionHandlerMiddleware, LoggingMiddleware
 from chat2rag.services.model_service import ModelSourceService, periodic_latency_update
 from chat2rag.services.prompt_service import prompt_service
-from chat2rag.services.question_analyzer import question_analyzer
 from chat2rag.utils.qdrant_store import get_client
 
 logger = get_logger(__name__)
@@ -21,26 +20,26 @@ logger = get_logger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-
     qdrant_client = get_client()
-    await modify_db()  # 数据库自动迁移
+    await modify_db()
 
-    # 进行 RAG 流程监控
     if CONFIG.TELEMETRY_ENABLED:
         from chat2rag.core.telemetry import setup_telemetry
 
         setup_telemetry()
         logger.info("Telemetry initialized")
 
-    # 创建默认提示词
     await prompt_service.ensure_default_prompt()
 
-    # 创建后台任务执行同步，打开后台历史聊天记录的热门聚类分析，后续移除
+    from chat2rag.services.question_analyzer import QuestionAnalyzer
+
+    question_analyzer = QuestionAnalyzer()
+    await question_analyzer.ensure_collection()
     asyncio.create_task(question_analyzer.sync_from_metrics())
 
-    # 加载MCP连接
-    # ToolManager()
-    asyncio.create_task(periodic_latency_update(ModelSourceService(), interval_sec=3600))
+    asyncio.create_task(
+        periodic_latency_update(ModelSourceService(), interval_sec=3600)
+    )
 
     yield
     # 关闭时执行
@@ -66,7 +65,10 @@ def create_app():
 
 
 app = create_app()
-app.mount("/static", StaticFiles(directory="static"), name="static")  # 加载静态文件
+app.mount("/static", StaticFiles(directory="static"), name="static")
+app.mount(
+    "/uploads/documents", StaticFiles(directory="uploads/documents"), name="documents"
+)
 
 
 # 自定义 Swagger 文档路由

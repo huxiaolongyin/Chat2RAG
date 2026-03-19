@@ -190,7 +190,7 @@ async def migrate_collection(collection_name: str):
 
 async def run_migration():
     from tortoise import Tortoise
-    from chat2rag.config.database import TORTOISE_ORM
+    from chat2rag.config import TORTOISE_ORM
 
     await Tortoise.init(config=TORTOISE_ORM)
 
