@@ -1,5 +1,7 @@
+import os
 from typing import AsyncIterator
 
+from chat2rag.schemas.chat import SourceType
 from chat2rag.services.collection_service import document_service
 
 from .base import ResponseStrategy
@@ -20,7 +22,6 @@ class ExactMatchStrategy(ResponseStrategy):
                 continue
 
             if answer := document.meta.get("answer", ""):
-                # 设置来源信息
                 source_info = document.meta.get("source", {})
                 file_path = (
                     source_info.get("file_path", "")
@@ -28,9 +29,12 @@ class ExactMatchStrategy(ResponseStrategy):
                     else ""
                 )
                 if file_path:
-                    self.handler.set_source(f"{collection}-{file_path}")
+                    file_name = os.path.basename(file_path)
+                    self.handler.add_source(
+                        SourceType.DOCUMENT, file_name, f"{collection}/{file_path}"
+                    )
                 else:
-                    self.handler.set_source(collection)
+                    self.handler.add_source(SourceType.DOCUMENT, collection)
 
                 async for item in self._yield_stream(answer, "Exact match answer"):
                     yield item

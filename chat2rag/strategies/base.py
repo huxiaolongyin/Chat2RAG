@@ -106,6 +106,9 @@ class ResponseStrategy(ABC):
                 )
             )
         finally:
+            logger.debug(
+                f"[{self.handler.message_id}] Sending END signal from {source}"
+            )
             await self.handler.finish()
 
 

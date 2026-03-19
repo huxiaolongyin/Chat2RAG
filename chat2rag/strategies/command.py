@@ -5,6 +5,7 @@ from typing import AsyncIterator, Optional
 from chat2rag.config import CONFIG
 from chat2rag.core.logger import get_logger
 from chat2rag.models.command import Command, CommandVariant, ParamType
+from chat2rag.schemas.chat import SourceType
 from chat2rag.services.command_service import CommandService
 from chat2rag.utils.intent_recognizer import fuzzy_match, intent_recognizer
 from chat2rag.utils.param_extractor import extract_number, match_pattern
@@ -32,9 +33,7 @@ class CommandStrategy(ResponseStrategy):
         self._cached_commands = None
 
     async def can_handle(self, query: str) -> bool:
-        """检查是否能匹配到命令"""
-        result = await self._match_command(query)
-        return result is not None
+        return True
 
     async def execute(self, query: str) -> AsyncIterator[str]:
         """执行命令匹配并返回命令内容"""
@@ -44,7 +43,9 @@ class CommandStrategy(ResponseStrategy):
             command = result.command
             logger.info(f"Command matched: {command.name} (code={command.code})")
 
-            self.handler.set_source(command.name)
+            self.handler.add_source(
+                SourceType.COMMAND, command.name, f"code: {command.code}"
+            )
             reply = command.reply if command.reply else "."
 
             arguments = {}
@@ -81,11 +82,10 @@ class CommandStrategy(ResponseStrategy):
                 return None
 
             commands = await self._get_active_commands()
-            query_lower = query.lower().strip()
 
             # 第一层：规则匹配
             for command in commands:
-                result = await self._rule_match(command, query, query_lower)
+                result = await self._rule_match(command, query)
                 if result:
                     logger.debug(f"Rule matched: {command.code}")
                     return result
@@ -109,22 +109,13 @@ class CommandStrategy(ResponseStrategy):
             logger.exception("Failed to match command")
             return None
 
-    async def _rule_match(
-        self, command, query: str, query_lower: str
-    ) -> Optional[MatchResult]:
+    async def _rule_match(self, command, query: str) -> Optional[MatchResult]:
         """规则匹配：精确匹配 + 模式匹配"""
 
-        # 匹配命令名称
-        if query_lower in command.name.lower() or command.name.lower() in query_lower:
-            param = await self._extract_param(command, query)
-            return MatchResult(
-                command=command,
-                param_value=param.get("value"),
-                param_raw=param.get("raw"),
-            )
+        query_lower = query.lower().strip()
 
-        # 匹配命令代码
-        if query_lower in command.code.lower() or command.code.lower() in query_lower:
+        # 匹配命令名称
+        if command.name.lower() in query_lower:
             param = await self._extract_param(command, query)
             return MatchResult(
                 command=command,
@@ -147,7 +138,7 @@ class CommandStrategy(ResponseStrategy):
 
             # 文本包含匹配
             variant_text = variant.text.lower()
-            if variant_text in query_lower or query_lower in variant_text:
+            if variant_text in query_lower:
                 param = await self._extract_param(command, query)
                 return MatchResult(
                     command=command,

@@ -1,25 +1,16 @@
-import asyncio
 import time
 from typing import Any, Dict, List
 
-from haystack import AsyncPipeline, component
-from haystack.components.embedders import (
-    OpenAIDocumentEmbedder,
-    OpenAITextEmbedder,
-    SentenceTransformersSparseDocumentEmbedder,
-    SentenceTransformersSparseTextEmbedder,
-)
+from haystack import AsyncPipeline
+from haystack.components.embedders import OpenAIDocumentEmbedder, OpenAITextEmbedder
 from haystack.components.writers import DocumentWriter
 from haystack.dataclasses import Document
-from haystack.dataclasses.sparse_embedding import SparseEmbedding
 from haystack.utils import Secret
-from haystack_integrations.components.retrievers.qdrant import (
-    QdrantEmbeddingRetriever,
-    QdrantHybridRetriever,
-)
+from haystack_integrations.components.retrievers.qdrant import QdrantEmbeddingRetriever
 from haystack_integrations.document_stores.qdrant import QdrantDocumentStore
 from qdrant_client.models import Filter
 
+from chat2rag.components import OpenRanker
 from chat2rag.config import CONFIG
 from chat2rag.core.logger import get_logger
 from chat2rag.pipelines.base import BasePipeline
@@ -28,45 +19,20 @@ from chat2rag.utils.qdrant_store import detect_vector_mode, get_client
 logger = get_logger(__name__)
 
 
-class CustomerSparseDocumentEmbedder(SentenceTransformersSparseDocumentEmbedder):
-    @component.output_types(documents=list[Document])
-    async def run_async(self, documents: list[Document]):
-        return super().run(documents)
-
-
-class CustomerSparseTextEmbedder(SentenceTransformersSparseTextEmbedder):
-    @component.output_types(sparse_embedding=SparseEmbedding)
-    async def run_async(self, text: str):
-        return super().run(text)
-
-
 class DocumentSearchPipeline(BasePipeline):
-    """
-    Create or run the document search pipeline. This pipeline is used to search for documents in the document storage.
-
-    Args:
-        qdrant_index (str): The name of the qdrant index to use.
-        retrieval_mode (str): The retrieval mode, either "hybrid" or "dense". Defaults to CONFIG.RETRIEVAL_MODE.
-    """
-
-    def __init__(self, qdrant_index: str = "Document", retrieval_mode: str | None = None):
+    def __init__(self, qdrant_index: str = "Document"):
         super().__init__()
         self._qdrant_index = qdrant_index
-        self._retrieval_mode = retrieval_mode or CONFIG.RETRIEVAL_MODE
-        if self._retrieval_mode not in ("hybrid", "dense"):
-            raise ValueError(f"Invalid retrieval_mode: {self._retrieval_mode}, must be 'hybrid' or 'dense'")
         self._vector_mode: str | None = None
 
     async def _prepare_async_resources(self):
-        """检测 collection 的向量模式"""
         client = get_client()
         self._vector_mode = await detect_vector_mode(client, self._qdrant_index)
-        logger.info(f"Detected vector mode for '{self._qdrant_index}': {self._vector_mode}")
+        logger.info(
+            f"Detected vector mode for '{self._qdrant_index}': {self._vector_mode}"
+        )
 
     def _initialize_pipeline(self) -> AsyncPipeline:
-        """
-        Initialize the Document search pipeline
-        """
         try:
             pipeline = AsyncPipeline()
             embedder = OpenAITextEmbedder(
@@ -76,8 +42,7 @@ class DocumentSearchPipeline(BasePipeline):
                 dimensions=CONFIG.EMBEDDING_DIMENSIONS,
             )
 
-            use_sparse = self._vector_mode == "hybrid"
-            use_hybrid_retriever = use_sparse and self._retrieval_mode == "hybrid"
+            use_sparse = self._vector_mode in ("hybrid", "dense")
 
             document_store = QdrantDocumentStore(
                 location=CONFIG.QDRANT_LOCATION,
@@ -88,20 +53,23 @@ class DocumentSearchPipeline(BasePipeline):
 
             document_store._async_client = get_client()
 
+            retriever = QdrantEmbeddingRetriever(document_store=document_store)
+
             pipeline.add_component("embedder", embedder)
+            pipeline.add_component("retriever", retriever)
+            pipeline.connect("embedder.embedding", "retriever.query_embedding")
 
-            if use_hybrid_retriever:
-                sparse_embedder = CustomerSparseTextEmbedder(model=CONFIG.SPARSE_MODEL_PATH)
-
-                retriever = QdrantHybridRetriever(document_store=document_store)
-                pipeline.add_component("sparse_embedder", sparse_embedder)
-                pipeline.add_component("retriever", retriever)
-                pipeline.connect("embedder.embedding", "retriever.query_embedding")
-                pipeline.connect("sparse_embedder", "retriever.query_sparse_embedding")
-            else:
-                retriever = QdrantEmbeddingRetriever(document_store=document_store)
-                pipeline.add_component("retriever", retriever)
-                pipeline.connect("embedder.embedding", "retriever.query_embedding")
+            if CONFIG.RERANK_ENABLED:
+                ranker = OpenRanker(
+                    model=CONFIG.RERANK_MODEL,
+                    top_k=CONFIG.TOP_K,
+                    api_key=Secret.from_token(CONFIG.RERANK_API_KEY)
+                    if CONFIG.RERANK_API_KEY
+                    else None,
+                    api_base_url=CONFIG.RERANK_URL,
+                )
+                pipeline.add_component("ranker", ranker)
+                pipeline.connect("retriever.documents", "ranker.documents")
 
             return pipeline
 
@@ -121,7 +89,7 @@ class DocumentSearchPipeline(BasePipeline):
 
         Args:
             query (str): The query to search for
-            top_k (int): The number of documents to be returned
+            top_k (int): The number of documents to be returned (after rerank)
             score_threshold (float): The minimum similarity score for a document to be retrieved
             filters (Dict[str, Any]): The type of documents to be retrieved.
 
@@ -133,24 +101,22 @@ class DocumentSearchPipeline(BasePipeline):
         )
         start_time = time.time()
         try:
-            data = {
+            run_data = {
                 "embedder": {"text": query},
                 "retriever": {
-                    "top_k": top_k,
+                    "top_k": CONFIG.DENSE_TOP_K,
                     "score_threshold": score_threshold,
                     "filters": filters,
                 },
             }
-            if self._vector_mode == "hybrid" and self._retrieval_mode == "hybrid":
-                logger.debug("使用混合检索")
-                data["sparse_embedder"] = {"text": query}
-                data["retriever"]["top_k"] = 30
-                data["retriever"].pop("score_threshold", None)
-                data["retriever"].pop("filters", None)
 
-            result = await self.pipeline.run_async(data=data)
+            if CONFIG.RERANK_ENABLED:
+                run_data["ranker"] = {"query": query, "top_k": top_k}
 
-            documents = result.get("retriever", {}).get("documents", [])
+            result = await self.pipeline.run_async(data=run_data)
+
+            output_key = "ranker" if CONFIG.RERANK_ENABLED else "retriever"
+            documents = result.get(output_key, {}).get("documents", [])
             logger.info(
                 f"Document search completed: found {len(documents)} documents in {time.time() - start_time:.2f}s"
             )
@@ -162,28 +128,19 @@ class DocumentSearchPipeline(BasePipeline):
 
 
 class DocumentWriterPipeline(BasePipeline):
-    """
-    Create or run the DocumentWriter pipeline. This pipeline is used to write documents to the document store.
-    """
-
-    def __init__(
-        self,
-        qdrant_index: str = "Document",
-    ):
+    def __init__(self, qdrant_index: str = "Document"):
         super().__init__()
         self._qdrant_index = qdrant_index
         self._vector_mode: str | None = None
 
     async def _prepare_async_resources(self):
-        """检测 collection 的向量模式"""
         client = get_client()
         self._vector_mode = await detect_vector_mode(client, self._qdrant_index)
-        logger.info(f"Detected vector mode for '{self._qdrant_index}': {self._vector_mode}")
+        logger.info(
+            f"Detected vector mode for '{self._qdrant_index}': {self._vector_mode}"
+        )
 
     def _initialize_pipeline(self) -> AsyncPipeline:
-        """
-        Initialize the DocumentWriter pipeline
-        """
         logger.debug("Initializing DocumentWriter pipeline...")
         try:
             pipeline = AsyncPipeline()
@@ -206,16 +163,8 @@ class DocumentWriterPipeline(BasePipeline):
             writer = DocumentWriter(document_store=document_store)
 
             pipeline.add_component("embedder", embedder)
-
-            if use_sparse:
-                sparse_embedder = CustomerSparseDocumentEmbedder(model=CONFIG.SPARSE_MODEL_PATH)
-                pipeline.add_component("sparse_embedder", sparse_embedder)
-                pipeline.add_component("writer", writer)
-                pipeline.connect("embedder", "sparse_embedder")
-                pipeline.connect("sparse_embedder", "writer")
-            else:
-                pipeline.add_component("writer", writer)
-                pipeline.connect("embedder", "writer")
+            pipeline.add_component("writer", writer)
+            pipeline.connect("embedder", "writer")
 
             logger.debug("DocumentWriter pipeline initialized successfully.")
             return pipeline
@@ -225,31 +174,14 @@ class DocumentWriterPipeline(BasePipeline):
             raise
 
     async def run(self, documents: List[Document]):
-        """
-        Run the DocumentWriter pipeline
-        """
         logger.info(f"Document writer started: {len(documents)} documents")
         try:
-            result = await self.pipeline.run_async({"embedder": {"documents": documents}})
+            result = await self.pipeline.run_async(
+                {"embedder": {"documents": documents}}
+            )
             logger.info("Document writer completed")
             return result
 
         except Exception as e:
             logger.exception("Failed to run DocumentWriter pipeline")
             raise
-
-
-if __name__ == "__main__":
-    import asyncio
-
-    pipeline = DocumentSearchPipeline("test")
-    # # print(pipeline)
-    # documents = [
-    #     Document(
-    #         content="医生会根据情况给予黏膜保护剂或表面麻醉剂，目的是保护食管黏膜和缓解疼痛。有呕吐、呕血者医生会适当使用镇吐、止血与镇静药物"
-    #     ),
-    #     Document(content="医生会通过鼻饲或静脉给予患者营养支持，促进疾病恢复。\n怎么预防放射性食管炎"),
-    #     Document(content="Germany has many big cities"),
-    #     Document(content="fastembed is supported by and maintained by Qdrant."),
-    # ]
-    print(asyncio.run(pipeline.run(query="水温", score_threshold=0.5)))

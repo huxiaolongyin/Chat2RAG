@@ -11,6 +11,7 @@ from chat2rag.config import CONFIG
 from chat2rag.core.logger import get_logger
 from chat2rag.models.models import ModelProvider, ModelSource
 from chat2rag.pipelines.agent import AgentPipeline
+from chat2rag.schemas.chat import SourceType
 from chat2rag.services.model_service import model_source_service
 from chat2rag.utils.chat_history import chat_history
 from chat2rag.utils.merge_kwargs import merge_generation_kwargs
@@ -59,6 +60,10 @@ class AgentStrategy(ResponseStrategy):
             model_source.generation_kwargs,
             CONFIG.GENERATION_KWARGS,
         )
+        logger.info(
+            f"[{self.handler.message_id}] Starting agent pipeline: model={model_source.name}, "
+            f"tools={self.request.tools}, collections={self.request.collections}"
+        )
         try:
             pipeline = await create_pipeline(
                 AgentPipeline,
@@ -69,10 +74,13 @@ class AgentStrategy(ResponseStrategy):
                 api_key=model_provider.api_key,
                 generation_kwargs=generation_kwargs,
             )
+            logger.debug(f"[{self.handler.message_id}] Pipeline created successfully")
 
             tool_sources = pipeline.get_tool_sources()
             self.handler.set_tool_sources(tool_sources)
+            logger.debug(f"[{self.handler.message_id}] Tool sources: {tool_sources}")
 
+            logger.info(f"[{self.handler.message_id}] Starting pipeline.run_async")
             result = await pipeline.run(
                 query=query,
                 top_k=self.request.top_k,
@@ -86,13 +94,22 @@ class AgentStrategy(ResponseStrategy):
                 extra_params=self.request.extra_params | current_time,
                 streaming_callback=self.handler.callback,
             )
+            logger.info(f"[{self.handler.message_id}] pipeline.run_async completed")
 
-            documents = result.get("doc_joiner", {}).get("documents", [])
+            documents = result.get(
+                "ranker" if CONFIG.RERANK_ENABLED else "doc_joiner", {}
+            ).get("documents", [])
+
+            # 提取并存储检索文档
+            retrieval_docs = self._extract_retrieval_documents(documents)
+            self.handler.set_retrieval_documents(retrieval_docs)
+
             doc_sources = self._extract_sources(documents)
             if doc_sources and not self.handler._execute_tools_list:
-                self.handler.set_source(", ".join(doc_sources))
+                for display, detail in doc_sources:
+                    self.handler.add_source(SourceType.DOCUMENT, display, detail)
             elif not self.handler._execute_tools_list:
-                self.handler.set_source("大模型生成")
+                self.handler.add_source(SourceType.LLM, "大模型生成")
 
             # 更新聊天历史
             messages: list = result.get("agent", {}).get("messages", [])
@@ -115,7 +132,9 @@ class AgentStrategy(ResponseStrategy):
             self.handler.set_token_info(input_tokens, output_tokens)
 
         except Exception as e:
-            logger.exception("Failed to execute agent strategy")
+            logger.exception(
+                f"[{self.handler.message_id}] Failed to execute agent strategy"
+            )
             self.handler.set_error(str(e))
             await self.handler.callback(
                 StreamingChunk(
@@ -124,6 +143,9 @@ class AgentStrategy(ResponseStrategy):
                 )
             )
         finally:
+            logger.debug(
+                f"[{self.handler.message_id}] Sending END signal to stream handler"
+            )
             await self.handler.finish()
 
     @staticmethod
@@ -139,8 +161,8 @@ class AgentStrategy(ResponseStrategy):
 
         return []
 
-    def _extract_sources(self, documents: list) -> List[str]:
-        """从文档中提取来源信息"""
+    def _extract_sources(self, documents: list) -> List[tuple[str, str]]:
+        """从文档中提取来源信息，返回 (display, detail) 元组列表"""
         sources = []
         seen = set()
         for doc in documents:
@@ -152,30 +174,44 @@ class AgentStrategy(ResponseStrategy):
                 else ""
             )
 
-            # 从文档 meta 中获取知识库名称
             collection = meta.get("collection_name", "")
 
-            # 清理文件名：去除文件夹路径和时间戳
             if file_path:
-                # 获取文件名（去除路径）
                 file_name = os.path.basename(file_path)
-                # 去除时间戳后缀（格式：_数字）
                 file_name = re.sub(r"_\d+(\.[^.]+)$", r"\1", file_name)
             else:
                 file_name = ""
 
-            # 构建来源字符串
             if collection and file_name:
-                source_str = f"{collection}-{file_name}"
+                display = file_name
+                detail = f"{collection}/{file_path}"
             elif collection:
-                source_str = collection
+                display = collection
+                detail = collection
             elif file_name:
-                source_str = file_name
+                display = file_name
+                detail = file_path
             else:
                 continue
 
-            if source_str not in seen:
-                seen.add(source_str)
-                sources.append(source_str)
+            if display not in seen:
+                seen.add(display)
+                sources.append((display, detail))
 
         return sources
+
+    def _extract_retrieval_documents(self, documents: list) -> dict:
+        """从文档中提取检索信息，按知识库分组"""
+        doc_dict = {}
+        for doc in documents:
+            meta = getattr(doc, "meta", {}) or {}
+            collection = meta.get("collection_name", "unknown")
+            if collection not in doc_dict:
+                doc_dict[collection] = []
+            doc_dict[collection].append(
+                {
+                    "content": doc.content,
+                    "score": getattr(doc, "score", None),
+                }
+            )
+        return doc_dict

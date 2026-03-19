@@ -12,6 +12,7 @@ from haystack_integrations.components.retrievers.qdrant import QdrantEmbeddingRe
 from haystack_integrations.document_stores.qdrant import QdrantDocumentStore
 from qdrant_client.models import Filter
 
+from chat2rag.components import OpenRanker
 from chat2rag.config import CONFIG
 from chat2rag.core.logger import get_logger
 from chat2rag.pipelines.base import BasePipeline
@@ -40,7 +41,6 @@ class AgentPipeline(BasePipeline[AsyncPipeline]):
         api_base_url: str = "",
         api_key: str = "",
         generation_kwargs: Dict[str, Any] = {},
-        retrieval_mode: str | None = None,
     ):
         super().__init__()
         self._collections = collections if collections else []
@@ -50,12 +50,10 @@ class AgentPipeline(BasePipeline[AsyncPipeline]):
         self._api_base_url = api_base_url
         self._api_key = api_key
         self._generation_kwargs = recursive_tuple_to_dict(generation_kwargs)
-        self._retrieval_mode = retrieval_mode or CONFIG.RETRIEVAL_MODE
         self._vector_modes: Dict[str, str] = {}
         self._tool_sources: Dict[str, str] = {}
 
     async def _prepare_async_resources(self):
-        """异步加载工具并检测向量模式"""
         if self._tool_list:
             loaded_tools, tool_sources = await mcp_service.get_by_names(self._tool_list)
             if loaded_tools:
@@ -84,8 +82,8 @@ class AgentPipeline(BasePipeline[AsyncPipeline]):
             )
             for idx, collection in enumerate(self._collections):
                 retriever_name = f"retriever_{idx}"
-                vector_mode = self._vector_modes.get(collection, "hybrid")
-                use_sparse = vector_mode == "hybrid"
+                vector_mode = self._vector_modes.get(collection)
+                use_sparse = vector_mode in ("hybrid", "dense")
 
                 document_store = QdrantDocumentStore(
                     location=CONFIG.QDRANT_LOCATION,
@@ -96,15 +94,32 @@ class AgentPipeline(BasePipeline[AsyncPipeline]):
                 document_store._async_client = get_client()
                 pipeline.add_component(
                     retriever_name,
-                    QdrantEmbeddingRetriever(document_store=document_store),
+                    QdrantEmbeddingRetriever(
+                        document_store=document_store, score_threshold=0.55
+                    ),
                 )
                 pipeline.connect(
                     "embedder.embedding", f"{retriever_name}.query_embedding"
                 )
+
             pipeline.add_component("doc_joiner", DocumentJoiner())
 
             for idx in range(len(self._collections)):
                 pipeline.connect(f"retriever_{idx}.documents", "doc_joiner.documents")
+
+            if CONFIG.RERANK_ENABLED:
+                pipeline.add_component(
+                    "ranker",
+                    OpenRanker(
+                        model=CONFIG.RERANK_MODEL,
+                        top_k=CONFIG.TOP_K,
+                        api_key=Secret.from_token(CONFIG.RERANK_API_KEY)
+                        if CONFIG.RERANK_API_KEY
+                        else None,
+                        api_base_url=CONFIG.RERANK_URL,
+                    ),
+                )
+                pipeline.connect("doc_joiner.documents", "ranker.documents")
 
             pipeline.add_component(
                 "builder",
@@ -126,7 +141,12 @@ class AgentPipeline(BasePipeline[AsyncPipeline]):
                     tools=self._tools,
                 ),
             )
-            pipeline.connect("doc_joiner.documents", "builder.documents")
+
+            if CONFIG.RERANK_ENABLED:
+                pipeline.connect("ranker.documents", "builder.documents")
+            else:
+                pipeline.connect("doc_joiner.documents", "builder.documents")
+
             pipeline.connect("builder", "agent")
 
             return pipeline
@@ -145,33 +165,40 @@ class AgentPipeline(BasePipeline[AsyncPipeline]):
         extra_params: Dict[str, Any] = {},
         streaming_callback: Callable | None = None,
     ):
-        """
-        Run the pipeline with the given parameters.
-        """
-        # 构建 retriever 参数
         retriever_params = {}
         for idx in range(len(self._collections)):
             retriever_params[f"retriever_{idx}"] = {
-                "top_k": top_k,
-                "score_threshold": score_threshold,
+                "top_k": CONFIG.DENSE_TOP_K if CONFIG.RERANK_ENABLED else top_k,
                 "filters": filters,
+                "score_threshold": 0.55 if CONFIG.RERANK_ENABLED else score_threshold,
             }
 
-        return await self.pipeline.run_async(
-            {
-                "embedder": {"text": query},
-                **retriever_params,
-                "builder": {
-                    "template": messages,
-                    "template_variables": {"query": query} | extra_params,
-                },
-                "agent": {
-                    "streaming_callback": streaming_callback,
-                },
+        run_data = {
+            "embedder": {"text": query},
+            **retriever_params,
+            "builder": {
+                "template": messages,
+                "template_variables": {"query": query} | extra_params,
             },
-            include_outputs_from={"doc_joiner"},
+            "agent": {"streaming_callback": streaming_callback},
+        }
+
+        if CONFIG.RERANK_ENABLED:
+            run_data["ranker"] = {
+                "query": query,
+                "top_k": top_k,
+                "score_threshold": score_threshold,
+            }
+
+        logger.debug(f"Starting pipeline.run_async for query: {query[:50]}...")
+        result = await self.pipeline.run_async(
+            run_data,
+            include_outputs_from={"ranker"}
+            if CONFIG.RERANK_ENABLED
+            else {"doc_joiner"},
         )
+        logger.debug("pipeline.run_async completed")
+        return result
 
     def get_tool_sources(self) -> Dict[str, str]:
-        """获取工具来源映射 {工具名称: MCP服务器名称}"""
         return self._tool_sources
