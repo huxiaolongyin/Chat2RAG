@@ -35,6 +35,10 @@ save: build
 		\
 		Write-Host \"Deployment package created successfully for version $$version\"; \
 	"
-.PHONY: mcp-server
-mcp-server:
+.PHONY: mcp
+mcp:
 	.venv/Scripts/python chat2rag/mcp/server.py
+
+.PHONY: web
+web:
+	cd web && pnpm dev

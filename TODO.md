@@ -42,8 +42,11 @@
 
 ## BUG 修复
 
+- [ ] 🟠P2 多模态时，没有引用 prompt 和 历史消息
 - [ ] 🟢P4 docker 镜像启动顺序影响 后端程序运行
 <!-- - [ ] 🔴P1 存在 Chat 调用时，没有将交互记录存到数据库的情况(未发现代码问题，后续持续观察) -->
+- [] 出现流式的没有 status=2 的情况，2026-03-19 09:10:11,009 - mcp.client.streamable_http - DEBUG - Sending client message: root=JSONRPCRequest(method='tools/call', params={'name': 'maps_weather', 'arguments': {'city': '福州'}}, jsonrpc='2.0', id=5)
+  Exception ignored in: <function BaseEventLoop.**del** at 0x0000022426D0DA80>
 
 ## 测试相关
 

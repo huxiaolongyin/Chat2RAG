@@ -21,6 +21,10 @@ export default defineConfig({
       '/v2': {
         target: 'http://localhost:8000/api/',
         changeOrigin: true
+      },
+      '/uploads/documents': {
+        target: 'http://localhost:8000',
+        changeOrigin: true
       }
     }
   },

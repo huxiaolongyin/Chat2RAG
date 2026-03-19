@@ -85,7 +85,7 @@ function handleMenuClick(key: string) {
             Chat2RAG
           </h1>
           <p class="text-xs text-slate-500 dark:text-slate-400 truncate">
-            AI交互管理平台
+            人机交互管理平台
           </p>
         </div>
       </transition>
