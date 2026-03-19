@@ -1,8 +1,11 @@
 import type {
   BaseResponse,
+  ChatSession,
   KnowledgeCollection,
   ModelOption,
+  PaginatedResponse,
   Prompt,
+  SessionStats,
   Tool
 } from '@/types/api'
 import type { ChatRequest, StreamChunk } from '@/types/chat'
@@ -98,4 +101,40 @@ export async function streamChat (options: ChatStreamOptions): Promise<void> {
   } catch (error) {
     onError(error as Error)
   }
+}
+
+export async function getChatSessions (
+  current = 1,
+  size = 20,
+  startTime?: string,
+  endTime?: string,
+  chatId?: string
+): Promise<{ items: ChatSession[]; total: number }> {
+  const params = new URLSearchParams({
+    current: String(current),
+    size: String(size)
+  })
+  if (startTime) params.append('startTime', startTime)
+  if (endTime) params.append('endTime', endTime)
+  if (chatId) params.append('chatId', chatId)
+
+  const response = await fetch(`${BASE_URL}/v1/metrics/sessions?${params}`)
+  const result = await response.json()
+  return {
+    items: result.data?.items || [],
+    total: result.data?.total || 0
+  }
+}
+
+export async function getSessionStats (chatId: string): Promise<SessionStats | null> {
+  const response = await fetch(`${BASE_URL}/v1/metrics/sessions/${chatId}/stats`)
+  if (!response.ok) return null
+  const data: BaseResponse<SessionStats> = await response.json()
+  return data.data
+}
+
+export async function getSessionMessages (chatId: string): Promise<MetricData[]> {
+  const response = await fetch(`${BASE_URL}/v1/metrics?chatId=${chatId}&size=100`)
+  const result = await response.json()
+  return result.data?.items || []
 }

@@ -46,6 +46,23 @@ export interface ToolSchema {
   toolResult: unknown
 }
 
+export type SourceType = 'command' | 'document' | 'tool' | 'llm'
+
+export interface SourceItem {
+  type: SourceType
+  display: string
+  detail?: string
+}
+
+export interface SourceSchema {
+  items: SourceItem[]
+}
+
+export interface DocumentItem {
+  content: string
+  score: number | null
+}
+
 export interface StreamChunk {
   object: string
   input: Record<string, unknown>
@@ -55,8 +72,8 @@ export interface StreamChunk {
   behavior: BehaviorSchema
   tool: ToolSchema
   link: string
-  source: string
-  documentCount: number
+  source: SourceSchema
+  document: Record<string, DocumentItem[]> | null
   createTime: string
   messageId: string
 }
@@ -68,10 +85,11 @@ export interface Message {
   timestamp: Date
   latency?: number
   firstTokenLatency?: number
-  source?: string
-  documents?: DocumentSource[]
+  source?: SourceSchema
+  document?: Record<string, DocumentItem[]>
   behavior?: BehaviorSchema
   tool?: ToolSchema
+  link?: string
   image?: string
 }
 

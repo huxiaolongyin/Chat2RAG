@@ -169,15 +169,44 @@ export interface RobotExpression {
 export interface MetricData {
   id: number
   chatId: string
-  query: string
-  response: string
-  model: string
-  collections: string
-  latency: number
+  chatRounds: number | null
+  question: string
+  answer: string
+  model: string | null
+  collections: string | null
+  firstResponseMs: number | null
+  totalMs: number | null
+  tools: string | null
+  precisionMode: boolean | null
+  prompt: string | null
   createTime: string
+  source: { type: string; display: string; detail?: string }[] | null
+  toolArguments: Record<string, unknown> | null
+  toolResult: Record<string, unknown> | null
+  documentCount: number
+  retrievalDocuments?: Record<string, { content: string; score: number | null }>[]
 }
 
-export interface HotQuestion {
-  question: string
-  count: number
+export interface ChatSession {
+  chatId: string
+  firstQuestion: string
+  messageCount: number
+  totalInputTokens: number
+  totalOutputTokens: number
+  model: string | null
+  collections: string | null
+  createTime: string
+  updateTime: string
+}
+
+export interface SessionStats {
+  chatId: string
+  messageCount: number
+  totalInputTokens: number
+  totalOutputTokens: number
+  totalTokens: number
+  avgFirstResponseMs: number | null
+  avgTotalMs: number | null
+  modelsUsed: string[]
+  collectionsUsed: string[]
 }
