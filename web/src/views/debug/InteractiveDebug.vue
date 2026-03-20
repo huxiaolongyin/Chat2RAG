@@ -85,7 +85,16 @@ function validateExtraParams(): Record<string, unknown> | undefined {
 }
 
 function formatTime(date: Date): string {
-  return date.toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" });
+  const now = new Date();
+  const isToday = date.toDateString() === now.toDateString();
+  if (isToday) {
+    return date.toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" });
+  }
+  return (
+    date.toLocaleDateString("zh-CN", { month: "numeric", day: "numeric" }) +
+    " " +
+    date.toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" })
+  );
 }
 
 function generateId(): string {
@@ -159,6 +168,7 @@ async function sendMessage() {
   };
   chatStore.addMessage(assistantMessage);
   chatStore.setLoading(true);
+  scrollToBottom();
 
   const startTime = Date.now();
   let firstChunkReceived = false;
@@ -585,7 +595,11 @@ onMounted(async () => {
             >
               <template v-for="(item, idx) in message.source?.items" :key="idx">
                 <a
-                  v-if="item.type === 'document' && item.detail"
+                  v-if="
+                    item.type === 'document' &&
+                    item.detail &&
+                    !item.detail.endsWith('/json')
+                  "
                   :href="`/${item.detail}`"
                   target="_blank"
                   class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/50 cursor-pointer"
