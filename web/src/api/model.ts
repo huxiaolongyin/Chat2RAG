@@ -1,17 +1,38 @@
 import api from './index'
 import type { BaseResponse, PaginatedResponse, ModelProvider, ModelSource, ModelOption } from '@/types/api'
 
+interface ProviderListParams {
+  current?: number
+  size?: number
+  nameOrDesc?: string
+  enabled?: boolean
+}
+
+interface SourceListParams {
+  current?: number
+  size?: number
+  nameOrAlias?: string
+  providerId?: number
+  enabled?: boolean
+  healthy?: boolean
+}
+
 export const modelApi = {
   getOptions: async () => {
     const { data } = await api.get<BaseResponse<ModelOption[]>>('/v1/models/option')
     return data
   },
 
-  getProviders: async (current = 1, size = 10) => {
+  getProviders: async (params: ProviderListParams = {}) => {
     const { data } = await api.get<BaseResponse<PaginatedResponse<ModelProvider>>>(
       '/v1/models/provider',
-      { params: { current, size } }
+      { params }
     )
+    return data
+  },
+
+  getProvider: async (providerId: string) => {
+    const { data } = await api.get<BaseResponse<ModelProvider>>(`/v1/models/provider/${providerId}`)
     return data
   },
 
@@ -33,11 +54,16 @@ export const modelApi = {
     return data
   },
 
-  getSources: async (current = 1, size = 10) => {
+  getSources: async (params: SourceListParams = {}) => {
     const { data } = await api.get<BaseResponse<PaginatedResponse<ModelSource>>>(
       '/v1/models/source',
-      { params: { current, size } }
+      { params }
     )
+    return data
+  },
+
+  getSource: async (sourceId: string) => {
+    const { data } = await api.get<BaseResponse<ModelSource>>(`/v1/models/source/${sourceId}`)
     return data
   },
 

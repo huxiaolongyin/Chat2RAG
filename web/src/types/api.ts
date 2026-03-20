@@ -31,7 +31,8 @@ export interface ModelProvider {
   name: string
   description?: string
   enabled: boolean
-  baseUrl?: string
+  baseUrl: string
+  apiKey?: string
   createTime?: string
 }
 
@@ -43,6 +44,11 @@ export interface ModelSource {
   enabled: boolean
   healthy: boolean
   latency?: number
+  priority?: number
+  failureCount?: number
+  lastLatency?: number
+  lastCheckTime?: string
+  generationKwargs?: Record<string, unknown>
 }
 
 export interface Tool {
