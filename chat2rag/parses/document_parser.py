@@ -6,11 +6,6 @@ from contextlib import contextmanager
 from typing import TYPE_CHECKING, List, Tuple
 
 import pandas as pd
-from docling.backend.pypdfium2_backend import PyPdfiumDocumentBackend
-from docling.datamodel.base_models import InputFormat
-from docling.document_converter import DocumentConverter, PdfFormatOption
-from docling.pipeline.standard_pdf_pipeline import StandardPdfPipeline
-from docling_core.types.doc.document import PictureItem, SectionHeaderItem, TextItem
 from docx import Document
 from docx.document import Document as DocumentObject
 
@@ -36,6 +31,11 @@ class DocumentParser(ABC):
 class PDFParser(DocumentParser):
     """PDF解析器"""
 
+    from docling.backend.pypdfium2_backend import PyPdfiumDocumentBackend
+    from docling.datamodel.base_models import InputFormat
+    from docling.document_converter import DocumentConverter, PdfFormatOption
+    from docling.pipeline.standard_pdf_pipeline import StandardPdfPipeline
+
     doc_converter = DocumentConverter(
         allowed_formats=[InputFormat.PDF],
         format_options={
@@ -44,6 +44,7 @@ class PDFParser(DocumentParser):
     )
 
     def __init__(self, max_chars: int = 600, overlap: int = 100):
+
         if overlap >= max_chars:
             raise ValueError(f"overlap ({overlap}) must be less than max_chars ({max_chars})")
         self._max_chars = max_chars
@@ -115,6 +116,12 @@ class PDFParser(DocumentParser):
 
     async def parse(self, file_path: str) -> List[DocumentData]:
         """解析 PDF 文档，返回分块列表"""
+        from docling_core.types.doc.document import (
+            PictureItem,
+            SectionHeaderItem,
+            TextItem,
+        )
+
         result: List[DocumentData] = []
         buf: list[str] = []
         page_no = 0
