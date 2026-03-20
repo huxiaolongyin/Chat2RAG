@@ -28,9 +28,7 @@ class DocumentSearchPipeline(BasePipeline):
     async def _prepare_async_resources(self):
         client = get_client()
         self._vector_mode = await detect_vector_mode(client, self._qdrant_index)
-        logger.info(
-            f"Detected vector mode for '{self._qdrant_index}': {self._vector_mode}"
-        )
+        logger.info(f"Detected vector mode for '{self._qdrant_index}': {self._vector_mode}")
 
     def _initialize_pipeline(self) -> AsyncPipeline:
         try:
@@ -63,9 +61,7 @@ class DocumentSearchPipeline(BasePipeline):
                 ranker = OpenRanker(
                     model=CONFIG.RERANK_MODEL,
                     top_k=CONFIG.TOP_K,
-                    api_key=Secret.from_token(CONFIG.RERANK_API_KEY)
-                    if CONFIG.RERANK_API_KEY
-                    else None,
+                    api_key=Secret.from_token(CONFIG.RERANK_API_KEY) if CONFIG.RERANK_API_KEY else None,
                     api_base_url=CONFIG.RERANK_URL,
                 )
                 pipeline.add_component("ranker", ranker)
@@ -104,7 +100,7 @@ class DocumentSearchPipeline(BasePipeline):
             run_data = {
                 "embedder": {"text": query},
                 "retriever": {
-                    "top_k": CONFIG.DENSE_TOP_K,
+                    "top_k": CONFIG.DENSE_TOP_K if CONFIG.RERANK_ENABLED else top_k,
                     "score_threshold": score_threshold,
                     "filters": filters,
                 },
@@ -136,9 +132,7 @@ class DocumentWriterPipeline(BasePipeline):
     async def _prepare_async_resources(self):
         client = get_client()
         self._vector_mode = await detect_vector_mode(client, self._qdrant_index)
-        logger.info(
-            f"Detected vector mode for '{self._qdrant_index}': {self._vector_mode}"
-        )
+        logger.info(f"Detected vector mode for '{self._qdrant_index}': {self._vector_mode}")
 
     def _initialize_pipeline(self) -> AsyncPipeline:
         logger.debug("Initializing DocumentWriter pipeline...")
@@ -176,9 +170,7 @@ class DocumentWriterPipeline(BasePipeline):
     async def run(self, documents: List[Document]):
         logger.info(f"Document writer started: {len(documents)} documents")
         try:
-            result = await self.pipeline.run_async(
-                {"embedder": {"documents": documents}}
-            )
+            result = await self.pipeline.run_async({"embedder": {"documents": documents}})
             logger.info("Document writer completed")
             return result
 

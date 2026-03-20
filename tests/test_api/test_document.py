@@ -11,7 +11,9 @@ DOCUMENT_BASE_URL = "/api/v1/knowledge/collection"
 async def test_collection(client: AsyncClient):
     """创建测试用文档"""
     collection_name = "测试数据"
-    response = await client.post(DOCUMENT_BASE_URL, params={"collectionName": collection_name})
+    response = await client.post(
+        DOCUMENT_BASE_URL, params={"collectionName": collection_name}
+    )
     assert response.status_code == 200
     data = response.json()
     assert data["code"] == "0000"
@@ -62,7 +64,9 @@ class TestCollection:
         assert data["data"]["total"] >= 1
         assert len(data["data"]["collectionList"]) >= 1
 
-    async def test_get_prompt_list_with_search(self, client: AsyncClient, test_collection):
+    async def test_get_prompt_list_with_search(
+        self, client: AsyncClient, test_collection
+    ):
         """测试搜索知识库集合列表"""
         # 按名称搜索
         response = await client.get(DOCUMENT_BASE_URL, params={"promptName": "测试"})
@@ -71,7 +75,9 @@ class TestCollection:
         assert data["code"] == "0000"
         assert data["data"]["total"] >= 1
 
-    async def test_get_collection_list_with_pagination(self, client: AsyncClient, test_collection):
+    async def test_get_collection_list_with_pagination(
+        self, client: AsyncClient, test_collection
+    ):
         """测试分页获取知识库列表"""
         response = await client.get(DOCUMENT_BASE_URL, params={"current": 1, "size": 5})
         assert response.status_code == 200
@@ -83,11 +89,15 @@ class TestCollection:
     async def test_delete_collection(self, client: AsyncClient):
         """测试删除知识库"""
         # 先创建
-        response = await client.post(DOCUMENT_BASE_URL, params={"collectionName": "待删除知识库"})
+        response = await client.post(
+            DOCUMENT_BASE_URL, params={"collectionName": "待删除知识库"}
+        )
         assert response.status_code == 200
 
         # 再删除
-        response = await client.delete(DOCUMENT_BASE_URL, params={"collectionName": "待删除知识库"})
+        response = await client.delete(
+            DOCUMENT_BASE_URL, params={"collectionName": "待删除知识库"}
+        )
         assert response.status_code == 200
         data = response.json()
         assert data["code"] == "0000"
@@ -107,11 +117,17 @@ class TestDocument:
         assert response.status_code == 200
         data = response.json()
         assert data["code"] == "0000"
-        assert data["msg"] == "知识内容创建中"
+        assert data["msg"] == "知识内容创建成功"
+        assert "fileId" in data["data"]
+        assert "chunkCount" in data["data"]
 
-    async def test_get_documents(self, client: AsyncClient, test_collection, test_documents):
+    async def test_get_documents(
+        self, client: AsyncClient, test_collection, test_documents
+    ):
         """测试获取知识库所有文档"""
-        response = await client.get(f"{DOCUMENT_BASE_URL}/document", params={"collectionName": test_collection})
+        response = await client.get(
+            f"{DOCUMENT_BASE_URL}/document", params={"collectionName": test_collection}
+        )
         assert response.status_code == 200
         data = response.json()
         assert data["code"] == "0000"
@@ -119,10 +135,13 @@ class TestDocument:
         assert data["data"]["total"] >= 3
         assert len(data["data"]["docList"]) >= 3
 
-    async def test_get_documents_with_pagination(self, client: AsyncClient, test_collection, test_documents):
+    async def test_get_documents_with_pagination(
+        self, client: AsyncClient, test_collection, test_documents
+    ):
         """测试分页获取文档"""
         response = await client.get(
-            f"{DOCUMENT_BASE_URL}/document", params={"collectionName": test_collection, "current": 1, "size": 2}
+            f"{DOCUMENT_BASE_URL}/document",
+            params={"collectionName": test_collection, "current": 1, "size": 2},
         )
         assert response.status_code == 200
         data = response.json()
@@ -131,31 +150,43 @@ class TestDocument:
         assert data["data"]["size"] == 2
         assert len(data["data"]["docList"]) == 2
 
-    async def test_get_documents_with_search(self, client: AsyncClient, test_collection, test_documents):
+    async def test_get_documents_with_search(
+        self, client: AsyncClient, test_collection, test_documents
+    ):
         """测试搜索文档内容"""
         response = await client.get(
-            f"{DOCUMENT_BASE_URL}/document", params={"collectionName": test_collection, "documentContent": "餐饮供应"}
+            f"{DOCUMENT_BASE_URL}/document",
+            params={"collectionName": test_collection, "documentContent": "餐饮供应"},
         )
         assert response.status_code == 200
         data = response.json()
         assert data["code"] == "0000"
         assert data["data"]["total"] >= 1
 
-    async def test_get_documents_with_sorting(self, client: AsyncClient, test_collection, test_documents):
+    async def test_get_documents_with_sorting(
+        self, client: AsyncClient, test_collection, test_documents
+    ):
         """测试文档排序"""
         response = await client.get(
             f"{DOCUMENT_BASE_URL}/document",
-            params={"collectionName": test_collection, "sortBy": "content", "sortOrder": "asc"},
+            params={
+                "collectionName": test_collection,
+                "sortBy": "content",
+                "sortOrder": "asc",
+            },
         )
         assert response.status_code == 200
         data = response.json()
         assert data["code"] == "0000"
 
-    async def test_delete_documents(self, client: AsyncClient, test_collection, test_documents):
+    async def test_delete_documents(
+        self, client: AsyncClient, test_collection, test_documents
+    ):
         """测试删除知识"""
 
         response = await client.get(
-            f"{DOCUMENT_BASE_URL}/document", params={"collectionName": test_collection, "current": 1, "size": 2}
+            f"{DOCUMENT_BASE_URL}/document",
+            params={"collectionName": test_collection, "current": 1, "size": 2},
         )
         assert response.status_code == 200
         data = response.json()
@@ -177,11 +208,18 @@ class TestDocument:
 class TestQuery:
     """知识查询测试"""
 
-    async def test_query_documents(self, client: AsyncClient, test_collection, test_documents):
+    async def test_query_documents(
+        self, client: AsyncClient, test_collection, test_documents
+    ):
         """测试知识内容查询"""
         response = await client.get(
             f"{DOCUMENT_BASE_URL.replace('/collection', '')}/query",
-            params={"collectionName": test_collection, "query": "Python", "topK": 5, "type": "qa_pair"},
+            params={
+                "collectionName": test_collection,
+                "query": "Python",
+                "topK": 5,
+                "type": "qa_pair",
+            },
         )
         assert response.status_code == 200
         data = response.json()
@@ -189,7 +227,9 @@ class TestQuery:
         assert "docList" in data["data"]
         assert data["data"]["topK"] == 5
 
-    async def test_query_documents_with_threshold(self, client: AsyncClient, test_collection, test_documents):
+    async def test_query_documents_with_threshold(
+        self, client: AsyncClient, test_collection, test_documents
+    ):
         """测试带阈值的查询"""
         response = await client.get(
             f"{DOCUMENT_BASE_URL.replace('/collection', '')}/query",
@@ -206,7 +246,9 @@ class TestQuery:
         assert data["code"] == "0000"
         assert data["data"]["scoreThreshold"] == 0.7
 
-    async def test_exact_query(self, client: AsyncClient, test_collection, test_documents):
+    async def test_exact_query(
+        self, client: AsyncClient, test_collection, test_documents
+    ):
         """测试精确查询"""
         response = await client.get(
             f"{DOCUMENT_BASE_URL.replace('/collection', '')}/exact-query",
@@ -217,7 +259,9 @@ class TestQuery:
         assert data["code"] == "0000"
         assert "answer" in data["data"]
 
-    async def test_exact_query_no_result(self, client: AsyncClient, test_collection, test_documents):
+    async def test_exact_query_no_result(
+        self, client: AsyncClient, test_collection, test_documents
+    ):
         """测试精确查询无结果情况"""
         response = await client.get(
             f"{DOCUMENT_BASE_URL.replace('/collection', '')}/exact-query",

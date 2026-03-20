@@ -69,6 +69,7 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 app.mount(
     "/uploads/documents", StaticFiles(directory="uploads/documents"), name="documents"
 )
+app.mount("/uploads/files", StaticFiles(directory="uploads/files"), name="files")
 
 
 # 自定义 Swagger 文档路由

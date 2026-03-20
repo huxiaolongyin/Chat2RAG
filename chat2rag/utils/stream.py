@@ -1,6 +1,6 @@
 import asyncio
-import copy
 import json
+from dataclasses import replace
 import re
 import uuid
 from time import perf_counter
@@ -442,8 +442,7 @@ class StreamHandler:
 
         for i, char in enumerate(content):
             if self._is_split_punctuation(char):
-                split_chunk = copy.copy(chunk)
-                split_chunk.content = content[last_split_pos : i + 1]
+                split_chunk = replace(chunk, content=content[last_split_pos : i + 1])
                 current_batch.append(split_chunk)
 
                 batch_content = "".join([c.content for c in current_batch])
@@ -458,8 +457,7 @@ class StreamHandler:
                 last_split_pos = i + 1
 
         if last_split_pos < len(content):
-            remaining_chunk = copy.copy(chunk)
-            remaining_chunk.content = content[last_split_pos:]
+            remaining_chunk = replace(chunk, content=content[last_split_pos:])
             current_batch.append(remaining_chunk)
 
         return first_response, results

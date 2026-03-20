@@ -43,9 +43,7 @@ class ContextualRetrieval:
         self.batch_size = batch_size
         self.max_retries = max_retries
 
-    async def extract_document_summary(
-        self, content: str, max_chars: int = 2000
-    ) -> Tuple[str, str]:
+    async def extract_document_summary(self, content: str, max_chars: int = 2000) -> Tuple[str, str]:
         """
         提取文档标题和摘要
 
@@ -97,14 +95,16 @@ class ContextualRetrieval:
         title: str,
         summary: str,
         chunks: List[str],
+        max_concurrent: int = 5,
     ) -> List[str | None]:
         """
-        批量生成分块上下文
+        批量生成分块上下文（并发处理）
 
         Args:
             title: 文档标题
             summary: 文档摘要
             chunks: 分块内容列表
+            max_concurrent: 最大并发批次数，默认3
 
         Returns:
             上下文列表，失败的位置为 None
@@ -113,8 +113,9 @@ class ContextualRetrieval:
             return []
 
         contexts: List[str | None] = [None] * len(chunks)
+        semaphore = asyncio.Semaphore(max_concurrent)
 
-        for batch_start in range(0, len(chunks), self.batch_size):
+        async def process_batch(batch_start: int) -> tuple[int, List[str | None]]:
             batch_end = min(batch_start + self.batch_size, len(chunks))
             batch_chunks = chunks[batch_start:batch_end]
 
@@ -131,31 +132,42 @@ class ContextualRetrieval:
 
             for retry in range(self.max_retries + 1):
                 try:
-                    messages = [{"role": "user", "content": prompt}]
-                    response = await self.llm_client.acall_llm(
-                        messages=messages,
-                        model=CONFIG.PROCESS_MODEL,
-                        max_tokens=300,
-                        temperature=0.3,
-                        extra_log=f"Chunk Context Batch {batch_start}",
-                    )
+                    async with semaphore:
+                        messages = [{"role": "user", "content": prompt}]
+                        response = await self.llm_client.acall_llm(
+                            messages=messages,
+                            model=CONFIG.PROCESS_MODEL,
+                            max_tokens=300,
+                            temperature=0.3,
+                            extra_log=f"Chunk Context Batch {batch_start}",
+                        )
 
                     batch_contexts = self._parse_contexts(response, len(batch_chunks))
-                    for i, ctx in enumerate(batch_contexts):
-                        contexts[batch_start + i] = ctx
-
                     if retry > 0:
                         logger.info(f"批次 {batch_start} 重试成功")
-                    break
+                    return (batch_start, batch_contexts)
 
                 except Exception as e:
                     if retry < self.max_retries:
-                        logger.warning(
-                            f"批次 {batch_start} 第 {retry+1} 次失败，重试: {e}"
-                        )
+                        logger.warning(f"批次 {batch_start} 第 {retry+1} 次失败，重试: {e}")
                         await asyncio.sleep(1)
                     else:
                         logger.error(f"批次 {batch_start} 上下文生成失败，跳过: {e}")
+                        return (batch_start, [None] * len(batch_chunks))
+
+            return (batch_start, [None] * len(batch_chunks))
+
+        batch_starts = list(range(0, len(chunks), self.batch_size))
+        tasks = [process_batch(start) for start in batch_starts]
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+
+        for result in results:
+            if isinstance(result, Exception):
+                logger.error(f"批次处理异常: {result}")
+                continue
+            batch_start, batch_contexts = result
+            for i, ctx in enumerate(batch_contexts):
+                contexts[batch_start + i] = ctx
 
         success_count = sum(1 for c in contexts if c is not None)
         logger.info(f"上下文生成完成: {success_count}/{len(chunks)} 成功")

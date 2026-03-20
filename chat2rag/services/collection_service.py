@@ -17,11 +17,14 @@ from chat2rag.core.enums import (
     CollectionSortField,
     DocumentSortField,
     DocumentType,
+    FileStatus,
+    FileType,
     SortOrder,
 )
 from chat2rag.core.exceptions import ValueAlreadyExist, ValueNoExist
 from chat2rag.core.logger import get_logger
 from chat2rag.dataclass.document import QADocument
+from chat2rag.models import File
 from chat2rag.parses.document_parser import (
     PDFParser,
     QAPairParser,
@@ -37,7 +40,7 @@ from chat2rag.schemas.document import (
 )
 from chat2rag.services.contextual_retrieval import ContextualRetrieval
 from chat2rag.utils.pipeline_cache import create_pipeline
-from chat2rag.utils.qdrant_store import get_client
+from chat2rag.utils.qdrant_store import detect_vector_mode, get_client
 
 logger = get_logger(__name__)
 
@@ -70,6 +73,7 @@ class CollectionService:
         self,
         collection_name: str,
         backup: bool = True,
+        sync_files: bool = True,
     ) -> ReindexResult:
         """
         重新索引知识库
@@ -82,6 +86,7 @@ class CollectionService:
         Args:
             collection_name: 知识库名称
             backup: 是否备份数据到文件
+            sync_files: 是否同步文件信息到关系型数据库
 
         Returns:
             ReindexResult: 重新索引结果
@@ -107,6 +112,11 @@ class CollectionService:
             backup_file = await self._backup_points(collection_name, points)
             logger.info(f"Backup created: {backup_file}")
 
+        file_id_map = {}
+        if sync_files and points_count > 0:
+            file_id_map = await self._sync_files_from_points(collection_name, points)
+            logger.info(f"Synced {len(file_id_map)} files to database")
+
         await self.client.delete_collection(collection_name)
         logger.info(f"Deleted collection: {collection_name}")
 
@@ -120,6 +130,12 @@ class CollectionService:
                 content = payload.get("content", "")
                 meta = payload.get("meta", {})
 
+                if sync_files and file_id_map:
+                    source = meta.get("source", {})
+                    file_path = source.get("file_path", "") if isinstance(source, dict) else ""
+                    if file_path and file_path in file_id_map:
+                        meta = {**meta, "file_id": file_id_map[file_path]}
+
                 documents.append(
                     Document(
                         id=str(point.id),
@@ -128,18 +144,90 @@ class CollectionService:
                     )
                 )
 
-            doc_write_pipeline = await create_pipeline(
-                DocumentWriterPipeline, qdrant_index=collection_name
-            )
+            doc_write_pipeline = await create_pipeline(DocumentWriterPipeline, qdrant_index=collection_name)
             await doc_write_pipeline.run(documents)
             logger.info(f"Reindexed {points_count} documents")
 
         result = ReindexResult(
             points_count=points_count,
             backup_file=backup_file,
+            synced_files_count=len(file_id_map),
         )
         logger.info(f"Reindex completed: {result}")
         return result
+
+    async def _sync_files_from_points(self, collection_name: str, points: list) -> Dict[str, int]:
+        """
+        从知识点中提取文件信息，同步到关系型数据库
+
+        Returns:
+            Dict[str, int]: file_path -> file_id 的映射
+        """
+        file_info_map: Dict[str, dict] = {}
+
+        for point in points:
+            payload = point.payload or {}
+            meta = payload.get("meta", {})
+            source = meta.get("source", {})
+
+            if not isinstance(source, dict):
+                continue
+
+            file_path = source.get("file_path", "")
+            if not file_path or file_path == "json":
+                continue
+
+            if file_path not in file_info_map:
+                file_info_map[file_path] = {
+                    "chunk_count": 0,
+                    "doc_types": set(),
+                    "is_qa_file": False,
+                }
+            file_info_map[file_path]["chunk_count"] += 1
+            doc_type = meta.get("doc_type")
+            if doc_type:
+                file_info_map[file_path]["doc_types"].add(doc_type)
+                if doc_type == DocumentType.QUESTION:
+                    file_info_map[file_path]["is_qa_file"] = True
+
+        file_id_map = {}
+        for file_path, info in file_info_map.items():
+            existing_file = await File.get_or_none(collection_name=collection_name, file_path=file_path)
+            if existing_file:
+                file_id_map[file_path] = existing_file.id
+                continue
+
+            filename = os.path.basename(file_path)
+            ext = os.path.splitext(filename)[1].lower()
+            type_map = {
+                ".pdf": FileType.PDF,
+                ".docx": FileType.DOCX,
+                ".xlsx": FileType.XLSX,
+                ".xls": FileType.XLS,
+                ".csv": FileType.CSV,
+                ".tsv": FileType.TSV,
+                ".json": FileType.JSON,
+            }
+            file_type = type_map.get(ext, FileType.UNKNOWN)
+
+            file_size = 0
+            if os.path.exists(file_path):
+                file_size = os.path.getsize(file_path)
+
+            actual_chunk_count = info["chunk_count"] // 2 if info.get("is_qa_file") else info["chunk_count"]
+            db_file = await File.create(
+                collection_name=collection_name,
+                filename=filename,
+                file_type=file_type,
+                file_size=file_size,
+                file_path=file_path,
+                status=FileStatus.PARSED,
+                chunk_count=actual_chunk_count,
+            )
+            file_id_map[file_path] = db_file.id
+            logger.info(f"Created file record: {filename} (id={db_file.id})")
+
+        return file_id_map
 
     async def _backup_points(self, collection_name: str, points: list) -> str:
         backup_dir = CONFIG.DATA_DIR / "backups"
@@ -179,13 +267,11 @@ class CollectionService:
         items = collections_summary.collections
 
         # 去除内置使用库
-        items = [item for item in items if item.name not in ["Document", "questions"]]
+        items = [item for item in items if item.name not in ["Document", "questions", "eval", "None"]]
 
         # 按 collection_name 过滤
         if collection_name:
-            items = [
-                item for item in items if collection_name.lower() in item.name.lower()
-            ]
+            items = [item for item in items if collection_name.lower() in item.name.lower()]
 
         total = len(items)
 
@@ -203,13 +289,30 @@ class CollectionService:
             else:
                 embedding_size = vectors.size
                 distance_str = str(vectors.distance)
+            files_count = await File.filter(collection_name=item.name).count()
+            vector_mode = await detect_vector_mode(self.client, item.name)
+            # 统计 doc_type != 'question' 的文档数量
+            count_result = await self.client.count(
+                collection_name=item.name,
+                count_filter=Filter(
+                    must_not=[
+                        FieldCondition(
+                            key="meta.doc_type",
+                            match=MatchValue(value=DocumentType.QUESTION),
+                        )
+                    ]
+                ),
+            )
+            documents_count = count_result.count
             result.append(
                 CollectionData(
                     collection_name=item.name,
                     status=collection_info.status,
-                    documents_count=collection_info.points_count or 0,
+                    documents_count=documents_count,
+                    files_count=files_count,
                     embedding_size=embedding_size,
                     distance=distance_str,
+                    vector_mode=vector_mode,
                 )
             )
         # 排序
@@ -232,9 +335,20 @@ class DocumentService:
     def __init__(self):
         self.client = get_client()
 
-    async def _filter_existing_documents(
-        self, collection_name: str, doc_list: List[DocumentData]
-    ):
+    def _convert_source_to_camel_case(self, source: dict | None) -> dict | None:
+        if not source:
+            return source
+        return {
+            "filePath": source.get("file_path"),
+            "pageNum": source.get("page_num"),
+            "section": source.get("section"),
+            "paragraphNum": source.get("paragraph_num"),
+            "lineNum": source.get("line_num"),
+            "tableName": source.get("table_name"),
+            "url": source.get("url"),
+        }
+
+    async def _filter_existing_documents(self, collection_name: str, doc_list: List[DocumentData]):
         """过滤已存在的文档"""
         # 获取集合中所有的 points
         existing_points, _ = await self.client.scroll(
@@ -244,27 +358,20 @@ class DocumentService:
         )
 
         # 提取已存在的 content
-        existing_contents = {
-            point.payload.get("content") for point in existing_points if point.payload
-        }
+        existing_contents = {point.payload.get("content") for point in existing_points if point.payload}
 
         # 过滤新文档，只保留不存在的
-        filtered_list = [
-            doc for doc in doc_list if doc.content not in existing_contents
-        ]
+        filtered_list = [doc for doc in doc_list if doc.content not in existing_contents]
 
         return filtered_list
 
     async def _write_document(self, collection_name: str, doc_list: List[DocumentData]):
-        doc_write_pipeline = await create_pipeline(
-            DocumentWriterPipeline, qdrant_index=collection_name
-        )
+        doc_write_pipeline = await create_pipeline(DocumentWriterPipeline, qdrant_index=collection_name)
         documents = [
             Document(
                 id=doc.external_id or str(uuid.uuid4()),
                 content=doc.content,
-                meta=doc.model_dump(exclude={"content", "external_id"})
-                | {"collection_name": collection_name},
+                meta=doc.model_dump(exclude={"content", "external_id"}) | {"collection_name": collection_name},
             )
             for doc in doc_list
         ]
@@ -315,13 +422,22 @@ class DocumentService:
         overlap: int = 100,
     ) -> tuple[str | None, List[DocumentData] | None]:
         """
-        通过文件创建知识点
+        [已废弃] 通过文件创建知识点
+
+        请使用 file_service.create 方法代替
 
         Returns:
             tuple: (cache_id, doc_list)
             - preview=True: 返回 (cache_id, doc_list)，缓存解析结果
             - preview=False: 返回 (None, None)，直接写入数据库
         """
+        import warnings
+
+        warnings.warn(
+            "DocumentService.create 已废弃，请使用 file_service.create",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         if not file or not file.filename:
             raise ValueError("文件名为空")
         filename = file.filename
@@ -394,7 +510,18 @@ class DocumentService:
         cache_id: str,
         collection_name: str,
     ) -> bool:
-        """从缓存创建知识点"""
+        """
+        [已废弃] 从缓存创建知识点
+
+        请使用 file_service.create 方法代替
+        """
+        import warnings
+
+        warnings.warn(
+            "DocumentService.create_from_cache 已废弃",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         if cache_id not in _preview_cache:
             raise ValueNoExist(f"缓存不存在或已过期: {cache_id}")
 
@@ -417,9 +544,7 @@ class DocumentService:
         all_ids_to_delete = set(doc_id_list)
 
         # 获取要删除的文档信息
-        documents = await self.client.retrieve(
-            collection_name=collection_name, ids=doc_id_list
-        )
+        documents = await self.client.retrieve(collection_name=collection_name, ids=doc_id_list)
 
         # 检查是否有QA_PAIR类型文档，找出关联的question文档
         for doc in documents:
@@ -438,12 +563,8 @@ class DocumentService:
                                     key="meta.doc_type",
                                     match=MatchValue(value=DocumentType.QUESTION),
                                 ),
-                                FieldCondition(
-                                    key="content", match=MatchValue(value=question)
-                                ),
-                                FieldCondition(
-                                    key="meta.answer", match=MatchValue(value=answer)
-                                ),
+                                FieldCondition(key="content", match=MatchValue(value=question)),
+                                FieldCondition(key="meta.answer", match=MatchValue(value=answer)),
                             ]
                         ),
                         limit=100,
@@ -452,9 +573,7 @@ class DocumentService:
                     for question_doc in question_docs[0] or []:
                         all_ids_to_delete.add(question_doc.id)
 
-        return await self.client.delete(
-            collection_name=collection_name, points_selector=list(all_ids_to_delete)
-        )
+        return await self.client.delete(collection_name=collection_name, points_selector=list(all_ids_to_delete))
 
     async def get_list(
         self,
@@ -464,43 +583,66 @@ class DocumentService:
         sort_by: DocumentSortField,
         sort_order: SortOrder,
         document_content: str | None,
+        file_id: int | None = None,
+        file_path: str | None = None,
     ):
+        must_not_conditions = [
+            FieldCondition(
+                key="meta.doc_type",
+                match=MatchValue(value=DocumentType.QUESTION),
+            )
+        ]
+
+        must_conditions = []
+        if file_id == -1:
+            must_conditions.append(
+                Filter(
+                    must=[
+                        FieldCondition(
+                            key="meta.source.file_path",
+                            match=MatchValue(value="json"),
+                        )
+                    ]
+                )
+            )
+        elif file_id is not None:
+            must_conditions.append(FieldCondition(key="meta.file_id", match=MatchValue(value=file_id)))
+        elif file_path is not None:
+            must_conditions.append(FieldCondition(key="meta.source.file_path", match=MatchValue(value=file_path)))
+
+        scroll_filter = (
+            Filter(must_not=must_not_conditions, must=must_conditions)
+            if must_conditions
+            else Filter(must_not=must_not_conditions)
+        )
+
         document_list, _ = await self.client.scroll(
             collection_name=collection_name,
-            scroll_filter=Filter(
-                must_not=[
-                    FieldCondition(
-                        key="meta.doc_type",
-                        match=MatchValue(value=DocumentType.QUESTION),
-                    )
-                ]
-            ),
+            scroll_filter=scroll_filter,
             limit=10000,
-            with_payload=True,  # 根据实际调整
+            with_payload=True,
         )
 
         if not document_list:
             return 0, []
 
         document_list = [
-            {"id": doc.id, "content": (doc.payload or {}).get("content", "")}
+            {
+                "id": str(doc.id),
+                "content": (doc.payload or {}).get("content", ""),
+                "docType": (doc.payload or {}).get("meta", {}).get("doc_type"),
+                "fileId": (doc.payload or {}).get("meta", {}).get("file_id"),
+                "source": self._convert_source_to_camel_case((doc.payload or {}).get("meta", {}).get("source")),
+                "chunkIndex": (doc.payload or {}).get("meta", {}).get("chunk_index"),
+            }
             for doc in document_list
         ]
 
-        # 内容过滤
         if document_content:
-            document_list = [
-                doc
-                for doc in document_list
-                if document_content.lower() in doc["content"].lower()
-            ]
+            document_list = [doc for doc in document_list if document_content.lower() in doc["content"].lower()]
 
-        # 排序
-        document_list.sort(
-            key=lambda x: x[sort_by], reverse=(sort_order == SortOrder.DESC)
-        )
+        document_list.sort(key=lambda x: x[sort_by], reverse=(sort_order == SortOrder.DESC))
 
-        # 计算分页
         total = len(document_list)
         start_index = (current - 1) * size
         end_index = start_index + size
@@ -520,14 +662,10 @@ class DocumentService:
         # 设置默认检索阈值
         if not score_threshold:
             score_threshold = (
-                CONFIG.PRECISION_THRESHOLD
-                if doc_type == DocumentType.QUESTION
-                else CONFIG.SCORE_THRESHOLD
+                CONFIG.PRECISION_THRESHOLD if doc_type == DocumentType.QUESTION else CONFIG.SCORE_THRESHOLD
             )
 
-        doc_search_pipeline = await create_pipeline(
-            DocumentSearchPipeline, qdrant_index=collection_name
-        )
+        doc_search_pipeline = await create_pipeline(DocumentSearchPipeline, qdrant_index=collection_name)
         result = await doc_search_pipeline.run(
             query=query,
             top_k=top_k,
@@ -539,9 +677,7 @@ class DocumentService:
 
     async def query_exact(self, collection_name: str, query: str) -> Document | None:
         """通过匹配问题内容，精准检索知识点"""
-        doc_search_pipeline = await create_pipeline(
-            DocumentSearchPipeline, qdrant_index=collection_name
-        )
+        doc_search_pipeline = await create_pipeline(DocumentSearchPipeline, qdrant_index=collection_name)
         result = await doc_search_pipeline.run(
             query=query,
             top_k=1,
@@ -559,8 +695,4 @@ document_service = DocumentService()
 if __name__ == "__main__":
     import asyncio
 
-    print(
-        asyncio.run(
-            document_service.query_exact("测试数据", "预约轮椅服务需要提前多久")
-        )
-    )
+    print(asyncio.run(document_service.query_exact("测试数据", "预约轮椅服务需要提前多久")))

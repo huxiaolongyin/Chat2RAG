@@ -425,7 +425,7 @@ onMounted(async () => {
       <div class="px-3 py-2 border-b border-slate-200 dark:border-slate-800">
         <a-input
           v-model="searchChatId"
-          placeholder="搜索 chat_id"
+          placeholder="搜索 chat id"
           size="small"
           allow-clear
           @input="handleSearchChatId"

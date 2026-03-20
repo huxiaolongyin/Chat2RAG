@@ -17,8 +17,21 @@ const routes: RouteRecordRaw[] = [
   {
     path: '/knowledge',
     name: 'Knowledge',
-    component: () => import('@/views/knowledge/KnowledgeList.vue'),
     meta: { title: '知识库管理', icon: 'database' },
+    children: [
+      {
+        path: '',
+        name: 'KnowledgeList',
+        component: () => import('@/views/knowledge/KnowledgeList.vue'),
+        meta: { title: '知识库列表' },
+      },
+      {
+        path: ':name',
+        name: 'KnowledgeDetail',
+        component: () => import('@/views/knowledge/KnowledgeDetail.vue'),
+        meta: { title: '知识库详情' },
+      },
+    ],
   },
   {
     path: '/rules',

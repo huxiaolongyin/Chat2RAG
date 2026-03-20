@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-import { Icon } from '@iconify/vue'
+import { Icon } from "@iconify/vue";
+import { ref } from "vue";
 
-const searchValue = ref('')
+const searchValue = ref("");
 </script>
 
 <template>
@@ -16,7 +16,10 @@ const searchValue = ref('')
 
     <div class="flex items-center gap-4">
       <div class="relative w-64">
-        <Icon icon="mdi:magnify" class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-lg" />
+        <Icon
+          icon="mdi:magnify"
+          class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-lg"
+        />
         <a-input
           v-model="searchValue"
           placeholder="搜索..."

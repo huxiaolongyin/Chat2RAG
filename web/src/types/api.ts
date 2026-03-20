@@ -19,9 +19,11 @@ export interface ModelOption {
 
 export interface KnowledgeCollection {
   collectionName: string
-  pointsCount?: number
-  createTime?: string
-  updateTime?: string
+  documentsCount?: number
+  filesCount?: number
+  embeddingSize?: number
+  distance?: string
+  vectorMode?: 'legacy' | 'dense' | 'hybrid'
 }
 
 export interface ModelProvider {
@@ -184,7 +186,10 @@ export interface MetricData {
   toolArguments: Record<string, unknown> | null
   toolResult: Record<string, unknown> | null
   documentCount: number
-  retrievalDocuments?: Record<string, { content: string; score: number | null }>[]
+  retrievalDocuments?: Record<
+    string,
+    { content: string; score: number | null }
+  >[]
 }
 
 export interface ChatSession {
@@ -209,4 +214,107 @@ export interface SessionStats {
   avgTotalMs: number | null
   modelsUsed: string[]
   collectionsUsed: string[]
+}
+
+export type FileStatus = 'pending' | 'parsing' | 'parsed' | 'failed'
+
+export type FileType =
+  | 'pdf'
+  | 'docx'
+  | 'xlsx'
+  | 'xls'
+  | 'csv'
+  | 'tsv'
+  | 'json'
+  | 'unknown'
+
+export interface FileData {
+  id: number
+  collectionName: string
+  filename: string
+  fileType: FileType
+  fileSize: number
+  filePath?: string
+  status: FileStatus
+  version: number
+  chunkCount: number
+  parseConfig?: { maxChars?: number; overlap?: number }
+  errorMessage?: string
+  createTime: string
+  updateTime: string
+}
+
+export interface ChunkData {
+  id: string
+  content: string
+  chunkIndex?: number
+}
+
+export interface FileVersionData {
+  id: number
+  version: number
+  fileSize: number
+  filePath?: string
+  changeNote?: string
+  chunkCount: number
+  parseConfig?: Record<string, unknown>
+  createTime: string
+}
+
+export interface KnowledgeDocument {
+  id: string
+  content: string
+  docType?: string
+  fileId?: number
+  source?: { filePath?: string; pageNum?: number }
+  chunkIndex?: number
+}
+
+export interface QueryResult {
+  id: string
+  content: string
+  score: number
+}
+
+export interface FileListResponse {
+  fileList: FileData[]
+  total: number
+  current: number
+  size: number
+  pages: number
+}
+
+export interface FileDetailResponse {
+  file: FileData
+  chunks: ChunkData[]
+  chunkTotal: number
+  current: number
+  size: number
+}
+
+export interface DocumentListResponse {
+  docList: KnowledgeDocument[]
+  total: number
+  current: number
+  size: number
+  pages: number
+}
+
+export interface QueryResponse {
+  collectionName: string
+  docList: QueryResult[]
+  topK: number
+  scoreThreshold: number | null
+}
+
+export interface ChunkPreview {
+  content: string
+  chunkIndex?: number
+}
+
+export interface PreviewChunksResponse {
+  filename: string
+  chunks: ChunkPreview[]
+  chunkCount: number
+  previewId: string
 }

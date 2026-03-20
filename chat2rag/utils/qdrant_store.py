@@ -23,9 +23,9 @@ async def detect_vector_mode(client: AsyncQdrantClient, collection_name: str) ->
         "dense": 新格式仅 dense（有 text-dense，无 text-sparse）
     """
     if not await client.collection_exists(collection_name):
-        logger.debug(
-            f"Collection '{collection_name}' does not exist, will use dense mode"
-        )
+        # logger.debug(
+        #     f"Collection '{collection_name}' does not exist, will use dense mode"
+        # )
         return "dense"
 
     collection_info = await client.get_collection(collection_name)
@@ -34,17 +34,17 @@ async def detect_vector_mode(client: AsyncQdrantClient, collection_name: str) ->
     has_named_vectors = isinstance(vectors, dict)
 
     if not has_named_vectors:
-        logger.debug(
-            f"Collection '{collection_name}' uses legacy vector format (default)"
-        )
+        # logger.debug(
+        #     f"Collection '{collection_name}' uses legacy vector format (default)"
+        # )
         return "legacy"
     elif collection_info.config.params.sparse_vectors:
-        logger.debug(
-            f"Collection '{collection_name}' uses hybrid format (text-dense + text-sparse)"
-        )
+        # logger.debug(
+        #     f"Collection '{collection_name}' uses hybrid format (text-dense + text-sparse)"
+        # )
         return "hybrid"
     else:
-        logger.debug(
-            f"Collection '{collection_name}' uses dense format (text-dense only)"
-        )
+        # logger.debug(
+        #     f"Collection '{collection_name}' uses dense format (text-dense only)"
+        # )
         return "dense"

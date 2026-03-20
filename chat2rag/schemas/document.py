@@ -14,8 +14,12 @@ class CollectionData(BaseSchema):
     collection_name: str = Field(..., description="知识库名称", examples=["测试数据"])
     status: str = Field(..., description="知识库状态", examples=["green"])
     documents_count: int = Field(..., description="知识条数", examples=[100])
+    files_count: int = Field(default=0, description="文件数", examples=[5])
     embedding_size: int = Field(..., description="嵌入编码的维度", examples=[1024])
     distance: str = Field(..., description="距离的计算方式", examples=["Cosine"])
+    vector_mode: str | None = Field(
+        None, description="向量模式: legacy/hybrid/dense", alias="vectorMode"
+    )
 
 
 class CollectionPaginatedData(BaseSchema):
@@ -24,6 +28,7 @@ class CollectionPaginatedData(BaseSchema):
     collection_list: List[CollectionData] = Field(
         default_factory=list, description="知识库列表"
     )
+    items: List[CollectionData] = Field(default_factory=list, description="知识库列表")
     total: int = Field(default=0, ge=0, description="总记录数")
     current: int = Field(default=1, ge=1, description="当前页码")
     size: int = Field(default=20, ge=1, description="每页条数")
@@ -43,7 +48,9 @@ class CollectionPaginatedData(BaseSchema):
         size: int = 20,
     ) -> "CollectionPaginatedData":
         """创建知识库集合分页数据"""
-        return cls(collection_list=items, total=total, current=current, size=size)
+        return cls(
+            collection_list=items, items=items, total=total, current=current, size=size
+        )
 
 
 class SourceLocation(BaseSchema):
@@ -90,6 +97,7 @@ class ReindexResult(BaseSchema):
 
     points_count: int = Field(..., description="重新索引的文档数量")
     backup_file: str | None = Field(None, description="备份文件路径")
+    synced_files_count: int = Field(default=0, description="同步到数据库的文件数量")
 
 
 class FileData(BaseSchema):
@@ -100,6 +108,7 @@ class FileData(BaseSchema):
     filename: str = Field(..., description="文件名")
     file_type: FileType = Field(..., description="文件类型")
     file_size: int = Field(default=0, description="文件大小(字节)")
+    file_path: str | None = Field(None, description="文件路径")
     status: FileStatus = Field(..., description="状态")
     version: int = Field(default=1, description="当前版本")
     chunk_count: int = Field(default=0, description="分块数量")
@@ -115,6 +124,7 @@ class FileVersionData(BaseSchema):
     id: int = Field(..., description="版本ID")
     version: int = Field(..., description="版本号")
     file_size: int = Field(default=0, description="文件大小(字节)")
+    file_path: str = Field(..., description="文件地址")
     change_note: str | None = Field(None, description="变更说明")
     chunk_count: int = Field(default=0, description="分块数量")
     parse_config: dict | None = Field(None, description="解析配置")
