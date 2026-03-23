@@ -11,6 +11,7 @@ import {
   TooltipComponent,
 } from "echarts/components";
 import { use } from "echarts/core";
+import { LabelLayout } from "echarts/features";
 import { CanvasRenderer } from "echarts/renderers";
 import { computed, onMounted, reactive, ref, watch } from "vue";
 import VChart from "vue-echarts";
@@ -23,6 +24,7 @@ use([
   TooltipComponent,
   LegendComponent,
   GridComponent,
+  LabelLayout,
 ]);
 
 const activeTab = ref("metrics");
@@ -147,7 +149,7 @@ const responseTimeChartData = computed(() => {
       left: "3%",
       right: "4%",
       bottom: "3%",
-      containLabel: true,
+      outerBounds: { x: 0, y: 0, width: "100%", height: "100%" },
     },
     xAxis: {
       type: "category",
@@ -263,7 +265,7 @@ const hotQuestionsChartData = computed(() => {
       right: "8%",
       bottom: "3%",
       top: "3%",
-      containLabel: true,
+      outerBounds: { x: 0, y: 0, width: "100%", height: "100%" },
     },
     xAxis: {
       type: "value",
