@@ -51,12 +51,80 @@ export interface ModelSource {
   generationKwargs?: Record<string, unknown>
 }
 
+export type ToolType = 'all' | 'api' | 'mcp'
+export type ToolMethod = 'GET' | 'POST' | 'PUT' | 'DELETE'
+export type McpType = 'stdio' | 'sse'
+
 export interface Tool {
   id: number
   name: string
   description?: string
   toolType: 'api' | 'mcp'
   isActive: boolean
+  url?: string
+  method?: ToolMethod
+  parameters?: Record<string, unknown>
+  command?: string
+  args?: string[]
+  serverId?: number
+  inputSchema?: Record<string, unknown>
+  outputSchema?: Record<string, unknown>
+  createTime?: string
+  updateTime?: string
+}
+
+export interface ToolQueryParams {
+  current?: number
+  size?: number
+  toolType?: ToolType
+  toolName?: string
+  toolDesc?: string
+  isActive?: boolean
+  sortBy?: 'createTime' | 'updateTime' | 'name'
+  sortOrder?: 'asc' | 'desc'
+}
+
+export interface ApiToolCreate {
+  name: string
+  description?: string
+  url?: string
+  method?: ToolMethod
+  parameters?: Record<string, unknown>
+}
+
+export interface ApiToolUpdate {
+  name?: string
+  description?: string
+  url?: string
+  method?: ToolMethod
+  parameters?: Record<string, unknown>
+  isActive?: boolean
+}
+
+export interface McpServerCreate {
+  name: string
+  mcpType: McpType
+  url?: string
+  command?: string
+  args?: string[]
+  env?: Record<string, string>
+  isActive?: boolean
+}
+
+export interface McpServerUpdate {
+  name?: string
+  mcpType?: McpType
+  url?: string
+  command?: string
+  args?: string[]
+  env?: Record<string, string>
+  isActive?: boolean
+}
+
+export interface ToolSyncData {
+  serverId: number
+  toolCount: number
+  tools: Tool[]
 }
 
 export interface PromptVersionData {
