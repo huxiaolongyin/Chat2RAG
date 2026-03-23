@@ -1,14 +1,16 @@
 <script setup lang="ts">
-import { useAppStore } from '@/stores/app'
-import Sidebar from './Sidebar.vue'
-import Header from './Header.vue'
-import Footer from './Footer.vue'
+// import { useAppStore } from '@/stores/app'
+import Footer from "./Footer.vue";
+import Header from "./Header.vue";
+import Sidebar from "./Sidebar.vue";
 
-const appStore = useAppStore()
+// const appStore = useAppStore()
 </script>
 
 <template>
-  <div class="flex h-screen w-full overflow-hidden bg-background-light dark:bg-background-dark">
+  <div
+    class="flex h-screen w-full overflow-hidden bg-background-light dark:bg-background-dark"
+  >
     <Sidebar />
     <div class="flex flex-1 flex-col overflow-hidden">
       <Header />
