@@ -21,12 +21,15 @@ class MetricBase(BaseSchema):
     prompt: str | None = None
     source: List[Dict[str, str]] | None = None
     retrieval_documents: Dict[str, List[Dict[str, Any]]] | None = None
+    input_tokens: int = 0
+    output_tokens: int = 0
 
 
 class MetricData(MetricBase):
     tool_arguments: Dict[str, Any] | None = None
     tool_result: Dict[str, Any] | None = None
     document_count: int = 0
+    execute_tools: str | None = None
 
 
 class MetricCreate(MetricBase):

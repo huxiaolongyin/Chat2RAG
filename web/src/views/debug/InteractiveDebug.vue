@@ -1,14 +1,13 @@
 <script setup lang="ts">
 import {
-  getChatSessions,
   getKnowledgeCollections,
   getModels,
   getPrompts,
   getSessionMessages,
-  getSessionStats,
   getTools,
   streamChat,
 } from "@/api/chat";
+import { getChatSessions, getSessionStats } from "@/api/metric";
 import { useChatStore } from "@/stores/chat";
 import type {
   ChatSession,
@@ -254,13 +253,11 @@ async function sendMessage() {
 async function loadSessions() {
   sessionsLoading.value = true;
   try {
-    const result = await getChatSessions(
-      sessionsPage.value,
-      20,
-      undefined,
-      undefined,
-      searchChatId.value || undefined
-    );
+    const result = await getChatSessions({
+      current: sessionsPage.value,
+      size: 20,
+      chatId: searchChatId.value || undefined
+    });
     sessions.value = result.items;
     sessionsTotal.value = result.total;
   } catch (error) {

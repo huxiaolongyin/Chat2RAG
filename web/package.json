@@ -15,9 +15,11 @@
     "@iconify/vue": "^5.0.0",
     "axios": "^1.6.8",
     "diff": "^8.0.3",
+    "echarts": "^6.0.0",
     "pinia": "^2.1.7",
     "pinia-plugin-persistedstate": "^3.2.1",
     "vue": "^3.4.21",
+    "vue-echarts": "^8.0.1",
     "vue-router": "^4.3.0"
   },
   "devDependencies": {

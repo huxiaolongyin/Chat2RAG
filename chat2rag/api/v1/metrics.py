@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import List
 
-from fastapi import APIRouter, Query, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from tortoise.expressions import Q
 
 from chat2rag.schemas.base import BaseResponse, PaginatedResponse
@@ -19,9 +19,7 @@ router = APIRouter()
 
 
 @router.get("", response_model=PaginatedResponse[MetricData], summary="获取对话历史")
-@router.get(
-    "/list", response_model=PaginatedResponse[MetricData], summary="获取对话历史"
-)
+@router.get("/list", response_model=PaginatedResponse[MetricData], summary="获取对话历史")
 async def get_metrics_list(
     current: Current = 1,
     size: int = Query(ge=1, le=10000, description="页码大小"),
@@ -32,24 +30,14 @@ async def get_metrics_list(
 ):
     q = Q()
     if start_time:
-        start_time_value = (
-            start_time if not hasattr(start_time, "default") else start_time.default
-        )
-        start_datetime = (
-            datetime.strptime(start_time_value, "%Y-%m-%d")
-            if start_time_value
-            else datetime(2023, 1, 1)
-        )
+        start_time_value = start_time if not hasattr(start_time, "default") else start_time.default
+        start_datetime = datetime.strptime(start_time_value, "%Y-%m-%d") if start_time_value else datetime(2023, 1, 1)
         q &= Q(create_time__gte=start_datetime)
 
     if end_time:
-        end_time_value = (
-            end_time if not hasattr(end_time, "default") else end_time.default
-        )
+        end_time_value = end_time if not hasattr(end_time, "default") else end_time.default
         end_datetime = (
-            datetime.strptime(end_time_value, "%Y-%m-%d").replace(
-                hour=23, minute=59, second=59
-            )
+            datetime.strptime(end_time_value, "%Y-%m-%d").replace(hour=23, minute=59, second=59)
             if end_time_value
             else datetime(2026, 1, 1, 23, 59, 59)
         )
@@ -61,9 +49,7 @@ async def get_metrics_list(
     if chat_id:
         q &= Q(chat_id=chat_id)
 
-    total, metrics = await metric_service.get_list(
-        page=current, page_size=size, search=q, order=["-create_time"]
-    )
+    total, metrics = await metric_service.get_list(page=current, page_size=size, search=q, order=["-create_time"])
 
     return PaginatedResponse.create(
         items=[MetricData.model_validate(metric) for metric in metrics],
@@ -85,9 +71,7 @@ async def get_hot_questions(
 ):
     question_analyzer = QuestionAnalyzer()
     return BaseResponse(
-        data=await question_analyzer.get_hot_questions(
-            collection_name=collection, days=days, limit=limit
-        )
+        data=await question_analyzer.get_hot_questions(collection_name=collection, days=days, limit=limit)
     )
 
 
@@ -98,7 +82,7 @@ async def get_hot_questions(
 )
 async def get_sessions_list(
     current: Current = 1,
-    size: int = Query(ge=1, le=100, default=20, description="页码大小"),
+    size: int = Query(ge=1, le=10000, default=20, description="页码大小"),
     start_time: str | None = Query(None, description="开始时间", alias="startTime"),
     end_time: str | None = Query(None, description="结束时间", alias="endTime"),
     chat_id: str | None = Query(None, description="聊天会话ID", alias="chatId"),
@@ -108,9 +92,7 @@ async def get_sessions_list(
     if start_time:
         start_datetime = datetime.strptime(start_time, "%Y-%m-%d")
     if end_time:
-        end_datetime = datetime.strptime(end_time, "%Y-%m-%d").replace(
-            hour=23, minute=59, second=59
-        )
+        end_datetime = datetime.strptime(end_time, "%Y-%m-%d").replace(hour=23, minute=59, second=59)
 
     total, sessions = await metric_service.get_sessions_list(
         page=current,

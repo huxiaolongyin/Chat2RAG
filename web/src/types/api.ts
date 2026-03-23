@@ -301,6 +301,9 @@ export interface MetricData {
     string,
     { content: string; score: number | null }
   >[]
+  inputTokens: number
+  outputTokens: number
+  executeTools: string | null
 }
 
 export interface ChatSession {
@@ -325,6 +328,42 @@ export interface SessionStats {
   avgTotalMs: number | null
   modelsUsed: string[]
   collectionsUsed: string[]
+}
+
+export interface HotQuestionPoint {
+  id: string
+  text: string
+  collection: string
+  createTime: string
+  updateTime: string
+  count: number
+}
+
+export interface HotQuestionData {
+  id: string
+  representativeQuestion: string
+  count: number
+  clusterSize: number
+  createTime: string
+  updateTime: string
+  similarQuestions: HotQuestionPoint[]
+}
+
+export interface MetricsQueryParams {
+  current?: number
+  size?: number
+  startTime?: string
+  endTime?: string
+  collection?: string
+  chatId?: string
+}
+
+export interface SessionsQueryParams {
+  current?: number
+  size?: number
+  startTime?: string
+  endTime?: string
+  chatId?: string
 }
 
 export type FileStatus = 'pending' | 'parsing' | 'parsed' | 'failed'
