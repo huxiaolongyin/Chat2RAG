@@ -10,13 +10,22 @@ T = TypeVar("T")
 
 
 class PromptBase(BaseSchema):
-    prompt_name: str = Field(..., examples=["测试的提示词"], pattern=r"^[a-zA-Z0-9\u4e00-\u9fa5_-]+$", max_length=50)
-    prompt_desc: str = Field(..., examples=["测试提示词描述"], pattern=r"^[a-zA-Z0-9\u4e00-\u9fa5_-]+$", max_length=200)
+    prompt_name: str = Field(
+        ...,
+        examples=["测试的提示词"],
+        pattern=r"^[a-zA-Z0-9\u4e00-\u9fa5_-]+$",
+        max_length=50,
+    )
+    prompt_desc: str = Field(
+        ...,
+        examples=["测试提示词描述"],
+        pattern=r"^[a-zA-Z0-9\u4e00-\u9fa5_-]+$",
+        max_length=200,
+    )
     prompt_text: str = Field(..., examples=["这是测试提示词内容"])
 
 
 class PromptCreate(PromptBase):
-
     @field_validator("prompt_name", "prompt_desc", "prompt_text")
     @classmethod
     def not_empty(cls, v):
@@ -35,21 +44,46 @@ class PromptIdResponse(BaseSchema):
     prompt_id: int = Field(..., examples=[1])
 
 
+class PromptVersionData(BaseSchema, TimestampMixin):
+    """单个版本数据"""
+
+    version: int = Field(..., examples=[1])
+    prompt_desc: str = Field(..., examples=["测试提示词描述"])
+    prompt_text: str = Field(..., examples=["这是测试提示词内容"])
+
+
+class PromptDetailData(BaseSchema, TimestampMixin):
+    """提示词详情，包含版本列表"""
+
+    id: int = Field(..., examples=[1])
+    prompt_name: str = Field(..., examples=["代码审查助手"])
+    current_version: int = Field(..., examples=[3])
+    versions: List[PromptVersionData] = Field(
+        default_factory=list, description="版本列表"
+    )
+
+
 class PromptData(BaseSchema, TimestampMixin):
     """单个提示词响应模型"""
 
     id: int = Field(..., examples=[1])
     prompt_name: str = Field(..., examples=["代码审查助手"])
     current_version: int = Field(..., examples=[3])
-    prompt_text: str = Field(..., examples=["请仔细审查以下代码，重点关注代码质量、性能优化和潜在bug..."])
-    prompt_desc: str = Field(..., examples=["用于代码审查的AI助手提示词，帮助识别代码问题并提供改进建议"])
+    prompt_text: str = Field(
+        ..., examples=["请仔细审查以下代码，重点关注代码质量、性能优化和潜在bug..."]
+    )
+    prompt_desc: str = Field(
+        ..., examples=["用于代码审查的AI助手提示词，帮助识别代码问题并提供改进建议"]
+    )
     version: int = Field(..., examples=[3])
 
 
 class PromptPaginatedData(BaseSchema):
     """提示词分页数据 - 兼容promptList字段格式"""
 
-    prompt_list: List[PromptData] = Field(default_factory=list, description="提示词列表")
+    prompt_list: List[PromptData] = Field(
+        default_factory=list, description="提示词列表"
+    )
     total: int = Field(default=0, ge=0, description="总记录数")
     current: int = Field(default=1, ge=1, description="当前页码")
     size: int = Field(default=20, ge=1, description="每页条数")
@@ -61,6 +95,8 @@ class PromptPaginatedData(BaseSchema):
         return (self.total + self.size - 1) // self.size if self.total > 0 else 0
 
     @classmethod
-    def create(cls, items: List[PromptData], total: int, current: int = 1, size: int = 20) -> "PromptPaginatedData":
+    def create(
+        cls, items: List[PromptData], total: int, current: int = 1, size: int = 20
+    ) -> "PromptPaginatedData":
         """创建提示词分页数据"""
         return cls(prompt_list=items, total=total, current=current, size=size)

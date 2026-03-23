@@ -14,6 +14,7 @@
     "@arco-design/web-vue": "^2.55.0",
     "@iconify/vue": "^5.0.0",
     "axios": "^1.6.8",
+    "diff": "^8.0.3",
     "pinia": "^2.1.7",
     "pinia-plugin-persistedstate": "^3.2.1",
     "vue": "^3.4.21",

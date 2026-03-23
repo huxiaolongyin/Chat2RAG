@@ -59,6 +59,23 @@ export interface Tool {
   isActive: boolean
 }
 
+export interface PromptVersionData {
+  version: number
+  promptDesc: string
+  promptText: string
+  createTime?: string
+  updateTime?: string
+}
+
+export interface PromptDetailData {
+  id: number
+  promptName: string
+  currentVersion: number
+  versions: PromptVersionData[]
+  createTime?: string
+  updateTime?: string
+}
+
 export interface Prompt {
   id: number
   promptName: string
@@ -66,6 +83,28 @@ export interface Prompt {
   promptText: string
   currentVersion: number
   version: number
+  createTime?: string
+  updateTime?: string
+}
+
+export interface PromptCreate {
+  promptName: string
+  promptDesc: string
+  promptText: string
+}
+
+export interface PromptUpdate {
+  promptName?: string
+  promptDesc?: string
+  promptText?: string
+}
+
+export interface PromptPaginatedData {
+  promptList: Prompt[]
+  total: number
+  current: number
+  size: number
+  pages: number
 }
 
 export interface CommandCategory {
