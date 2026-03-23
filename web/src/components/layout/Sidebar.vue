@@ -9,8 +9,9 @@ const router = useRouter()
 const appStore = useAppStore()
 
 const themeSliderOffset = computed(() => {
+  const paddingOffset = 4
   const index = { light: 0, dark: 1, system: 2 }[appStore.themeMode] ?? 2
-  return index * 40
+  return paddingOffset + index * 40
 })
 
 const menuItems = [
@@ -149,12 +150,12 @@ function handleMenuClick(key: string) {
           </transition>
         </div>
         <template #content>
-          <div class="p-2">
+          <div class="p-2 w-50">
             <div
               class="flex items-center justify-around p-1 bg-slate-100 dark:bg-slate-700 rounded-lg relative"
             >
               <div
-                class="absolute h-7 w-10 bg-white dark:bg-slate-600 rounded shadow-sm transition-transform duration-200"
+                class="absolute left-0 h-7 w-10 bg-white dark:bg-slate-600 rounded shadow-sm transition-transform duration-200"
                 :style="{ transform: `translateX(${themeSliderOffset}px)` }"
               ></div>
               <button
