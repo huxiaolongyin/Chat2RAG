@@ -294,9 +294,25 @@ export interface SensitiveWordCategoryUpdate {
 export interface Flow {
   id: number
   name: string
-  description?: string
-  states: unknown
-  transitions: unknown
+  desc?: string
+  currentVersion?: number
+  flowJson?: Record<string, unknown>
+  createTime?: string
+  updateTime?: string
+}
+
+export interface FlowCreate {
+  name: string
+  desc?: string
+  currentVersion?: number
+  flowJson?: Record<string, unknown>
+}
+
+export interface FlowUpdate {
+  name?: string
+  desc?: string
+  currentVersion?: number
+  flowJson?: Record<string, unknown>
 }
 
 export interface RobotAction {

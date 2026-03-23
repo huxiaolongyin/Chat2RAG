@@ -56,6 +56,12 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/flow/FlowList.vue'),
         meta: { title: '流程管理', icon: 'fork' },
       },
+      {
+        path: 'flows/editor/:id',
+        name: 'FlowEditor',
+        component: () => import('@/views/flow/FlowEditor.vue'),
+        meta: { title: '流程编辑器' },
+      },
     ],
   },
   {
