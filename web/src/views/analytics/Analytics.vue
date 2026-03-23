@@ -530,6 +530,7 @@ onMounted(() => {
             v-model="selectedCollection"
             placeholder="全部知识库"
             allow-clear
+            allow-search
             style="width: 180px"
             @change="handleCollectionChange"
           >
