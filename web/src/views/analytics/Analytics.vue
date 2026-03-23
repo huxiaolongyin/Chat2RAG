@@ -119,7 +119,8 @@ const responseTimeChartData = computed(() => {
     { name: "<500ms", min: 0, max: 500, count: 0 },
     { name: "500ms-1s", min: 500, max: 1000, count: 0 },
     { name: "1s-2s", min: 1000, max: 2000, count: 0 },
-    { name: "2s-5s", min: 2000, max: 5000, count: 0 },
+    { name: "2s-3s", min: 2000, max: 3000, count: 0 },
+    { name: "3s-5s", min: 3000, max: 5000, count: 0 },
     { name: ">5s", min: 5000, max: Infinity, count: 0 },
   ];
 
