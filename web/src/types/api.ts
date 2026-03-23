@@ -142,11 +142,45 @@ export interface CommandBatchMove {
   categoryId: number | null
 }
 
+export interface SensitiveWordCategory {
+  id: number
+  name: string
+  description?: string
+}
+
 export interface SensitiveWord {
   id: number
   word: string
   categoryId?: number
   level: number
+  description?: string
+  isActive: boolean
+  category?: SensitiveWordCategory
+}
+
+export interface SensitiveWordCreate {
+  word: string
+  categoryId?: number
+  level?: number
+  description?: string
+  isActive?: boolean
+}
+
+export interface SensitiveWordUpdate {
+  word?: string
+  categoryId?: number
+  level?: number
+  description?: string
+  isActive?: boolean
+}
+
+export interface SensitiveWordCategoryCreate {
+  name: string
+  description?: string
+}
+
+export interface SensitiveWordCategoryUpdate {
+  name?: string
   description?: string
 }
 
