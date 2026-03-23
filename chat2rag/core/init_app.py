@@ -3,6 +3,7 @@ from tortoise.exceptions import OperationalError
 
 from chat2rag.config import CONFIG
 from chat2rag.core.logger import get_logger
+from chat2rag.core.security import get_password_hash
 
 logger = get_logger(__name__)
 
@@ -49,3 +50,30 @@ async def modify_db(config=None):
         raise
     except Exception as e:
         logger.debug(f"Database already at latest version: {e}")
+
+    await init_default_data()
+
+
+async def init_default_data():
+    """初始化默认数据：默认租户和管理员账号"""
+    from chat2rag.models import Tenant, User
+
+    tenant, created = await Tenant.get_or_create(
+        code="default", defaults={"name": "默认租户", "status": 1}
+    )
+    if created:
+        logger.info("Created default tenant")
+
+    admin_user = await User.filter(username="admin", tenant_id=tenant.id).first()
+    if not admin_user:
+        await User.create(
+            tenant=tenant,
+            username="admin",
+            password=get_password_hash("admin123"),
+            nickname="管理员",
+            is_superuser=True,
+            status=1,
+        )
+        logger.info("Created default admin user (admin/admin123)")
+    else:
+        logger.debug("Admin user already exists")

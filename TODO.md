@@ -30,6 +30,7 @@
 - [ ] 🟡P3 人机交互的技能开发：点餐 MCP、导航 MCP 优化、基础技能的集成
 - [x] 🟠P2 AgentPipeline 需要支持多个 collection
 - [ ] 🟡P3 从稠密检索改为混合检索方式，加入重排处理
+- []
 
 ## 性能优化
 
@@ -39,6 +40,7 @@
 - [x] 🟠P2 auto_log 和 exception_handler 装饰器转为中间件
 - [x] 🟡P3 去除 RAG 策略，合并到 Agent 策略中，以减少代码维护
 - [ ] 🟡P3 查询问题根据 k:v 缓存 embedding 缓存
+- [ ] 🟠P2 MCP 功能服务进行精简化，并研究部署方案
 
 ## BUG 修复
 
@@ -47,6 +49,7 @@
 <!-- - [ ] 🔴P1 存在 Chat 调用时，没有将交互记录存到数据库的情况(未发现代码问题，后续持续观察) -->
 - [] 出现流式的没有 status=2 的情况，2026-03-19 09:10:11,009 - mcp.client.streamable_http - DEBUG - Sending client message: root=JSONRPCRequest(method='tools/call', params={'name': 'maps_weather', 'arguments': {'city': '福州'}}, jsonrpc='2.0', id=5)
   Exception ignored in: <function BaseEventLoop.**del** at 0x0000022426D0DA80>
+- [ ] 🟡P3 知识库新增版本时的预览没有被实际创建使用
 
 ## 测试相关
 

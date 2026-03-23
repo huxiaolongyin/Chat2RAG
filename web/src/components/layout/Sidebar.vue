@@ -48,7 +48,17 @@ const menuItems = [
     ],
   },
   { key: '/analytics', icon: 'mdi:chart-line', label: '数据分析' },
-  { key: '/settings', icon: 'mdi:cogs', label: '系统设置' },
+  {
+    key: '/system',
+    icon: 'mdi:shield-account',
+    label: '系统管理',
+    children: [
+      { key: '/system/users', label: '用户管理' },
+      { key: '/system/roles', label: '角色管理' },
+      { key: '/system/permissions', label: '权限管理' },
+      { key: '/system/tenants', label: '租户管理' },
+    ],
+  },
 ]
 
 const activeKey = computed(() => {

@@ -149,7 +149,7 @@ class PaginationParams(BaseSchema):
     """
 
     current: int = Field(default=1, ge=1, description="页码（从1开始）", examples=[1])
-    size: int = Field(default=10, ge=1, le=100, description="每页条数（最大100）", examples=[10])
+    size: int = Field(default=10, ge=1, le=1000, description="每页条数（最大1000）", examples=[10])
 
     @computed_field
     @property
