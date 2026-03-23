@@ -237,6 +237,22 @@ export interface RobotAction {
   code: string
   description?: string
   isActive: boolean
+  createTime?: string
+  updateTime?: string
+}
+
+export interface RobotActionCreate {
+  name: string
+  code: string
+  description?: string
+  isActive?: boolean
+}
+
+export interface RobotActionUpdate {
+  name?: string
+  code?: string
+  description?: string
+  isActive?: boolean
 }
 
 export interface RobotExpression {
@@ -245,6 +261,22 @@ export interface RobotExpression {
   code: string
   description?: string
   isActive: boolean
+  createTime?: string
+  updateTime?: string
+}
+
+export interface RobotExpressionCreate {
+  name: string
+  code: string
+  description?: string
+  isActive?: boolean
+}
+
+export interface RobotExpressionUpdate {
+  name?: string
+  code?: string
+  description?: string
+  isActive?: boolean
 }
 
 export interface MetricData {
