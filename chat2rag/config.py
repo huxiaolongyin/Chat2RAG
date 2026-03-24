@@ -211,6 +211,16 @@ class Config:
     RERANK_URL = _load_str_env("RERANK_URL") or "https://api.siliconflow.cn/v1/rerank"
     RERANK_MODEL = _load_str_env("RERANK_MODEL") or "Qwen/Qwen3-Reranker-4B"
 
+    # 多模态配置
+    MULTIMODAL_API_URL = (
+        _load_str_env("MULTIMODAL_API_URL")
+        or "https://dashscope.aliyuncs.com/compatible-mode/v1"
+    )
+    MULTIMODAL_API_KEY = _load_str_env("MULTIMODAL_API_KEY")
+    MULTIMODAL_MODEL = (
+        _load_str_env("MULTIMODAL_MODEL") or "qwen3-vl-235b-a22b-instruct"
+    )
+
     RAG_PROMPT_TEMPLATE = RAG_PROMPT_TEMPLATE
     FUNCTION_PROMPT_TEMPLATE = ""
 

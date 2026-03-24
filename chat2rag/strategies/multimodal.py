@@ -6,6 +6,7 @@ from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.dataclasses import ChatMessage, ImageContent, StreamingChunk
 from haystack.utils import Secret
 
+from chat2rag.config import CONFIG
 from chat2rag.core.logger import get_logger
 
 from .base import ResponseStrategy
@@ -37,9 +38,9 @@ class MultiModalStrategy(ResponseStrategy):
         try:
             image_data = self.request.content.image
             multiModal = OpenAIChatGenerator(
-                model="qwen3-vl-235b-a22b-instruct",
-                api_base_url="https://dashscope.aliyuncs.com/compatible-mode/v1",
-                api_key=Secret.from_token("sk-09986c3ceb3842569f0b22cb158f34f2"),
+                model=CONFIG.MULTIMODAL_MODEL,
+                api_base_url=CONFIG.MULTIMODAL_API_URL,
+                api_key=Secret.from_token(CONFIG.MULTIMODAL_API_KEY),
                 streaming_callback=self.handler.callback,
                 generation_kwargs={
                     "extra_body": {"stream_options": {"include_usage": True}}
