@@ -69,6 +69,7 @@ class AgentStrategy(ResponseStrategy):
                 AgentPipeline,
                 collections=self.request.collections,
                 model=model_source.name,
+                tools=self.request.tools,
                 api_base_url=model_provider.base_url,
                 api_key=model_provider.api_key,
                 generation_kwargs=generation_kwargs,
@@ -92,7 +93,6 @@ class AgentStrategy(ResponseStrategy):
                 messages=history_messages,
                 extra_params=self.request.extra_params | current_time,
                 streaming_callback=self.handler.callback,
-                tools=self.request.tools,
             )
             logger.info(f"[{self.handler.message_id}] pipeline.run_async completed")
 

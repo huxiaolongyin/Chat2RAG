@@ -38,6 +38,7 @@ class AgentPipeline(BasePipeline[AsyncPipeline]):
         self,
         collections: List[str],
         model: str,
+        tools: List[str] = [],
         api_base_url: str = "",
         api_key: str = "",
         generation_kwargs: Dict[str, Any] = {},
@@ -45,6 +46,8 @@ class AgentPipeline(BasePipeline[AsyncPipeline]):
         super().__init__()
         self._collections = collections if collections else []
         self._model = model
+        self._tools = []
+        self._tool_list = tools
         self._api_base_url = api_base_url
         self._api_key = api_key
         self._generation_kwargs = recursive_tuple_to_dict(generation_kwargs)
@@ -52,6 +55,14 @@ class AgentPipeline(BasePipeline[AsyncPipeline]):
         self._tool_sources: Dict[str, str] = {}
 
     async def _prepare_async_resources(self):
+        # if self._tool_list:
+        #     loaded_tools, tool_sources = await mcp_service.get_by_names(self._tool_list)
+        #     if loaded_tools:
+        #         self._tools.extend(loaded_tools)
+        #         self._tool_sources = tool_sources
+        #     else:
+        #         logger.warning(f"Failed to load tools: {self._tool_list}")
+
         client = get_client()
         for collection in self._collections:
             mode = await detect_vector_mode(client, collection)
@@ -122,6 +133,7 @@ class AgentPipeline(BasePipeline[AsyncPipeline]):
                         generation_kwargs=self._generation_kwargs,
                     ),
                     raise_on_tool_invocation_failure=False,
+                    # tools=self._tools,
                     tools=[Tool("None", description="None", parameters={}, function=lambda x: x)],
                 ),
             )
@@ -148,11 +160,11 @@ class AgentPipeline(BasePipeline[AsyncPipeline]):
         filters: Dict[str, Any] | Filter | None = None,
         extra_params: Dict[str, Any] = {},
         streaming_callback: Callable | None = None,
-        tools: List[str] = [],
     ):
-        loaded_tools = []
-        if tools:
-            loaded_tools, tool_sources = await mcp_service.get_by_names(tools)
+        tools = []
+        if self._tool_list:
+            loaded_tools, tool_sources = await mcp_service.get_by_names(self._tool_list)
+            tools = loaded_tools
             self._tool_sources = tool_sources
 
         retriever_params = {}
@@ -170,10 +182,7 @@ class AgentPipeline(BasePipeline[AsyncPipeline]):
                 "template": messages,
                 "template_variables": {"query": query} | extra_params,
             },
-            "agent": {
-                "streaming_callback": streaming_callback,
-                "tools": loaded_tools,
-            },
+            "agent": {"streaming_callback": streaming_callback, "tools": tools},
         }
 
         if CONFIG.RERANK_ENABLED:
