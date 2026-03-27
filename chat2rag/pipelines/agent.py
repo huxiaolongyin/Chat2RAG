@@ -7,6 +7,7 @@ from haystack.components.embedders import OpenAITextEmbedder
 from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.components.joiners import DocumentJoiner
 from haystack.dataclasses import ChatMessage
+from haystack.tools import Tool
 from haystack.utils import Secret
 from haystack_integrations.components.retrievers.qdrant import QdrantEmbeddingRetriever
 from haystack_integrations.document_stores.qdrant import QdrantDocumentStore
@@ -37,7 +38,6 @@ class AgentPipeline(BasePipeline[AsyncPipeline]):
         self,
         collections: List[str],
         model: str,
-        tools: List[str] = [],
         api_base_url: str = "",
         api_key: str = "",
         generation_kwargs: Dict[str, Any] = {},
@@ -45,8 +45,6 @@ class AgentPipeline(BasePipeline[AsyncPipeline]):
         super().__init__()
         self._collections = collections if collections else []
         self._model = model
-        self._tools = []
-        self._tool_list = tools
         self._api_base_url = api_base_url
         self._api_key = api_key
         self._generation_kwargs = recursive_tuple_to_dict(generation_kwargs)
@@ -54,14 +52,6 @@ class AgentPipeline(BasePipeline[AsyncPipeline]):
         self._tool_sources: Dict[str, str] = {}
 
     async def _prepare_async_resources(self):
-        if self._tool_list:
-            loaded_tools, tool_sources = await mcp_service.get_by_names(self._tool_list)
-            if loaded_tools:
-                self._tools.extend(loaded_tools)
-                self._tool_sources = tool_sources
-            else:
-                logger.warning(f"Failed to load tools: {self._tool_list}")
-
         client = get_client()
         for collection in self._collections:
             mode = await detect_vector_mode(client, collection)
@@ -94,13 +84,9 @@ class AgentPipeline(BasePipeline[AsyncPipeline]):
                 document_store._async_client = get_client()
                 pipeline.add_component(
                     retriever_name,
-                    QdrantEmbeddingRetriever(
-                        document_store=document_store, score_threshold=0.55
-                    ),
+                    QdrantEmbeddingRetriever(document_store=document_store, score_threshold=0.55),
                 )
-                pipeline.connect(
-                    "embedder.embedding", f"{retriever_name}.query_embedding"
-                )
+                pipeline.connect("embedder.embedding", f"{retriever_name}.query_embedding")
 
             pipeline.add_component("doc_joiner", DocumentJoiner())
 
@@ -113,9 +99,7 @@ class AgentPipeline(BasePipeline[AsyncPipeline]):
                     OpenRanker(
                         model=CONFIG.RERANK_MODEL,
                         top_k=CONFIG.TOP_K,
-                        api_key=Secret.from_token(CONFIG.RERANK_API_KEY)
-                        if CONFIG.RERANK_API_KEY
-                        else None,
+                        api_key=Secret.from_token(CONFIG.RERANK_API_KEY) if CONFIG.RERANK_API_KEY else None,
                         api_base_url=CONFIG.RERANK_URL,
                     ),
                 )
@@ -138,7 +122,7 @@ class AgentPipeline(BasePipeline[AsyncPipeline]):
                         generation_kwargs=self._generation_kwargs,
                     ),
                     raise_on_tool_invocation_failure=False,
-                    tools=self._tools,
+                    tools=[Tool("None", description="None", parameters={}, function=lambda x: x)],
                 ),
             )
 
@@ -164,7 +148,13 @@ class AgentPipeline(BasePipeline[AsyncPipeline]):
         filters: Dict[str, Any] | Filter | None = None,
         extra_params: Dict[str, Any] = {},
         streaming_callback: Callable | None = None,
+        tools: List[str] = [],
     ):
+        loaded_tools = []
+        if tools:
+            loaded_tools, tool_sources = await mcp_service.get_by_names(tools)
+            self._tool_sources = tool_sources
+
         retriever_params = {}
         for idx in range(len(self._collections)):
             retriever_params[f"retriever_{idx}"] = {
@@ -180,7 +170,10 @@ class AgentPipeline(BasePipeline[AsyncPipeline]):
                 "template": messages,
                 "template_variables": {"query": query} | extra_params,
             },
-            "agent": {"streaming_callback": streaming_callback},
+            "agent": {
+                "streaming_callback": streaming_callback,
+                "tools": loaded_tools,
+            },
         }
 
         if CONFIG.RERANK_ENABLED:
@@ -193,9 +186,7 @@ class AgentPipeline(BasePipeline[AsyncPipeline]):
         logger.debug(f"Starting pipeline.run_async for query: {query[:50]}...")
         result = await self.pipeline.run_async(
             run_data,
-            include_outputs_from={"ranker"}
-            if CONFIG.RERANK_ENABLED
-            else {"doc_joiner"},
+            include_outputs_from={"ranker"} if CONFIG.RERANK_ENABLED else {"doc_joiner"},
         )
         logger.debug("pipeline.run_async completed")
         return result

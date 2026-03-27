@@ -1,10 +1,9 @@
-import re
 from dataclasses import dataclass
 from typing import AsyncIterator, Optional
 
 from chat2rag.config import CONFIG
 from chat2rag.core.logger import get_logger
-from chat2rag.models.command import Command, CommandVariant, ParamType
+from chat2rag.models.command import Command, ParamType
 from chat2rag.schemas.chat import SourceType
 from chat2rag.services.command_service import CommandService
 from chat2rag.utils.intent_recognizer import fuzzy_match, intent_recognizer
@@ -43,9 +42,7 @@ class CommandStrategy(ResponseStrategy):
             command = result.command
             logger.info(f"Command matched: {command.name} (code={command.code})")
 
-            self.handler.add_source(
-                SourceType.COMMAND, command.name, f"code: {command.code}"
-            )
+            self.handler.add_source(SourceType.COMMAND, command.name, f"code: {command.code}")
             reply = command.reply if command.reply else "."
 
             arguments = {}
@@ -54,9 +51,7 @@ class CommandStrategy(ResponseStrategy):
                 if result.param_raw:
                     arguments["raw"] = result.param_raw
 
-            async for item in self._yield_stream(
-                reply, command.name, command=command.code, arguments=arguments
-            ):
+            async for item in self._yield_stream(reply, command.name, command=command.code, arguments=arguments):
                 yield item
 
     async def _get_active_commands(self):
@@ -117,11 +112,7 @@ class CommandStrategy(ResponseStrategy):
         # 匹配命令名称
         if command.name.lower() in query_lower:
             param = await self._extract_param(command, query)
-            return MatchResult(
-                command=command,
-                param_value=param.get("value"),
-                param_raw=param.get("raw"),
-            )
+            return MatchResult(command=command, param_value=param.get("value"), param_raw=param.get("raw"))
 
         # 匹配变体
         variants = await command.variants.all()
@@ -140,17 +131,11 @@ class CommandStrategy(ResponseStrategy):
             variant_text = variant.text.lower()
             if variant_text in query_lower:
                 param = await self._extract_param(command, query)
-                return MatchResult(
-                    command=command,
-                    param_value=param.get("value"),
-                    param_raw=param.get("raw"),
-                )
+                return MatchResult(command=command, param_value=param.get("value"), param_raw=param.get("raw"))
 
         return None
 
-    async def _fuzzy_match_layer(
-        self, query: str, commands: list
-    ) -> Optional[MatchResult]:
+    async def _fuzzy_match_layer(self, query: str, commands: list) -> Optional[MatchResult]:
         """模糊匹配层：基于字符串相似度"""
         threshold = getattr(CONFIG, "COMMAND_FUZZY_THRESHOLD", 0.7)
 
@@ -158,12 +143,7 @@ class CommandStrategy(ResponseStrategy):
         for command in commands:
             variants = await command.variants.all()
             for variant in variants:
-                candidates.append(
-                    {
-                        "text": variant.text,
-                        "command": command,
-                    }
-                )
+                candidates.append({"text": variant.text, "command": command})
 
         result = fuzzy_match(query, candidates, threshold)
         if result:
@@ -171,11 +151,7 @@ class CommandStrategy(ResponseStrategy):
             command = candidate["command"]
             param = await self._extract_param(command, query)
             logger.info(f"Fuzzy match score: {score:.2f}")
-            return MatchResult(
-                command=command,
-                param_value=param.get("value"),
-                param_raw=param.get("raw"),
-            )
+            return MatchResult(command=command, param_value=param.get("value"), param_raw=param.get("raw"))
 
         return None
 
@@ -194,11 +170,7 @@ class CommandStrategy(ResponseStrategy):
                     if result.slots and "value" in result.slots:
                         param_value = result.slots["value"]
                         param_raw = str(param_value)
-                    return MatchResult(
-                        command=command,
-                        param_value=param_value,
-                        param_raw=param_raw,
-                    )
+                    return MatchResult(command=command, param_value=param_value, param_raw=param_raw)
 
             return None
 

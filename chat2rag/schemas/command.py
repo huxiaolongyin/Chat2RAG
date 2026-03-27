@@ -59,7 +59,7 @@ class CommandBase(BaseSchema):
     is_active: bool = Field(True, description="是否启用")
     commands: str | None = Field(
         None,
-        max_length=255,
+        max_length=5000,
         description="指令文本",
         examples=["再左转一下|向左|向左边转"],
     )
@@ -83,7 +83,7 @@ class CommandUpdate(BaseSchema):
     priority: int | None = Field(None, description="优先级")
     description: str | None = Field(None, max_length=255, description="描述信息")
     is_active: bool | None = Field(None, description="是否启用")
-    commands: str | None = Field(None, max_length=255, description="指令文本")
+    commands: str | None = Field(None, max_length=5000, description="指令文本")
     param_type: ParamType | None = Field(None, description="参数类型")
     examples: list[str] | None = Field(None, description="示例说法列表")
     variants: list[CommandVariantCreate] | None = Field(None, description="指令变体列表")

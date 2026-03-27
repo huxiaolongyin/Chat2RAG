@@ -69,7 +69,6 @@ class AgentStrategy(ResponseStrategy):
                 AgentPipeline,
                 collections=self.request.collections,
                 model=model_source.name,
-                tools=self.request.tools,
                 api_base_url=model_provider.base_url,
                 api_key=model_provider.api_key,
                 generation_kwargs=generation_kwargs,
@@ -93,12 +92,11 @@ class AgentStrategy(ResponseStrategy):
                 messages=history_messages,
                 extra_params=self.request.extra_params | current_time,
                 streaming_callback=self.handler.callback,
+                tools=self.request.tools,
             )
             logger.info(f"[{self.handler.message_id}] pipeline.run_async completed")
 
-            documents = result.get(
-                "ranker" if CONFIG.RERANK_ENABLED else "doc_joiner", {}
-            ).get("documents", [])
+            documents = result.get("ranker" if CONFIG.RERANK_ENABLED else "doc_joiner", {}).get("documents", [])
 
             # 提取并存储检索文档
             retrieval_docs = self._extract_retrieval_documents(documents)
@@ -132,9 +130,7 @@ class AgentStrategy(ResponseStrategy):
             self.handler.set_token_info(input_tokens, output_tokens)
 
         except Exception as e:
-            logger.exception(
-                f"[{self.handler.message_id}] Failed to execute agent strategy"
-            )
+            logger.exception(f"[{self.handler.message_id}] Failed to execute agent strategy")
             self.handler.set_error(str(e))
             await self.handler.callback(
                 StreamingChunk(
@@ -143,9 +139,7 @@ class AgentStrategy(ResponseStrategy):
                 )
             )
         finally:
-            logger.debug(
-                f"[{self.handler.message_id}] Sending END signal to stream handler"
-            )
+            logger.debug(f"[{self.handler.message_id}] Sending END signal to stream handler")
             await self.handler.finish()
 
     @staticmethod
@@ -168,11 +162,7 @@ class AgentStrategy(ResponseStrategy):
         for doc in documents:
             meta = getattr(doc, "meta", {}) or {}
             source_info = meta.get("source", {})
-            file_path = (
-                source_info.get("file_path", "")
-                if isinstance(source_info, dict)
-                else ""
-            )
+            file_path = source_info.get("file_path", "") if isinstance(source_info, dict) else ""
 
             collection = meta.get("collection_name", "")
 
