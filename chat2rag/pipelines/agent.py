@@ -7,7 +7,6 @@ from haystack.components.embedders import OpenAITextEmbedder
 from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.components.joiners import DocumentJoiner
 from haystack.dataclasses import ChatMessage
-from haystack.tools import Tool
 from haystack.utils import Secret
 from haystack_integrations.components.retrievers.qdrant import QdrantEmbeddingRetriever
 from haystack_integrations.document_stores.qdrant import QdrantDocumentStore
@@ -55,13 +54,13 @@ class AgentPipeline(BasePipeline[AsyncPipeline]):
         self._tool_sources: Dict[str, str] = {}
 
     async def _prepare_async_resources(self):
-        # if self._tool_list:
-        #     loaded_tools, tool_sources = await mcp_service.get_by_names(self._tool_list)
-        #     if loaded_tools:
-        #         self._tools.extend(loaded_tools)
-        #         self._tool_sources = tool_sources
-        #     else:
-        #         logger.warning(f"Failed to load tools: {self._tool_list}")
+        if self._tool_list:
+            loaded_tools, tool_sources = await mcp_service.get_by_names(self._tool_list)
+            if loaded_tools:
+                self._tools.extend(loaded_tools)
+                self._tool_sources = tool_sources
+            else:
+                logger.warning(f"Failed to load tools: {self._tool_list}")
 
         client = get_client()
         for collection in self._collections:
@@ -133,8 +132,7 @@ class AgentPipeline(BasePipeline[AsyncPipeline]):
                         generation_kwargs=self._generation_kwargs,
                     ),
                     raise_on_tool_invocation_failure=False,
-                    # tools=self._tools,
-                    tools=[Tool("None", description="None", parameters={}, function=lambda x: x)],
+                    tools=self._tools,
                 ),
             )
 
@@ -161,12 +159,6 @@ class AgentPipeline(BasePipeline[AsyncPipeline]):
         extra_params: Dict[str, Any] = {},
         streaming_callback: Callable | None = None,
     ):
-        tools = []
-        if self._tool_list:
-            loaded_tools, tool_sources = await mcp_service.get_by_names(self._tool_list)
-            tools = loaded_tools
-            self._tool_sources = tool_sources
-
         retriever_params = {}
         for idx in range(len(self._collections)):
             retriever_params[f"retriever_{idx}"] = {
@@ -182,7 +174,7 @@ class AgentPipeline(BasePipeline[AsyncPipeline]):
                 "template": messages,
                 "template_variables": {"query": query} | extra_params,
             },
-            "agent": {"streaming_callback": streaming_callback, "tools": tools},
+            "agent": {"streaming_callback": streaming_callback},
         }
 
         if CONFIG.RERANK_ENABLED:
