@@ -1,8 +1,8 @@
 import asyncio
 import json
-from dataclasses import replace
 import re
 import uuid
+from dataclasses import replace
 from time import perf_counter
 from typing import Dict, List
 
@@ -145,9 +145,7 @@ class StreamHandler:
 
     def add_source(self, source_type: SourceType, display: str, detail: str = ""):
         """Add information source"""
-        self._source_items.append(
-            SourceItem(type=source_type, display=display, detail=detail)
-        )
+        self._source_items.append(SourceItem(type=source_type, display=display, detail=detail))
 
     def set_tool_sources(self, tool_sources: Dict[str, str]):
         """Set tool sources mapping {tool_name: mcp_server_name}"""
@@ -186,9 +184,7 @@ class StreamHandler:
             # Save retrieval documents
             if self._retrieval_documents:
                 self.metrics.retrieval_documents = self._retrieval_documents
-                self.metrics.document_count = sum(
-                    len(docs) for docs in self._retrieval_documents.values()
-                )
+                self.metrics.document_count = sum(len(docs) for docs in self._retrieval_documents.values())
 
             # Create metric record
             await metric_service.create(self.metrics)
@@ -350,20 +346,14 @@ class StreamHandler:
 
         return StreamChunkV2(
             input=query,
-            content=ContentSchema(
-                text=behavior_data["clean_text"], image=behavior_data["image"]
-            ),
+            content=ContentSchema(text=behavior_data["clean_text"], image=behavior_data["image"]),
             model=self.model,
             status=status,
-            behavior=BehaviorSchema(
-                emoji=behavior_data["emoji"], action=behavior_data["action"]
-            ),
+            behavior=BehaviorSchema(emoji=behavior_data["emoji"], action=behavior_data["action"]),
             tool=tool_content,
             link=behavior_data["link"],
-            source=SourceSchema(items=self._source_items)
-            if status == 2
-            else SourceSchema(),
-            document=self._retrieval_documents if self._retrieval_documents else None,
+            source=SourceSchema(items=self._source_items) if status == 2 else SourceSchema(),
+            document=self._retrieval_documents if self._retrieval_documents else {},
             message_id=self.message_id,
         )
 
@@ -414,20 +404,14 @@ class StreamHandler:
         if tool_result:
             try:
                 tool_result = json.loads(str(tool_result))
-                tool_result.get("content")[0]["text"] = json.loads(
-                    tool_result.get("content")[0]["text"]
-                )
+                tool_result.get("content")[0]["text"] = json.loads(tool_result.get("content")[0]["text"])
                 tool_result["content"] = tool_result.get("content")[0]
 
             except Exception:
-                logger.warning(
-                    "Failed to parse tool call result as JSON. Using original result"
-                )
+                logger.warning("Failed to parse tool call result as JSON. Using original result")
 
             # Record tool result
-            self.metrics.tool_result = (
-                tool_result if isinstance(tool_result, dict) else {}
-            )
+            self.metrics.tool_result = tool_result if isinstance(tool_result, dict) else {}
 
         async for data_str in self._yield_data(
             "", chunk.meta, tool=tool_name, arguments=arguments, tool_result=tool_result
@@ -477,9 +461,7 @@ class StreamHandler:
                 continue
 
             if chunk == StreamControl.END:
-                logger.debug(
-                    f"[{self.message_id}] Received END signal, processing final data"
-                )
+                logger.debug(f"[{self.message_id}] Received END signal, processing final data")
                 if self._execute_tools_list:
                     seen = set()
                     for tool_name in self._execute_tools_list:
@@ -490,25 +472,17 @@ class StreamHandler:
                         detail = f"server: {server_name}" if server_name else ""
                         self.add_source(SourceType.TOOL, tool_name, detail)
 
-                emoji_obj = await robot_expression_service.get_code_by_name(
-                    self._accumulated_behavior.get("emoji", "")
-                )
-                action_obj = await robot_action_service.get_code_by_name(
-                    self._accumulated_behavior.get("action", "")
-                )
+                emoji_obj = await robot_expression_service.get_code_by_name(self._accumulated_behavior.get("emoji", ""))
+                action_obj = await robot_action_service.get_code_by_name(self._accumulated_behavior.get("action", ""))
                 self.set_behavior(emoji_obj, action_obj)
 
                 if is_batch and current_batch:
                     combined_content = "".join([c.content for c in current_batch])
 
-                    async for data_str in self._yield_data(
-                        combined_content, current_batch[-1].meta
-                    ):
+                    async for data_str in self._yield_data(combined_content, current_batch[-1].meta):
                         yield data_str
 
-                async for data_str in self._yield_data(
-                    "", meta={"finish_reason": "stop", "model": ""}
-                ):
+                async for data_str in self._yield_data("", meta={"finish_reason": "stop", "model": ""}):
                     yield data_str
 
                 logger.debug(f"[{self.message_id}] Saving metrics...")
@@ -539,14 +513,10 @@ class StreamHandler:
                         emoji_code = ""
                         action_code = ""
                         if tags.get("emoji"):
-                            emoji = await robot_expression_service.get_code_by_name(
-                                tags["emoji"]
-                            )
+                            emoji = await robot_expression_service.get_code_by_name(tags["emoji"])
                             emoji_code = emoji.code if emoji else ""
                         if tags.get("action"):
-                            action = await robot_action_service.get_code_by_name(
-                                tags["action"]
-                            )
+                            action = await robot_action_service.get_code_by_name(tags["action"])
                             action_code = action.code if action else ""
 
                         if first_response:
@@ -559,9 +529,7 @@ class StreamHandler:
                             "link": tags.get("link", ""),
                             "image": tags.get("image", ""),
                         }
-                        async for data_str in self._yield_data(
-                            "", chunk.meta, behavior_data=behavior_msg
-                        ):
+                        async for data_str in self._yield_data("", chunk.meta, behavior_data=behavior_msg):
                             yield data_str
 
                     if clean_text:
@@ -575,16 +543,12 @@ class StreamHandler:
                             "link": "",
                             "image": "",
                         }
-                        async for data_str in self._yield_data(
-                            clean_text, chunk.meta, behavior_data=behavior_data
-                        ):
+                        async for data_str in self._yield_data(clean_text, chunk.meta, behavior_data=behavior_data):
                             yield data_str
 
             else:
                 # Batch processing mode
-                first_response, results = await self._process_batch_content(
-                    chunk, current_batch, first_response
-                )
+                first_response, results = await self._process_batch_content(chunk, current_batch, first_response)
                 for data_str in results:
                     yield data_str
 
