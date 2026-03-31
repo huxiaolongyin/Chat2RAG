@@ -1,4 +1,4 @@
-import asyncio
+# import asyncio
 import os
 
 import pytest
@@ -18,13 +18,12 @@ os.environ["SERPERDEV_API_KEY"] = "st-123"
 
 from chat2rag.utils.qdrant_store import get_client
 
-
-@pytest.fixture(scope="session")
-def event_loop():
-    """Create event loop for test session."""
-    loop = asyncio.get_event_loop_policy().new_event_loop()
-    yield loop
-    loop.close()
+# @pytest.fixture(scope="session")
+# def event_loop():
+#     """Create event loop for test session."""
+#     loop = asyncio.get_event_loop_policy().new_event_loop()
+#     yield loop
+#     loop.close()
 
 
 @pytest.fixture(scope="function", autouse=True)
@@ -62,10 +61,12 @@ async def initialize_qdrant():
     yield
 
     # 测试后清理
-    print("删除知识库")
     collections = await client.get_collections()
     for collection in collections.collections:
         await client.delete_collection(collection.name)
+
+    await client.close()
+    get_client.cache_clear()
 
 
 @pytest.fixture

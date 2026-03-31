@@ -109,8 +109,8 @@ class TestPrompt:
         assert data["code"] == "0000"
         assert data["data"]["id"] == prompt_id
         assert "promptName" in data["data"]
-        assert "promptDesc" in data["data"]
-        assert "promptText" in data["data"]
+        assert "versions" in data["data"]
+        assert "currentVersion" in data["data"]
 
     async def test_get_prompt_detail_not_found(self, client: AsyncClient):
         """测试获取不存在的提示词详情"""
