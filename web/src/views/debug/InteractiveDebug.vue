@@ -66,6 +66,14 @@ const showSessionList = ref(true);
 const searchChatId = ref("");
 let searchDebounceTimer: ReturnType<typeof setTimeout> | null = null;
 
+const previewVideoUrl = ref("");
+const showVideoPreview = ref(false);
+
+function openVideoPreview(url: string) {
+  previewVideoUrl.value = url;
+  showVideoPreview.value = true;
+}
+
 const isLoading = computed(() => chatStore.isLoading);
 
 function validateExtraParams(): Record<string, unknown> | undefined {
@@ -218,8 +226,11 @@ async function sendMessage() {
         if (chunk.tool?.toolName) {
           lastMessage.tool = chunk.tool;
         }
-        if (chunk.link) {
-          lastMessage.link = chunk.link;
+        if (chunk.content?.image) {
+          lastMessage.image = chunk.content.image;
+        }
+        if (chunk.content?.video) {
+          lastMessage.video = chunk.content.video;
         }
       },
       onError: (error) => {
@@ -256,7 +267,7 @@ async function loadSessions() {
     const result = await getChatSessions({
       current: sessionsPage.value,
       size: 20,
-      chatId: searchChatId.value || undefined
+      chatId: searchChatId.value || undefined,
     });
     sessions.value = result.items;
     sessionsTotal.value = result.total;
@@ -302,6 +313,7 @@ async function loadSessionHistory(chatId: string) {
           role: "user",
           content: metric.question,
           timestamp: new Date(metric.createTime),
+          image: metric.image || undefined,
         });
       }
       if (metric.answer) {
@@ -326,6 +338,8 @@ async function loadSessionHistory(chatId: string) {
               }
             : undefined,
           document: metric.retrievalDocuments,
+          image: metric.answerImage || undefined,
+          video: metric.answerVideo || undefined,
         });
       }
     }
@@ -541,12 +555,20 @@ onMounted(async () => {
                   : 'bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-tl-none'
               "
             >
-              <img
+              <a-image
                 v-if="message.image"
                 :src="message.image"
+                :preview="true"
+                :preview-props="{ defaultScale: 0.5 }"
                 class="max-w-[200px] max-h-[200px] rounded-lg mb-2 object-cover"
                 alt="uploaded image"
               />
+              <video
+                v-if="message.video"
+                :src="message.video"
+                class="max-w-[200px] max-h-[200px] rounded-lg mb-2 object-cover cursor-pointer"
+                @click="openVideoPreview(message.video)"
+              ></video>
               <p
                 v-if="message.content"
                 class="text-sm leading-relaxed whitespace-pre-wrap"
@@ -585,8 +607,7 @@ onMounted(async () => {
                 message.role === 'assistant' &&
                 (message.source?.items?.length ||
                   message.document ||
-                  message.tool?.toolName ||
-                  message.link)
+                  message.tool?.toolName)
               "
               class="flex flex-wrap gap-1.5 mt-2"
             >
@@ -1113,6 +1134,22 @@ onMounted(async () => {
         </div>
       </div>
     </aside>
+
+    <a-modal
+      v-model:visible="showVideoPreview"
+      :footer="false"
+      :unmount-on-close="true"
+      simple
+      width="80%"
+    >
+      <video
+        v-if="showVideoPreview"
+        :src="previewVideoUrl"
+        controls
+        autoplay
+        class="w-full max-h-[80vh] rounded-lg"
+      ></video>
+    </a-modal>
   </div>
 </template>
 

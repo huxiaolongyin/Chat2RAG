@@ -368,7 +368,10 @@ export interface MetricData {
   chatId: string
   chatRounds: number | null
   question: string
+  image: string | null
   answer: string
+  answerImage: string | null
+  answerVideo: string | null
   model: string | null
   collections: string | null
   firstResponseMs: number | null

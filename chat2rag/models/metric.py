@@ -19,6 +19,8 @@ class Metric(BaseModel, TimestampMixin):
     question = fields.TextField(description="用户提问内容")
     image = fields.TextField(null=True, description="用户输入的图片")
     answer = fields.TextField(null=True, description="系统回答内容")
+    answer_image = fields.TextField(null=True, description="回复中的图片")
+    answer_video = fields.TextField(null=True, description="回复中的视频")
 
     # 表情和动作
     expression = fields.ForeignKeyField(

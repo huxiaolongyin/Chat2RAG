@@ -32,6 +32,7 @@ export interface ChatRequest {
 export interface ContentSchema {
   text: string
   image?: string
+  video?: string
 }
 
 export interface BehaviorSchema {
@@ -71,7 +72,6 @@ export interface StreamChunk {
   status: number
   behavior: BehaviorSchema
   tool: ToolSchema
-  link: string
   source: SourceSchema
   document: Record<string, DocumentItem[]> | null
   createTime: string
@@ -89,8 +89,8 @@ export interface Message {
   document?: Record<string, DocumentItem[]>
   behavior?: BehaviorSchema
   tool?: ToolSchema
-  link?: string
   image?: string
+  video?: string
 }
 
 export interface DocumentSource {

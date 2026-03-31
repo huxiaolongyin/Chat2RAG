@@ -33,9 +33,9 @@ logger = get_logger(__name__)
 # Define compiled regular expressions at module level
 EMOJI_PATTERN = re.compile(r"\[EMOJI:(.*?)\]")
 ACTION_PATTERN = re.compile(r"\[ACTION:(.*?)\]")
-LINK_PATTERN = re.compile(r"\[LINK:(.*?)\]")
 IMAGE_PATTERN = re.compile(r"\[IMAGE:(.*?)\]")
-BEHAVIOR_TAG_PATTERN = re.compile(r"\[(EMOJI|ACTION|LINK|IMAGE):.*?\]")
+VIDEO_PATTERN = re.compile(r"\[VIDEO:(.*?)\]")
+BEHAVIOR_TAG_PATTERN = re.compile(r"\[(EMOJI|ACTION|IMAGE|VIDEO):.*?\]")
 
 
 # Define constants at module level
@@ -69,8 +69,8 @@ class StreamHandler:
         self._accumulated_behavior = {
             "emoji": "",
             "action": "",
-            "link": "",
             "image": "",
+            "video": "",
         }
 
     async def callback(self, chunk: StreamingChunk):
@@ -200,8 +200,8 @@ class StreamHandler:
         """
         emojis = EMOJI_PATTERN.findall(text)
         actions = ACTION_PATTERN.findall(text)
-        links = LINK_PATTERN.findall(text)
         images = IMAGE_PATTERN.findall(text)
+        videos = VIDEO_PATTERN.findall(text)
 
         # Remove all tags, keep plain text only
         clean_text = BEHAVIOR_TAG_PATTERN.sub("", text).strip()
@@ -214,8 +214,8 @@ class StreamHandler:
         return {
             "emoji": emoji.code if emoji else "",
             "action": action.code if action else "",
-            "link": next(iter(links), ""),
             "image": next(iter(images), ""),
+            "video": next(iter(videos), ""),
             "clean_text": clean_text,
         }
 
@@ -228,7 +228,7 @@ class StreamHandler:
         """
         clean_text = ""
         remaining_buffer = ""
-        extracted_tags = {"emoji": "", "action": "", "link": "", "image": ""}
+        extracted_tags = {"emoji": "", "action": "", "image": "", "video": ""}
 
         i = 0
         while i < len(text):
@@ -244,15 +244,15 @@ class StreamHandler:
 
                 if ":" in tag_content:
                     tag_type, tag_value = tag_content.split(":", 1)
-                    if tag_type in ("EMOJI", "ACTION", "LINK", "IMAGE"):
+                    if tag_type in ("EMOJI", "ACTION", "IMAGE", "VIDEO"):
                         if tag_type == "EMOJI" and not extracted_tags["emoji"]:
                             extracted_tags["emoji"] = tag_value
                         elif tag_type == "ACTION" and not extracted_tags["action"]:
                             extracted_tags["action"] = tag_value
-                        elif tag_type == "LINK" and not extracted_tags["link"]:
-                            extracted_tags["link"] = tag_value
                         elif tag_type == "IMAGE" and not extracted_tags["image"]:
                             extracted_tags["image"] = tag_value
+                        elif tag_type == "VIDEO" and not extracted_tags["video"]:
+                            extracted_tags["video"] = tag_value
                         i = tag_end + 1
                         continue
 
@@ -323,8 +323,8 @@ class StreamHandler:
                     "clean_text": "",
                     "emoji": "",
                     "action": "",
-                    "link": "",
                     "image": "",
+                    "video": "",
                 }
             )
         clean_content = behavior_data["clean_text"]
@@ -346,12 +346,13 @@ class StreamHandler:
 
         return StreamChunkV2(
             input=query,
-            content=ContentSchema(text=behavior_data["clean_text"], image=behavior_data["image"]),
+            content=ContentSchema(
+                text=behavior_data["clean_text"], image=behavior_data["image"], video=behavior_data["video"]
+            ),
             model=self.model,
             status=status,
             behavior=BehaviorSchema(emoji=behavior_data["emoji"], action=behavior_data["action"]),
             tool=tool_content,
-            link=behavior_data["link"],
             source=SourceSchema(items=self._source_items) if status == 2 else SourceSchema(),
             document=self._retrieval_documents if self._retrieval_documents else {},
             message_id=self.message_id,
@@ -475,6 +476,8 @@ class StreamHandler:
                 emoji_obj = await robot_expression_service.get_code_by_name(self._accumulated_behavior.get("emoji", ""))
                 action_obj = await robot_action_service.get_code_by_name(self._accumulated_behavior.get("action", ""))
                 self.set_behavior(emoji_obj, action_obj)
+                self.metrics.answer_image = self._accumulated_behavior.get("image", "")
+                self.metrics.answer_video = self._accumulated_behavior.get("video", "")
 
                 if is_batch and current_batch:
                     combined_content = "".join([c.content for c in current_batch])
@@ -526,8 +529,8 @@ class StreamHandler:
                             "clean_text": "",
                             "emoji": emoji_code,
                             "action": action_code,
-                            "link": tags.get("link", ""),
                             "image": tags.get("image", ""),
+                            "video": tags.get("video", ""),
                         }
                         async for data_str in self._yield_data("", chunk.meta, behavior_data=behavior_msg):
                             yield data_str
@@ -540,8 +543,8 @@ class StreamHandler:
                             "clean_text": clean_text,
                             "emoji": "",
                             "action": "",
-                            "link": "",
                             "image": "",
+                            "video": "",
                         }
                         async for data_str in self._yield_data(clean_text, chunk.meta, behavior_data=behavior_data):
                             yield data_str
