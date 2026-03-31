@@ -12,7 +12,6 @@ router = APIRouter()
 @router.post("/chat")
 async def chat(chat_request: ChatRequest):
     """聊天接口"""
-    chat_request.model = "Qwen3-235B"
     chat_request.tools = [
         "navigate_to_location",
         "maps_weather",

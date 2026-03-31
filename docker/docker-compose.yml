@@ -12,6 +12,7 @@ services:
       - ${LOG_PATH}:/code/logs
       - ${MIGRATIONS_PATH}:/code/migrations
       - ${UPLOADS_PATH}:/code/uploads
+      - ${MODEL_PATH}:/code/models
     depends_on:
       qdrant:
         condition: service_healthy
