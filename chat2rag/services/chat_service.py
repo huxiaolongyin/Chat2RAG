@@ -9,7 +9,6 @@ from chat2rag.strategies import (
     CommandStrategy,
     ExactMatchStrategy,
     FlowStrategy,
-    MultiModalStrategy,
     SensitiveWordStrategy,
     StrategyChain,
 )
@@ -45,7 +44,6 @@ class ChatProcessor:
         question_analyzer._save_checkpoint()
 
     def _build_strategy_chain(self) -> StrategyChain:
-        """构建策略链"""
         return StrategyChain(
             [
                 SensitiveWordStrategy(
@@ -58,9 +56,6 @@ class ChatProcessor:
                     self.request, self.handler, self.start_time, self.is_batch
                 ),
                 ExactMatchStrategy(
-                    self.request, self.handler, self.start_time, self.is_batch
-                ),
-                MultiModalStrategy(
                     self.request, self.handler, self.start_time, self.is_batch
                 ),
                 AgentStrategy(

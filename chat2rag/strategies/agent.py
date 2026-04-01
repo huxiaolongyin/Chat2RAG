@@ -8,6 +8,7 @@ from typing import AsyncIterator, List
 from haystack.dataclasses import ChatMessage, ChatRole, StreamingChunk
 
 from chat2rag.config import CONFIG
+from chat2rag.core.enums import ModelCapability
 from chat2rag.core.logger import get_logger
 from chat2rag.models.models import ModelProvider, ModelSource
 from chat2rag.pipelines.agent import AgentPipeline
@@ -26,8 +27,17 @@ class AgentStrategy(ResponseStrategy):
     """Agent 兜底策略"""
 
     async def can_handle(self, query: str) -> bool:
-        # Agent 作为兜底策略，总是可以处理
         return True
+
+    def _detect_capability(self) -> ModelCapability:
+        """根据请求内容检测需要的能力类型"""
+        if self.request.content.image:
+            return ModelCapability.IMAGE
+        elif self.request.content.video:
+            return ModelCapability.VIDEO
+        elif self.request.content.audio:
+            return ModelCapability.AUDIO
+        return ModelCapability.TEXT
 
     async def execute(self, query: str) -> AsyncIterator[str]:
         history_messages = await chat_history.get_history_messages(
@@ -36,40 +46,40 @@ class AgentStrategy(ResponseStrategy):
             self.request.chat_rounds,
             image=self.request.content.image,
         )
-        # 保存任务引用
         task = asyncio.create_task(self._process_pipeline(query, history_messages))
 
         try:
             async for chunk in self.handler.get_stream(self.is_batch):
                 yield chunk
         finally:
-            # 确保后台任务完成
             await task
 
     async def _process_pipeline(self, query: str, history_messages: List[ChatMessage]):
         """处理 Agent Pipeline"""
 
-        # 获取当前时间
         current_time = {"time": datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
-        model_source: ModelSource = await model_source_service.get_best_source(
-            self.request.model, extra_log="Agent Stage"
-        )
-        model_provider: ModelProvider = await model_source.provider
-        generation_kwargs = merge_generation_kwargs(
-            self.request.generation_kwargs,
-            model_source.generation_kwargs,
-            CONFIG.GENERATION_KWARGS,
-        )
-        logger.info(
-            f"[{self.handler.message_id}] Starting agent pipeline: model={model_source.name}, "
-            f"tools={self.request.tools}, collections={self.request.collections}"
-        )
         try:
+            capability = self._detect_capability()
+            model_source: ModelSource = await model_source_service.get_best_source(
+                self.request.model, capability=capability, extra_log="Agent Stage"
+            )
+            model_provider: ModelProvider = await model_source.provider
+            generation_kwargs = merge_generation_kwargs(
+                self.request.generation_kwargs,
+                model_source.generation_kwargs,
+                CONFIG.GENERATION_KWARGS,
+            )
+
+            logger.info(
+                f"[{self.handler.message_id}] Starting agent pipeline: capability={capability.value}, "
+                f"tools={self.request.tools}, collections={self.request.collections}"
+            )
+
             pipeline = await create_pipeline(
                 AgentPipeline,
                 collections=self.request.collections,
                 model=model_source.name,
-                tools=self.request.tools,
+                tools=self.request.tools if capability == "text" else [],
                 api_base_url=model_provider.base_url,
                 api_key=model_provider.api_key,
                 generation_kwargs=generation_kwargs,
@@ -96,9 +106,10 @@ class AgentStrategy(ResponseStrategy):
             )
             logger.info(f"[{self.handler.message_id}] pipeline.run_async completed")
 
-            documents = result.get("ranker" if CONFIG.RERANK_ENABLED else "doc_joiner", {}).get("documents", [])
+            documents = result.get(
+                "ranker" if CONFIG.RERANK_ENABLED else "doc_joiner", {}
+            ).get("documents", [])
 
-            # 提取并存储检索文档
             retrieval_docs = self._extract_retrieval_documents(documents)
             self.handler.set_retrieval_documents(retrieval_docs)
 
@@ -109,7 +120,6 @@ class AgentStrategy(ResponseStrategy):
             elif not self.handler._execute_tools_list:
                 self.handler.add_source(SourceType.LLM, "大模型生成")
 
-            # 更新聊天历史
             messages: list = result.get("agent", {}).get("messages", [])
             new_messages = self._get_latest_user_round(messages)
             if self.request.chat_id and messages:
@@ -118,7 +128,6 @@ class AgentStrategy(ResponseStrategy):
                 logger.info(f"Agent pipeline completed in {elapsed_time:.2f}s")
                 logger.debug(f"Answer: {new_messages[-1].text}")
 
-            # 更新 token 消费
             input_tokens = 0
             output_tokens = 0
             for message in new_messages:
@@ -130,7 +139,9 @@ class AgentStrategy(ResponseStrategy):
             self.handler.set_token_info(input_tokens, output_tokens)
 
         except Exception as e:
-            logger.exception(f"[{self.handler.message_id}] Failed to execute agent strategy")
+            logger.exception(
+                f"[{self.handler.message_id}] Failed to execute agent strategy"
+            )
             self.handler.set_error(str(e))
             await self.handler.callback(
                 StreamingChunk(
@@ -139,7 +150,9 @@ class AgentStrategy(ResponseStrategy):
                 )
             )
         finally:
-            logger.debug(f"[{self.handler.message_id}] Sending END signal to stream handler")
+            logger.debug(
+                f"[{self.handler.message_id}] Sending END signal to stream handler"
+            )
             await self.handler.finish()
 
     @staticmethod
@@ -162,7 +175,11 @@ class AgentStrategy(ResponseStrategy):
         for doc in documents:
             meta = getattr(doc, "meta", {}) or {}
             source_info = meta.get("source", {})
-            file_path = source_info.get("file_path", "") if isinstance(source_info, dict) else ""
+            file_path = (
+                source_info.get("file_path", "")
+                if isinstance(source_info, dict)
+                else ""
+            )
 
             collection = meta.get("collection_name", "")
 
