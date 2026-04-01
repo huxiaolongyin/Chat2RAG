@@ -151,7 +151,12 @@ class ChatHistory:
 
         contents = [user_msg]
         if image:
-            contents.append(ImageContent.from_url(image))
+            if image.startswith(("http://", "https://")):
+                contents.append(ImageContent.from_url(image, detail="low"))
+            else:
+                image_data = image.split(",", 1)[1] if image.startswith("data:image") else image
+                contents.append(ImageContent(base64_image=image_data, detail="low"))
+
         messages.append(ChatMessage.from_user(content_parts=contents))
         return messages
 
