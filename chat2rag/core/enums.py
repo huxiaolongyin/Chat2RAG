@@ -81,3 +81,10 @@ class FileStatus(str, Enum):
     PARSING = "parsing"
     PARSED = "parsed"
     FAILED = "failed"
+
+
+class ModelCapability(str, Enum):
+    TEXT = "text"
+    IMAGE = "image"
+    VIDEO = "video"
+    AUDIO = "audio"

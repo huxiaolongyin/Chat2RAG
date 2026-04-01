@@ -2,16 +2,28 @@ from datetime import datetime
 
 from pydantic import Field
 
+from chat2rag.core.enums import ModelCapability
+
 from .base import BaseSchema, IDMixin, TimestampMixin
 
 
 # ModelProvider (渠道商)
 class ModelProviderBase(BaseSchema):
-    name: str = Field(..., min_length=1, max_length=100, description="渠道商名称，如OpenAI、Azure", examples=["阿里"])
-    base_url: str = Field(..., description="渠道商API基础地址", examples=["https://..."])
+    name: str = Field(
+        ...,
+        min_length=1,
+        max_length=100,
+        description="渠道商名称，如OpenAI、Azure",
+        examples=["阿里"],
+    )
+    base_url: str = Field(
+        ..., description="渠道商API基础地址", examples=["https://..."]
+    )
     api_key: str = Field(..., description="调用API密钥", examples=["sk-..."])
     enabled: bool | None = Field(True, description="是否启用")
-    description: str | None = Field(None, max_length=255, description="描述信息", examples=["阿里大模型"])
+    description: str | None = Field(
+        None, max_length=255, description="描述信息", examples=["阿里大模型"]
+    )
 
 
 class ModelProviderData(ModelProviderBase, IDMixin): ...
@@ -25,21 +37,41 @@ class ModelProviderCreate(ModelProviderBase): ...
 
 
 class ModelProviderUpdate(BaseSchema):
-    name: str | None = Field(None, max_length=100, description="渠道商名称，如OpenAI、Azure", examples=["阿里"])
-    base_url: str | None = Field(None, description="渠道商API基础地址", examples=["https://..."])
+    name: str | None = Field(
+        None,
+        max_length=100,
+        description="渠道商名称，如OpenAI、Azure",
+        examples=["阿里"],
+    )
+    base_url: str | None = Field(
+        None, description="渠道商API基础地址", examples=["https://..."]
+    )
     api_key: str | None = Field(None, description="调用API密钥", examples=["sk-..."])
     enabled: bool | None = Field(None, description="是否启用")
-    description: str | None = Field(None, max_length=255, description="描述信息", examples=["阿里大模型"])
+    description: str | None = Field(
+        None, max_length=255, description="描述信息", examples=["阿里大模型"]
+    )
 
 
 # ModelSource (模型源)
 class ModelSourceBase(BaseSchema):
-    name: str = Field(..., min_length=1, max_length=100, description="模型正式名称，如gpt-4", examples=["gpt-4"])
-    alias: str | None = Field(None, max_length=100, description="模型别名", examples=["Qwen3-32B"])
+    name: str = Field(
+        ...,
+        min_length=1,
+        max_length=100,
+        description="模型正式名称，如gpt-4",
+        examples=["gpt-4"],
+    )
+    alias: str | None = Field(
+        None, max_length=100, description="模型别名", examples=["Qwen3-32B"]
+    )
     enabled: bool | None = Field(None, description="是否启用")
     healthy: bool | None = Field(None, description="是否健康可用")
     priority: int | None = Field(None, description="优先级，数值越大优先级越高")
     generation_kwargs: dict | None = Field(None, description="模型参数")
+    capabilities: list[ModelCapability] = Field(
+        default=[ModelCapability.TEXT], description="支持的能力类型"
+    )
 
 
 class ModelSourceData(ModelSourceBase, IDMixin, TimestampMixin):
@@ -54,7 +86,12 @@ class ModelSourceCreate(ModelSourceBase):
 
 
 class ModelSourceUpdate(ModelSourceBase):
-    name: str | None = Field(None, max_length=100, description="模型正式名称，如gpt-4", examples=["gpt-4"])
+    name: str | None = Field(
+        None, max_length=100, description="模型正式名称，如gpt-4", examples=["gpt-4"]
+    )
+    capabilities: list[ModelCapability] | None = Field(
+        None, description="支持的能力类型"
+    )
 
 
 class ModelSourceOption(BaseSchema):
