@@ -18,6 +18,7 @@ import type {
   Tool,
 } from "@/types/api";
 import type { Message } from "@/types/chat";
+import { Message as AMessage } from "@arco-design/web-vue";
 import { Icon } from "@iconify/vue";
 import { computed, nextTick, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
@@ -116,6 +117,15 @@ async function copyMessage(content: string) {
   }
 }
 
+async function copyChatId(chatId: string) {
+  try {
+    await navigator.clipboard.writeText(chatId);
+    AMessage.success("已复制");
+  } catch (error) {
+    console.error("Failed to copy chat id:", error);
+  }
+}
+
 function handleImageSelect(event: Event) {
   const file = (event.target as HTMLInputElement).files?.[0];
   if (!file) return;
@@ -129,6 +139,26 @@ function handleImageSelect(event: Event) {
     inputImage.value = e.target?.result as string;
   };
   reader.readAsDataURL(file);
+}
+
+function handlePaste(event: ClipboardEvent) {
+  const items = event.clipboardData?.items;
+  if (!items) return;
+
+  for (const item of items) {
+    if (item.type.startsWith("image/")) {
+      event.preventDefault();
+      const file = item.getAsFile();
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          inputImage.value = e.target?.result as string;
+        };
+        reader.readAsDataURL(file);
+      }
+      break;
+    }
+  }
 }
 
 function removeImage() {
@@ -480,6 +510,12 @@ onMounted(async () => {
                   {{ session.messageCount }} 条消息 ·
                   {{ formatSessionTime(session.updateTime) }}
                 </p>
+                <p
+                  class="text-[9px] text-slate-300 dark:text-slate-600 mt-1 font-mono truncate cursor-pointer hover:text-slate-400 dark:hover:text-slate-500 transition-colors"
+                  @click.stop="copyChatId(session.chatId)"
+                >
+                  {{ session.chatId }}
+                </p>
               </div>
             </div>
           </div>
@@ -796,6 +832,7 @@ onMounted(async () => {
             placeholder="输入消息..."
             rows="1"
             @keydown.enter.exact.prevent="sendMessage"
+            @paste="handlePaste"
           ></textarea>
           <a-button
             type="primary"
