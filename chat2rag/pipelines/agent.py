@@ -2,7 +2,6 @@ from typing import Any, Callable, Dict, List
 
 from haystack import AsyncPipeline
 from haystack.components.agents import Agent
-from haystack.components.builders import ChatPromptBuilder
 from haystack.components.embedders import OpenAITextEmbedder
 from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.components.joiners import DocumentJoiner
@@ -12,7 +11,7 @@ from haystack_integrations.components.retrievers.qdrant import QdrantEmbeddingRe
 from haystack_integrations.document_stores.qdrant import QdrantDocumentStore
 from qdrant_client.models import Filter
 
-from chat2rag.components import OpenRanker
+from chat2rag.components import MultimodalChatPromptBuilder, OpenRanker
 from chat2rag.config import CONFIG
 from chat2rag.core.logger import get_logger
 from chat2rag.pipelines.base import BasePipeline
@@ -44,9 +43,9 @@ class AgentPipeline(BasePipeline[AsyncPipeline]):
     ):
         super().__init__()
         self._collections = collections if collections else []
-        self._model = model
         self._tools = []
         self._tool_list = tools
+        self._model = model
         self._api_base_url = api_base_url
         self._api_key = api_key
         self._generation_kwargs = recursive_tuple_to_dict(generation_kwargs)
@@ -94,9 +93,13 @@ class AgentPipeline(BasePipeline[AsyncPipeline]):
                 document_store._async_client = get_client()
                 pipeline.add_component(
                     retriever_name,
-                    QdrantEmbeddingRetriever(document_store=document_store, score_threshold=0.55),
+                    QdrantEmbeddingRetriever(
+                        document_store=document_store, score_threshold=0.55
+                    ),
                 )
-                pipeline.connect("embedder.embedding", f"{retriever_name}.query_embedding")
+                pipeline.connect(
+                    "embedder.embedding", f"{retriever_name}.query_embedding"
+                )
 
             pipeline.add_component("doc_joiner", DocumentJoiner())
 
@@ -109,7 +112,9 @@ class AgentPipeline(BasePipeline[AsyncPipeline]):
                     OpenRanker(
                         model=CONFIG.RERANK_MODEL,
                         top_k=CONFIG.TOP_K,
-                        api_key=Secret.from_token(CONFIG.RERANK_API_KEY) if CONFIG.RERANK_API_KEY else None,
+                        api_key=Secret.from_token(CONFIG.RERANK_API_KEY)
+                        if CONFIG.RERANK_API_KEY
+                        else None,
                         api_base_url=CONFIG.RERANK_URL,
                     ),
                 )
@@ -117,7 +122,7 @@ class AgentPipeline(BasePipeline[AsyncPipeline]):
 
             pipeline.add_component(
                 "builder",
-                instance=ChatPromptBuilder(
+                instance=MultimodalChatPromptBuilder(
                     template=[ChatMessage.from_user(DEFAULT_DOCUMENTS_PARSE)],
                     required_variables=["documents"],
                 ),
@@ -187,7 +192,9 @@ class AgentPipeline(BasePipeline[AsyncPipeline]):
         logger.debug(f"Starting pipeline.run_async for query: {query[:50]}...")
         result = await self.pipeline.run_async(
             run_data,
-            include_outputs_from={"ranker"} if CONFIG.RERANK_ENABLED else {"doc_joiner"},
+            include_outputs_from={"ranker"}
+            if CONFIG.RERANK_ENABLED
+            else {"doc_joiner"},
         )
         logger.debug("pipeline.run_async completed")
         return result
