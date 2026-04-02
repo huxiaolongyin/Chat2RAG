@@ -13,7 +13,6 @@ router = APIRouter()
 async def chat(chat_request: ChatRequest):
     """聊天接口"""
     chat_request.tools = [
-        "navigate_to_location",
         "maps_weather",
         "maps_geo",
         "maps_direction_transit_integrated",
@@ -21,6 +20,8 @@ async def chat(chat_request: ChatRequest):
         "cart_manage",
         "checkout",
         "get_train_info",
+        "search_entities",
+        "confirm_navigate",
     ]
     processor = ChatProcessor(chat_request)
     return StreamingResponse(processor.process(), media_type="text/event-stream")

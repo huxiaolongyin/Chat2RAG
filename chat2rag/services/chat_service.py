@@ -12,7 +12,7 @@ from chat2rag.strategies import (
     SensitiveWordStrategy,
     StrategyChain,
 )
-from chat2rag.utils.stream import StreamHandler, StreamHandlerV1
+from chat2rag.streaming import StreamHandler, StreamHandlerV1
 
 
 class ChatProcessor:
@@ -20,10 +20,11 @@ class ChatProcessor:
 
     def __init__(self, request: ChatRequest):
         self.request = request
-        self.handler = StreamHandler()
         self.start_time = perf_counter()
         self.is_batch = request.batch_or_stream == ProcessType.BATCH
         self.query = self.request.content.text
+        enable_tts = "audio" in (request.modalities or [])
+        self.handler = StreamHandler(enable_tts=enable_tts, audio_config=request.audio)
 
     async def process(self) -> AsyncIterator[str]:
         """处理聊天请求"""
@@ -87,8 +88,14 @@ class ChatProcessor:
 
 class ChatProcessorV1(ChatProcessor):
     def __init__(self, request: ChatRequest):
-        super().__init__(request)
-        self.handler = StreamHandlerV1()
+        self.request = request
+        self.start_time = perf_counter()
+        self.is_batch = request.batch_or_stream == ProcessType.BATCH
+        self.query = self.request.content.text
+
+        enable_tts = "audio" in (request.modalities or [])
+        voice = request.audio.voice if request.audio else "Cherry"
+        self.handler = StreamHandlerV1(enable_tts=enable_tts, voice=voice)
 
     def _build_strategy_chain(self) -> StrategyChain:
         """构建策略链"""

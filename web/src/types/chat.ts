@@ -5,6 +5,15 @@ export interface QueryContent {
   audio?: string
 }
 
+export interface AudioConfig {
+  voice?: string
+  format?: string
+  sampleRate?: number
+  provider?: string
+  speed?: number
+  language?: string
+}
+
 export interface GenerationKwargs {
   temperature?: number
 
@@ -26,13 +35,22 @@ export interface ChatRequest {
   topK?: number
   batchOrStream?: 'batch' | 'stream'
   modalities?: string[]
+  audio?: AudioConfig
   extraParams?: Record<string, unknown>
+}
+
+export interface AudioContent {
+  text: string
+  audioBase64: string
+  format: string
+  sampleRate: number
 }
 
 export interface ContentSchema {
   text: string
   image?: string
   video?: string
+  audio?: AudioContent
 }
 
 export interface BehaviorSchema {
@@ -91,6 +109,8 @@ export interface Message {
   tool?: ToolSchema
   image?: string
   video?: string
+  audio?: string
+  audioCacheKey?: string
 }
 
 export interface DocumentSource {
