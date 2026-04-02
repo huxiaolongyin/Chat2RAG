@@ -8,7 +8,7 @@ from haystack.dataclasses import ChatRole, StreamingChunk
 from chat2rag.core.logger import get_logger
 from chat2rag.dataclass.strategy import StrategyRequest
 from chat2rag.utils.chat_history import chat_history
-from chat2rag.utils.stream import StreamHandler
+from chat2rag.streaming import StreamHandler
 
 logger = get_logger(__name__)
 
