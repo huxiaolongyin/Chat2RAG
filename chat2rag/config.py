@@ -20,12 +20,8 @@ PROMPT_PATH = Path(__file__).parent / "prompt"
 
 _load_str_env = lambda name: os.environ.get(name)
 _load_int_env = lambda name: int(os.environ.get(name)) if os.environ.get(name) else None
-_load_list_env = (
-    lambda name: os.environ.get(name).split(",") if os.environ.get(name) else None
-)
-_load_float_env = (
-    lambda name: float(os.environ.get(name)) if os.environ.get(name) else None
-)
+_load_list_env = lambda name: os.environ.get(name).split(",") if os.environ.get(name) else None
+_load_float_env = lambda name: float(os.environ.get(name)) if os.environ.get(name) else None
 
 
 def _load_bool_env(name: str, default: bool = False) -> bool:
@@ -117,7 +113,9 @@ class Config:
     POSTGRESQL_PASSWORD = _load_str_env("POSTGRESQL_PASSWORD") or "123456"
     POSTGRESQL_PORT = _load_int_env("POSTGRESQL_PORT") or 5432
 
-    DATABASE_URL = f"postgresql://postgres:{POSTGRESQL_PASSWORD}@{POSTGRESQL_HOST}:{POSTGRESQL_PORT}/{POSTGRESQL_DATABASE}"
+    DATABASE_URL = (
+        f"postgresql://postgres:{POSTGRESQL_PASSWORD}@{POSTGRESQL_HOST}:{POSTGRESQL_PORT}/{POSTGRESQL_DATABASE}"
+    )
     TORTOISE_ORM = {
         "connections": {
             "default": {
@@ -153,9 +151,7 @@ class Config:
         {
             "name": "DeepSeek-V3.2",
             "id": "Pro/deepseek-ai/DeepSeek-V3.2",
-            "generation_kwargs": {
-                "extra_body": {"enable_thinking": False, "thinking_budget": 100}
-            },
+            "generation_kwargs": {"extra_body": {"enable_thinking": False, "thinking_budget": 100}},
         },
         {"name": "Deepseek-v3", "id": "Pro/deepseek-ai/DeepSeek-V3"},
         {"name": "Qwen2.5-32B", "id": "Qwen/Qwen2.5-32B-Instruct"},
@@ -163,9 +159,7 @@ class Config:
         {
             "name": "Qwen3-32B",
             "id": "Qwen/Qwen3-32B",
-            "generation_kwargs": {
-                "extra_body": {"enable_thinking": False, "thinking_budget": 100}
-            },
+            "generation_kwargs": {"extra_body": {"enable_thinking": False, "thinking_budget": 100}},
         },
         {"name": "Qwen3-235B", "id": "Qwen/Qwen3-235B-A22B-Instruct-2507"},
         {"name": "DeepSeek-V3.1", "id": "Pro/deepseek-ai/DeepSeek-V3.1-Terminus"},
@@ -212,14 +206,9 @@ class Config:
     RERANK_MODEL = _load_str_env("RERANK_MODEL") or "Qwen/Qwen3-Reranker-4B"
 
     # 多模态配置
-    MULTIMODAL_API_URL = (
-        _load_str_env("MULTIMODAL_API_URL")
-        or "https://dashscope.aliyuncs.com/compatible-mode/v1"
-    )
+    MULTIMODAL_API_URL = _load_str_env("MULTIMODAL_API_URL") or "https://dashscope.aliyuncs.com/compatible-mode/v1"
     MULTIMODAL_API_KEY = _load_str_env("MULTIMODAL_API_KEY")
-    MULTIMODAL_MODEL = (
-        _load_str_env("MULTIMODAL_MODEL") or "qwen3-vl-235b-a22b-instruct"
-    )
+    MULTIMODAL_MODEL = _load_str_env("MULTIMODAL_MODEL") or "qwen3-vl-235b-a22b-instruct"
 
     RAG_PROMPT_TEMPLATE = RAG_PROMPT_TEMPLATE
     FUNCTION_PROMPT_TEMPLATE = ""

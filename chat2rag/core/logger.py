@@ -52,7 +52,7 @@ def initialize_logging():
         "handlers": {
             "console": {
                 "class": "logging.StreamHandler",
-                "level": "DEBUG",
+                "level": "INFO",
                 "formatter": "standard",
                 "stream": sys.stdout,
             },
@@ -82,6 +82,8 @@ def initialize_logging():
             "openai": {"level": "ERROR", "propagate": True},
             "tortoise": {"level": "WARNING", "propagate": True},
             "aiosqlite": {"level": "WARNING", "propagate": True},
+            "dashscope": {"level": "WARNING", "propagate": True},
+            "websocket": {"level": "WARNING", "propagate": True},
             # 可以在这里添加其他logger的配置
         },
         # 根logger设置

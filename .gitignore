@@ -14,6 +14,7 @@ temp*
 audio_chat
 .continue
 /mcp-servers/
+docs/openapi.json
 
 #=======================#
 #       Logs file       #

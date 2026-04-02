@@ -1,5 +1,8 @@
 import asyncio
+import json
+import os
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 import uvicorn
 from fastapi import FastAPI
@@ -40,6 +43,14 @@ async def lifespan(app: FastAPI):
     asyncio.create_task(
         periodic_latency_update(ModelSourceService(), interval_sec=3600)
     )
+
+    if not os.environ.get("DEPLOY_ENV"):
+        docs_dir = Path(__file__).parent.parent / "docs"
+        docs_dir.mkdir(exist_ok=True)
+        openapi_path = docs_dir / "openapi.json"
+        openapi_json = json.dumps(app.openapi(), indent=2, ensure_ascii=False)
+        openapi_path.write_text(openapi_json, encoding="utf-8")
+        logger.info(f"OpenAPI schema saved to {openapi_path}")
 
     yield
     # 关闭时执行

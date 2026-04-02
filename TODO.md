@@ -49,6 +49,7 @@
 - [] 出现流式的没有 status=2 的情况，2026-03-19 09:10:11,009 - mcp.client.streamable_http - DEBUG - Sending client message: root=JSONRPCRequest(method='tools/call', params={'name': 'maps_weather', 'arguments': {'city': '福州'}}, jsonrpc='2.0', id=5)
   Exception ignored in: <function BaseEventLoop.**del** at 0x0000022426D0DA80>
 - [ ] 🟡P3 知识库新增版本时的预览没有被实际创建使用
+- [ ] 🟡P3 在进行多模态的使用时，第二次传入的图片，无法正常流式输出出来
 
 ## 测试相关
 
